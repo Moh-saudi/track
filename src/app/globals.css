@@ -1,0 +1,248 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Cairo:wght@400;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ════════════════════════════════════════════════════════════════════
+   الملف الشامل الموحد للتصميم الحكومي الهادئ والرصين
+   جمهورية مصر العربية — رئاسة مجلس الوزراء
+   اللجنة العليا للمسؤولية الطبية وسلامة المريض
+   ════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --gov-primary: #1F4E79;
+  --gov-primary-hover: #173d61;
+  --bg-page: #f8fafc;
+  --bg-card: #ffffff;
+  --border-color: #e2e8f0;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  direction: rtl;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Tajawal", "Cairo", sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+/* تحسين مظهر التعبئة التلقائية للمتصفح لمنع الخلفيات الصفراء الفاقعة */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+@layer components {
+
+  /* 1. البطاقات (Cards) */
+  .card {
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm p-6;
+  }
+
+  .card-hover {
+    @apply card transition-shadow duration-150 hover:shadow-md;
+  }
+
+  /* 2. بطاقات الإحصائيات (Stat Cards) */
+  .stat-card {
+    @apply bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center gap-4;
+  }
+
+  .stat-icon {
+    @apply w-12 h-12 rounded-xl flex items-center justify-center font-bold text-xl flex-shrink-0;
+  }
+
+  /* 3. الأزرار (Buttons) — ألوان حكومية هادئة */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs sm:text-sm font-bold
+           transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1
+           disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer select-none;
+  }
+
+  .btn-primary {
+    @apply btn bg-[#1F4E79] text-white hover:bg-[#173d61] focus:ring-[#1F4E79];
+  }
+
+  .btn-secondary {
+    @apply btn bg-white text-[#1F4E79] border border-slate-300 hover:bg-slate-50 focus:ring-slate-300;
+  }
+
+  .btn-danger {
+    @apply btn bg-rose-700 text-white hover:bg-rose-800 focus:ring-rose-600;
+  }
+
+  .btn-success {
+    @apply btn bg-emerald-700 text-white hover:bg-emerald-800 focus:ring-emerald-600;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs rounded-md;
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-base rounded-lg;
+  }
+
+  /* 4. حقول الإدخال والنماذج (Form Controls) */
+  .form-group {
+    @apply space-y-1.5;
+  }
+
+  .form-label,
+  .label {
+    @apply block text-xs font-bold text-slate-700;
+  }
+
+  .form-label-required::after,
+  .label-required::after {
+    content: " *";
+    @apply text-rose-600 font-bold;
+  }
+
+  .form-input,
+  .input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900
+           placeholder-slate-400 transition-colors
+           focus:border-[#1F4E79] focus:outline-none focus:ring-1 focus:ring-[#1F4E79]
+           disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500;
+  }
+
+  .form-select,
+  .select {
+    @apply form-input appearance-none bg-no-repeat;
+  }
+
+  .form-textarea,
+  .textarea {
+    @apply form-input min-h-[90px] resize-y;
+  }
+
+  /* 5. الشارات الموحدة (Badges) */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap;
+  }
+
+  .badge-registered {
+    @apply badge bg-amber-50 text-amber-800 border border-amber-300;
+  }
+
+  .badge-review {
+    @apply badge bg-blue-50 text-[#1F4E79] border border-blue-200;
+  }
+
+  .badge-pending {
+    @apply badge bg-purple-50 text-purple-800 border border-purple-200;
+  }
+
+  .badge-approved {
+    @apply badge bg-emerald-50 text-emerald-800 border border-emerald-300;
+  }
+
+  .badge-referred {
+    @apply badge bg-orange-50 text-orange-800 border border-orange-200;
+  }
+
+  .badge-closed {
+    @apply badge bg-slate-100 text-slate-700 border border-slate-300;
+  }
+
+  .badge-delayed {
+    @apply badge bg-rose-50 text-rose-800 border border-rose-300 font-black;
+  }
+
+  /* 6. الجداول الرسمية الهادئة (Tables) */
+  .table-wrapper,
+  .table-container {
+    @apply w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm;
+  }
+
+  .table-custom,
+  .data-table {
+    @apply w-full text-right text-xs text-slate-700 border-collapse;
+  }
+
+  .table-custom thead,
+  .data-table thead {
+    @apply bg-slate-50 text-[11px] font-bold text-slate-600 uppercase border-b border-slate-200;
+  }
+
+  .table-custom th,
+  .data-table th {
+    @apply px-4 py-3 text-right whitespace-nowrap font-bold;
+  }
+
+  .table-custom td,
+  .data-table td {
+    @apply px-4 py-3 border-b border-slate-100 align-middle;
+  }
+
+  .table-custom tbody tr:last-child td,
+  .data-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .table-custom tbody tr:hover,
+  .data-table tbody tr:hover {
+    @apply bg-slate-50/70;
+  }
+
+  /* التنبيه الهادئ والواضح لمن تأخر توجيهه أكثر من 3 أيام */
+  .table-row-delayed {
+    @apply bg-rose-50/80 hover:bg-rose-100/80 border-r-4 border-r-rose-600 text-slate-900;
+  }
+
+  /* 7. التنبيهات الرسمية (Alerts) */
+  .alert {
+    @apply p-4 rounded-xl text-xs font-medium flex items-start gap-3 leading-relaxed;
+  }
+
+  .alert-error {
+    @apply alert bg-rose-50 border border-rose-200 text-rose-800;
+  }
+
+  .alert-warning {
+    @apply alert bg-amber-50 border border-amber-200 text-amber-800;
+  }
+
+  .alert-success {
+    @apply alert bg-emerald-50 border border-emerald-200 text-emerald-800;
+  }
+
+  .alert-conflict {
+    @apply alert bg-rose-50 border-2 border-rose-400 text-rose-900 font-bold;
+  }
+}
+
+/* شريط التمرير */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

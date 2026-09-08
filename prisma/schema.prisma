@@ -1,0 +1,362 @@
+// ===================================================
+// نموذج بيانات منظومة تتبع القضايا
+// جمهورية مصر العربية — رئاسة مجلس الوزراء
+// اللجنة العليا للمسؤولية الطبية وسلامة المريض
+// ===================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── أنواع (Enums) ───────────────────────────────
+
+enum UserRole {
+  REGISTRATION_CLERK  // موظف التسجيل (قيد السجلات فقط)
+  FOLLOW_UP_OFFICER   // موظف المتابعة والتوجيه (توزيع وتتبع المواعيد)
+  SUBCOMMITTEE_MEMBER // عضو/منسق لجنة فرعية
+  SUPREME_COMMITTEE   // عضو اللجنة العليا
+  FINANCE             // موظف المالية
+  ADMIN               // مدير النظام
+}
+
+enum RegistrationType {
+  COMPLAINT // شكوى
+  CASE      // قضية
+  REPORT    // محضر
+}
+
+enum CaseStatus {
+  REGISTERED                // مسجل — انتظار التوجيه
+  UNDER_SUBCOMMITTEE_REVIEW // تحت دراسة اللجنة الفرعية
+  PENDING_SUPREME_REVIEW    // بانتظار اعتماد اللجنة العليا
+  REFERRED_FOR_REVIEW       // محال للمراجعة مرة أخرى
+  APPROVED                  // معتمد — قرار نهائي
+  CLOSED                    // مغلق
+}
+
+enum DecisionType {
+  APPROVE     // اعتماد قرار اللجنة الفرعية
+  REFER_BACK  // إعادة إلى لجنة فرعية
+  DIFFERENT   // قرار مختلف
+}
+
+enum PaymentStatus {
+  NOT_PAID         // لم يُسدَّد
+  UNDER_SETTLEMENT // تحت التسوية
+  PAID             // مُسدَّد
+}
+
+enum ReviewerRole {
+  HEAD_EXAMINER // مقرر اللجنة الفاحصة
+  EXAMINER      // عضو فاحص
+}
+
+enum ReviewerStatus {
+  ASSIGNED   // معين
+  RECUSED    // متنحي / معتذر
+  COMPLETED  // أنهى الفحص
+}
+
+// ─── المستخدمون ───────────────────────────────────
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  fullName        String
+  passwordHash    String
+  role            UserRole
+  employer        String?   // جهة العمل / المستشفى التابع لها الطبيب (لفحص تعارض المصالح)
+  active          Boolean   @default(true)
+
+  // ربط العضو بلجنة فرعية (فقط لدور SUBCOMMITTEE_MEMBER)
+  subCommitteeId  String?
+  subCommittee    SubCommittee? @relation(fields: [subCommitteeId], references: [id])
+
+  // التخصص الطبي الرئيسي للطبيب
+  specialtyId     String?
+  specialty       Specialty?    @relation(fields: [specialtyId], references: [id])
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // علاقات
+  createdCases        Case[]            @relation("CreatedBy")
+  followUpCases       Case[]            @relation("FollowUpCases")
+  reviewAssignments   CaseReviewer[]
+  caseActions         CaseAction[]      @relation("RecordedBy")
+  supremeDecisions    SupremeDecision[] @relation("DecidedBy")
+  uploadedAttachments Attachment[]      @relation("UploadedBy")
+  auditLogs           AuditLog[]        @relation("UserAuditLogs")
+  payments            Payment[]         @relation("PaymentMember")
+}
+
+// ─── اللجان الفرعية الـ 16 المعتمدة وما يضاف مستقبلاً ───
+
+model SubCommittee {
+  id          String   @id @default(cuid())
+  name        String   @unique  // اسم اللجنة / الجهة الرسمية
+  code        String   @unique  // رمز قصير (مثلاً: SC-01)
+  scope       String?           // النطاق المؤسسي / الجغرافي
+  active      Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // علاقات
+  members           User[]
+  doctors           SubCommitteeDoctor[]
+  cases             Case[]
+  referredDecisions SupremeDecision[] @relation("ReferredSubCommittee")
+}
+
+// ─── التخصصات الطبية المتعددة ───────────────────────
+
+model Specialty {
+  id          String   @id @default(cuid())
+  name        String   @unique  // اسم التخصص (مثل: جراحة عامة، تخدير، رعاية مركزة)
+  code        String?  @unique  // رمز اختياري
+  active      Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // علاقات
+  caseSpecialties     CaseSpecialty[]
+  users               User[]
+  subCommitteeDoctors SubCommitteeDoctor[]
+}
+
+// ─── سجل النيابات المعتمدة ──────────────────────────
+
+model Prosecution {
+  id        String   @id @default(cuid())
+  name      String   @unique  // اسم النيابة (مثل: شبين الكوم الكلية - تلا الجزئية)
+  code      String?  @unique  // رمز اختياري
+  active    Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cases     Case[]
+}
+
+// ─── سجل أطباء واستشاريي اللجنة الفرعية (بدون حسابات دخول) ───
+
+model SubCommitteeDoctor {
+  id             String       @id @default(cuid())
+  subCommitteeId String
+  subCommittee   SubCommittee @relation(fields: [subCommitteeId], references: [id], onDelete: Cascade)
+
+  name           String       // اسم الطبيب الاستشاري
+  title          String?      // اللقب العلمي (أستاذ دكتور / استشاري / زميل)
+  employer       String       // جهة العمل / المستشفى التابع لها الطبيب (أساسي لفحص تعارض المصالح)
+  specialtyId    String?
+  specialty      Specialty?   @relation(fields: [specialtyId], references: [id])
+  phone          String?      // رقم الهاتف للتواصل
+  active         Boolean      @default(true) // متاح / موقوف مؤقتاً
+  notes          String?      // ملاحظات إدارية
+
+  // ─── البيانات المالية والمصرفية لصرف المستحقات والمكافآت ───
+  nationalId     String?      // الرقم القومي للطبيب (14 رقماً)
+  financialType  String?      // نوع الحساب: BANK_ACCOUNT (حساب بنكي) أو BANK_CARD (فيزا / ميزة / كارت بنكي)
+  bankName       String?      // اسم البنك (مثل: البنك الأهلي المصري، بنك مصر، بنك القاهرة، بنك الإسكندرية، بنك CIB، إلخ)
+  accountNumber  String?      // رقم الحساب البنكي
+  iban           String?      // رقم الآيبان الدولي IBAN
+  cardNumber     String?      // رقم كارت الفيزا أو كارت ميزة البنكية
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  reviewAssignments CaseReviewer[]
+  doctorPayments    Payment[]
+}
+
+// ─── جدول وسيط للقضايا متعددة التخصصات ────────────
+
+model CaseSpecialty {
+  id          String    @id @default(cuid())
+  caseId      String
+  case        Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  specialtyId String
+  specialty   Specialty @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+
+  @@unique([caseId, specialtyId])
+}
+
+// ─── القضايا / السجلات ─────────────────────────────
+
+model Case {
+  id               String           @id @default(cuid())
+  registrationType RegistrationType
+
+  // حقل رقم السجل وحقل سنة السجل منفصلان منعاً للتلاعب
+  caseNumber       String                           // رقم السجل
+  caseYear         Int                              // سنة السجل (حقل مستقل)
+  attachmentsCount Int              @default(0)     // عدد المرفقات المسلمة
+  hospitalName     String?                          // اسم المنشأة الطبية المشكو في حقها (المستشفى / المركز الطبي)
+  respondentName   String?                          // اسم المشكو في حقه (الطبيب / الكادر الطبي)
+
+  reportYear       Int?                             // سنة إضافية إن وجدت
+  prosecution      String?                          // النيابة
+  prosecutionId    String?
+  prosecutionRel   Prosecution?     @relation(fields: [prosecutionId], references: [id])
+  governorate      String?                          // المحافظة
+  complainantName  String?                          // اسم الشاكي / المريض
+  description      String           @db.Text        // ملخص الواقعة / موضوع الشكوى
+  status           CaseStatus       @default(REGISTERED)
+
+  // التوجيه للجنة الفرعية والمتابعة الزمنية
+  subCommitteeId   String?
+  subCommittee     SubCommittee?    @relation(fields: [subCommitteeId], references: [id])
+  assignedAt       DateTime?                        // تاريخ الإحالة / التوجيه الفعلي
+  expectedDueDate  DateTime?                        // الموعد النهائي المحدد لإنجاز التقرير
+  meetingDate      DateTime?                        // تاريخ انعقاد جلسة اللجنة الفرعية الفعلي
+  followUpOfficerId String?
+  followUpOfficer  User?            @relation("FollowUpCases", fields: [followUpOfficerId], references: [id])
+  followUpNotes    String?          @db.Text        // ملاحظات وتوجيهات موظف المتابعة
+
+  // موظف التسجيل الذي أنشأ القيد
+  createdById      String
+  createdBy        User             @relation("CreatedBy", fields: [createdById], references: [id])
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  // علاقات
+  specialties      CaseSpecialty[]                  // التخصصات الطبية المتعددة
+  reviewers        CaseReviewer[]                   // فريق الفحص من الاستشاريين
+  actions          CaseAction[]
+  supremeDecisions SupremeDecision[]
+  attachments      Attachment[]
+  payments         Payment[]
+}
+
+// ─── فريق الفحص والاستشاريين وحق التنحي ───────────
+
+model CaseReviewer {
+  id            String         @id @default(cuid())
+  caseId        String
+  case          Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  doctorId      String?
+  doctor        SubCommitteeDoctor? @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  userId        String?
+  user          User?          @relation(fields: [userId], references: [id])
+
+  roleInTeam    ReviewerRole   @default(EXAMINER) // مقرر أو عضو فاحص
+  status        ReviewerStatus @default(ASSIGNED)
+  recusalReason String?        @db.Text           // سبب التنحي والاعتذار إن وجد
+
+  assignedAt    DateTime       @default(now())
+  recusedAt     DateTime?
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+// ─── إجراءات اللجنة الفرعية (تقارير الدراسة) ──────
+
+model CaseAction {
+  id               String    @id @default(cuid())
+  caseId           String
+  case             Case      @relation(fields: [caseId], references: [id])
+
+  receivedDate     DateTime                   // تاريخ استلام القضية
+  meetingDate      DateTime?                  // تاريخ انعقاد اللجنة الفرعية
+  faultDescription String?   @db.Text        // توصيف الخطأ الطبي
+  reportDate       DateTime?                  // تاريخ إصدار التقرير
+  reportText       String?   @db.Text        // نص التقرير الكامل
+  actionTaken      String?   @db.Text        // الإجراء المتخذ / التوصية
+
+  recordedById     String
+  recordedBy       User      @relation("RecordedBy", fields: [recordedById], references: [id])
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// ─── قرارات اللجنة العليا ────────────────────────
+
+model SupremeDecision {
+  id                    String       @id @default(cuid())
+  caseId                String
+  case                  Case         @relation(fields: [caseId], references: [id])
+
+  meetingDate           DateTime                    // تاريخ انعقاد اللجنة العليا
+  decisionType          DecisionType
+  decisionDetails       String       @db.Text       // تفاصيل القرار
+  referredSubCommitteeId String?
+  referredSubCommittee  SubCommittee? @relation("ReferredSubCommittee", fields: [referredSubCommitteeId], references: [id])
+
+  decidedById           String
+  decidedBy             User         @relation("DecidedBy", fields: [decidedById], references: [id])
+
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+}
+
+// ─── الجدول المالي ────────────────────────────────
+
+model Payment {
+  id        String        @id @default(cuid())
+  caseId    String
+  case      Case          @relation(fields: [caseId], references: [id])
+
+  memberId  String?                          // المستفيد / المُحال إليه
+  member    User?         @relation("PaymentMember", fields: [memberId], references: [id])
+
+  doctorId  String?                          // الطبيب الاستشاري المستحق (من سجل اللجنة الفرعية)
+  doctor    SubCommitteeDoctor? @relation(fields: [doctorId], references: [id])
+
+  entitled  Boolean       @default(false)   // يستحق التعويض
+  amount    Float?                           // مبلغ التعويض (بالجنيه)
+  status    PaymentStatus @default(NOT_PAID)
+  notes     String?       @db.Text
+
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+// ─── المرفقات ─────────────────────────────────────
+
+model Attachment {
+  id           String   @id @default(cuid())
+  caseId       String
+  case         Case     @relation(fields: [caseId], references: [id])
+
+  fileName     String                         // اسم الملف الأصلي
+  fileType     String                         // MIME type
+  filePath     String                         // المسار الكامل على القرص
+  fileSize     Int?                           // الحجم بالبايت
+
+  uploadedById String
+  uploadedBy   User     @relation("UploadedBy", fields: [uploadedById], references: [id])
+
+  uploadedAt   DateTime @default(now())
+}
+
+// ─── سجل التدقيق ──────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  entityType  String                          // Case | CaseAction | SupremeDecision | Payment | Attachment | CaseReviewer
+  entityId    String
+  action      String                          // CREATE | UPDATE | DELETE | ROUTE_TO_SUBCOMMITTEE | RECUSAL | ASSIGN_EXAMINER
+  userId      String
+  user        User     @relation("UserAuditLogs", fields: [userId], references: [id])
+  beforeData  Json?
+  afterData   Json?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}

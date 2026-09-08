@@ -1,0 +1,16 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: case_admin
+      POSTGRES_PASSWORD: change_me_locally
+      POSTGRES_DB: case_tracking
+    ports:
+      - "5432:5432"
+    volumes:
+      - case_tracking_db:/var/lib/postgresql/data
+
+volumes:
+  case_tracking_db:
