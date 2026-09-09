@@ -11,7 +11,19 @@ export async function GET() {
   }
 
   const payments = await prisma.payment.findMany({
-    include: { case: true, member: true },
+    include: {
+      case: true,
+      member: {
+        select: {
+          id: true,
+          fullName: true,
+          role: true,
+          email: true,
+          employer: true,
+        },
+      },
+      doctor: true,
+    },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json(payments);

@@ -54,7 +54,20 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(doctors);
+  const isFinanceOrAdmin = role === "FINANCE" || role === "ADMIN";
+  const isOwnSubcommitteeCoordinator = role === "SUBCOMMITTEE_MEMBER";
+
+  const sanitizedDoctors = doctors.map((doc) => {
+    // يحق للمالية والمدير، أو مقرر اللجنة الفرعية لطاقم لجنته فقط، الاطلاع على الأرقام المصرفية والقومية
+    const canViewBanking = isFinanceOrAdmin || (isOwnSubcommitteeCoordinator && doc.subCommitteeId === userSubCommitteeId);
+    if (canViewBanking) {
+      return doc;
+    }
+    const { nationalId, accountNumber, cardNumber, iban, bankName, financialType, ...safeDoc } = doc;
+    return safeDoc;
+  });
+
+  return NextResponse.json(sanitizedDoctors);
 }
 
 export async function POST(req: NextRequest) {

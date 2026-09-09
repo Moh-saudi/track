@@ -1,16 +1,34 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
+import { StatCard } from "@/components/ui/StatCard";
+import { PageHeader } from "@/components/ui/PageHeader";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/Table";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import {
+  Scale,
+  Building2,
+  CheckCircle2,
+  PauseCircle,
+  Search,
+  Plus,
+  Trash2,
+} from "lucide-react";
 
 interface ProsecutionItem {
   id: string;
   name: string;
-  code: string | null;
   active: boolean;
   createdAt: string;
-  _count?: {
-    cases: number;
-  };
 }
 
 export default function ProsecutionsManagementPage() {
@@ -22,7 +40,7 @@ export default function ProsecutionsManagementPage() {
   const [isPending, startTransition] = useTransition();
   const [showAddForm, setShowAddForm] = useState(false);
 
-  // حقول إضافة نيابة جديدة
+  // حقول إضافة جهة جديدة
   const [name, setName] = useState("");
 
   // بحث
@@ -30,7 +48,7 @@ export default function ProsecutionsManagementPage() {
 
   async function loadData() {
     try {
-      const res = await fetch("/api/prosecutions");
+      const res = await fetch("/api/prosecutions?all=true");
       if (!res.ok) throw new Error("تعذر تحميل قائمة النيابات");
       const data = await res.json();
       setProsecutions(data);
@@ -65,7 +83,7 @@ export default function ProsecutionsManagementPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "تعذر إضافة النيابة");
 
-        setSuccessMsg(`تمت إضافة (${data.name}) لسجل النيابات الرسمية بنجاح`);
+        setSuccessMsg(`تمت إضافة النيابة (${data.name}) بنجاح`);
         setName("");
         setShowAddForm(false);
         await loadData();
@@ -120,37 +138,31 @@ export default function ProsecutionsManagementPage() {
   }
 
   const filtered = prosecutions.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    (p) => p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div className="space-y-6">
-      {/* رأس الصفحة الحكومي الرصين */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded bg-[#1F4E79]/10 text-[#1F4E79] border border-[#1F4E79]/20 text-[11px] font-bold">
-              ⚖️ النيابات العامة المعتمدة
-            </span>
-            <span className="text-xs text-slate-500 font-bold">قاعدة بيانات الجهات القضائية المحيلة</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            سجل وإدارة جهات النيابة العامة
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            إدارة النيابات الكلية والجزئية الرسمية لمنع التكرار والأخطاء الإملائية أثناء قيد السجلات
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="btn-primary text-xs font-bold px-4 py-2.5 shadow-sm self-start sm:self-auto"
-        >
-          {showAddForm ? "إلغاء الإضافة" : "➕ إضافة نيابة جديدة"}
-        </button>
-      </div>
+      {/* ─── رأس الصفحة الموحد ─── */}
+      <PageHeader
+        breadcrumbs={[
+          { label: "الرئيسية", href: "/dashboard" },
+          { label: "إدارة المنظومة", href: "/dashboard/admin" },
+          { label: "سجل جهات النيابة العامة" },
+        ]}
+        title="سجل وإدارة جهات النيابة العامة"
+        description="إدارة قائمة النيابات العامة المعتمدة رسمياً التي ترد منها القضايا والمحاضر لضمان دقة البيانات."
+        actions={
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => setShowAddForm(!showAddForm)}
+            icon={<Plus className="w-4 h-4" />}
+          >
+            {showAddForm ? "إلغاء الإضافة" : "إضافة نيابة عامة جديدة"}
+          </Button>
+        }
+      />
 
       {/* التنبيهات */}
       {error && (
@@ -167,161 +179,148 @@ export default function ProsecutionsManagementPage() {
 
       {/* نموذج الإضافة */}
       {showAddForm && (
-        <div className="card border-slate-200 p-6 space-y-4 bg-slate-50/80 animate-in fade-in zoom-in-95">
+        <Card className="space-y-4 bg-slate-50/80 animate-in fade-in zoom-in-95">
           <div className="border-b border-slate-200 pb-2">
-            <h2 className="text-sm font-black text-slate-900">إضافة جهة نيابة عامة جديدة</h2>
-            <p className="text-[11px] text-slate-500">ستظهر هذه النيابة فوراً كخيار معتمد في قائمة قيد السجلات الجديدة</p>
+            <h2 className="text-sm font-bold text-slate-900 font-heading">إضافة نيابة عامة معتمدة جديدة</h2>
+            <p className="text-xs text-slate-500 font-body">
+              تظهر هذه النيابة تلقائياً في قائمة الاختيار لموظفي التسجيل عند قيد سجل جديد
+            </p>
           </div>
 
           <form onSubmit={handleAddProsecution} className="space-y-4">
-            <div>
-              <div className="form-group">
-                <label className="form-label form-label-required">اسم النيابة الكلية أو الجزئية</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="مثال: شبين الكوم الكلية - تلا الجزئية"
-                  className="form-input text-xs"
-                />
-              </div>
+            <div className="form-group">
+              <label className="form-label form-label-required">اسم النيابة العامة</label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="مثال: نيابة العجوزة الجزئية"
+                className="form-input text-xs"
+              />
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => setShowAddForm(false)}
-                className="btn-secondary text-xs px-4 py-2"
               >
                 إلغاء
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                disabled={isPending}
-                className="btn-primary text-xs px-5 py-2 font-bold"
+                variant="primary"
+                size="sm"
+                loading={isPending}
               >
-                {isPending ? "جارٍ الحفظ..." : "حفظ وقيد النيابة"}
-              </button>
+                حفظ وقيد النيابة
+              </Button>
             </div>
           </form>
-        </div>
+        </Card>
       )}
 
       {/* بطاقات الإحصاءات */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <div className="card p-4 border-slate-200 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#1F4E79] flex items-center justify-center text-xl font-bold border border-blue-200">
-            🏛️
-          </div>
-          <div>
-            <p className="text-2xl font-black text-slate-900">{prosecutions.length}</p>
-            <p className="text-xs font-bold text-slate-500">إجمالي النيابات المسجلة</p>
-          </div>
-        </div>
-
-        <div className="card p-4 border-slate-200 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-xl font-bold border border-emerald-200">
-            🟢
-          </div>
-          <div>
-            <p className="text-2xl font-black text-slate-900">{prosecutions.filter((p) => p.active).length}</p>
-            <p className="text-xs font-bold text-slate-500">نيابات مفعلة للاختيار</p>
-          </div>
-        </div>
-
-        <div className="card p-4 border-slate-200 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center text-xl font-bold border border-amber-200">
-            ⏸️
-          </div>
-          <div>
-            <p className="text-2xl font-black text-slate-900">{prosecutions.filter((p) => !p.active).length}</p>
-            <p className="text-xs font-bold text-slate-500">نيابات موقوفة مؤقتاً</p>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard
+          title="إجمالي النيابات المسجلة"
+          value={prosecutions.length}
+          icon={<Building2 className="w-6 h-6" />}
+          variant="teal"
+        />
+        <StatCard
+          title="نيابات مفعلة للاختيار"
+          value={prosecutions.filter((p) => p.active).length}
+          icon={<CheckCircle2 className="w-6 h-6" />}
+          variant="emerald"
+        />
+        <StatCard
+          title="نيابات موقوفة مؤقتاً"
+          value={prosecutions.filter((p) => !p.active).length}
+          icon={<PauseCircle className="w-6 h-6" />}
+          variant="amber"
+        />
       </div>
 
       {/* شريط البحث وجدول النيابات */}
-      <div className="card p-0 overflow-hidden border-slate-200">
+      <Card className="p-0 overflow-hidden">
         <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex-1 max-w-sm">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="🔍 بحث سريع في أسماء النيابات..."
-              className="form-input text-xs"
+              placeholder="بحث سريع في أسماء النيابات..."
+              className="form-input text-xs pr-9"
             />
           </div>
-          <span className="text-xs font-bold text-slate-500">
+          <span className="text-xs font-medium text-slate-500 font-body">
             معروض {filtered.length} من إجمالي {prosecutions.length} نيابة
           </span>
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-xs text-slate-500">جارٍ تحميل سجل النيابات...</div>
+          <div className="p-8 text-center text-xs text-slate-500 font-body">جارٍ تحميل سجل النيابات...</div>
         ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-500">لا توجد نيابات مطابقة لمعايير البحث.</div>
+          <div className="p-8 text-center text-xs text-slate-500 font-body">لا توجد نيابات مطابقة لمعايير البحث.</div>
         ) : (
-          <div className="table-wrapper border-0 rounded-none">
-            <table className="table-custom">
-              <thead>
-                <tr>
-                  <th className="w-16">#</th>
-                  <th>اسم النيابة العامة</th>
-                  <th>الحالة</th>
-                  <th className="text-center">التحكم</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((item, idx) => (
-                  <tr key={item.id} className={!item.active ? "bg-slate-50/70" : undefined}>
-                    <td className="font-mono text-xs text-slate-400 font-bold">{idx + 1}</td>
-                    <td className="font-bold text-slate-900 text-xs">
-                      🏛️ {item.name}
-                    </td>
-                    <td>
-                      {item.active ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                          <span>نشطة ومتاحة للقيد</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 text-xs font-bold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-                          <span>موقوفة مؤقتاً</span>
-                        </span>
-                      )}
-                    </td>
-                    <td className="text-center whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(item)}
-                          className={`text-xs px-2.5 py-1 rounded font-bold transition-colors ${
-                            item.active
-                              ? "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
-                              : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
-                          }`}
-                        >
-                          {item.active ? "إيقاف" : "تفعيل"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item)}
-                          className="text-xs px-2.5 py-1 rounded text-rose-700 hover:bg-rose-50 border border-rose-200 font-bold transition-colors"
-                        >
-                          حذف
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">#</TableHead>
+                <TableHead>اسم النيابة العامة</TableHead>
+                <TableHead>الحالة</TableHead>
+                <TableHead className="text-center">التحكم</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((item, idx) => (
+                <TableRow key={item.id} className={!item.active ? "bg-slate-50/70" : undefined}>
+                  <TableCell className="font-mono text-xs text-slate-400 font-semibold">{idx + 1}</TableCell>
+                  <TableCell className="font-semibold text-slate-900 text-xs font-heading">
+                    {item.name}
+                  </TableCell>
+                  <TableCell>
+                    {item.active ? (
+                      <Badge variant="approved" size="sm" icon={<CheckCircle2 className="w-3 h-3 text-emerald-600" />}>
+                        نشطة ومتاحة للقيد
+                      </Badge>
+                    ) : (
+                      <Badge variant="amber" size="sm" icon={<PauseCircle className="w-3 h-3 text-amber-600" />}>
+                        موقوفة مؤقتاً
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1.5">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleToggleStatus(item)}
+                      >
+                        {item.active ? "إيقاف" : "تفعيل"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleDelete(item)}
+                        icon={<Trash2 className="w-3 h-3" />}
+                      >
+                        حذف
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

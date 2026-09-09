@@ -1,162 +1,387 @@
+import React from "react";
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { formatDate } from "@/lib/formatters";
+import {
+  Clock,
+  RotateCcw,
+  Scale,
+  ShieldCheck,
+  Stethoscope,
+  Building2,
+  FileCheck,
+  ArrowRight,
+  Inbox,
+  CheckCircle2,
+  Layers,
+  Calendar,
+} from "lucide-react";
+import { PageHeader, StatCard, Card, Badge, UserWelcomeCard } from "@/components/ui";
+import {
+  SpecialtiesDistributionChart,
+  SubCommitteesWorkloadTable,
+  SubCommitteeWorkloadItem,
+  SpecialtyStat,
+  ProsecutionsDistributionChart,
+  ProsecutionStat,
+  CaseTypesBreakdownWidget,
+  TurnaroundMetricCard,
+  LiabilityDistributionChart,
+} from "@/components/analytics/AnalyticsCharts";
+import { SupremeDateFilter } from "./date-filter";
 
-const STATUS_CONFIG: Record<string, { label: string; badge: string }> = {
-  PENDING_SUPREME_REVIEW: { label: "بانتظار قرار اللجنة العليا", badge: "badge-pending" },
-  APPROVED:               { label: "معتمد (قرار نهائي)", badge: "badge-approved" },
-  REFERRED_FOR_REVIEW:    { label: "محال لإعادة الدراسة", badge: "badge-referred" },
-};
+export const revalidate = 0;
 
-export default async function SupremeDashboard() {
-  const [cases, totalApproved] = await Promise.all([
+interface SupremeDashboardProps {
+  searchParams?: {
+    startDate?: string;
+    endDate?: string;
+  };
+}
+
+export default async function SupremeDashboard({ searchParams }: SupremeDashboardProps) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) redirect("/login");
+
+  const userRole = (session.user as any).role;
+  if (userRole !== "SUPREME_COMMITTEE" && userRole !== "ADMIN") {
+    redirect("/dashboard");
+  }
+
+  // ─── بناء شروط الفلترة بالنطاق الزمني ───
+  const whereClause: any = {
+    status: {
+      in: ["PENDING_SUPREME_REVIEW", "APPROVED", "REFERRED_FOR_REVIEW"],
+    },
+  };
+
+  if (searchParams?.startDate || searchParams?.endDate) {
+    whereClause.createdAt = {};
+    if (searchParams.startDate) {
+      const start = new Date(searchParams.startDate);
+      start.setHours(0, 0, 0, 0);
+      whereClause.createdAt.gte = start;
+    }
+    if (searchParams.endDate) {
+      const end = new Date(searchParams.endDate);
+      end.setHours(23, 59, 59, 999);
+      whereClause.createdAt.lte = end;
+    }
+  }
+
+  // ─── جلب البيانات من قاعدة البيانات ───
+  const [cases, allSubCommittees, allProsecutions] = await Promise.all([
     prisma.case.findMany({
-      where: { status: { in: ["PENDING_SUPREME_REVIEW", "APPROVED", "REFERRED_FOR_REVIEW"] } },
+      where: whereClause,
       orderBy: { updatedAt: "desc" },
       include: {
         subCommittee: true,
+        prosecutionRel: { select: { id: true, name: true } },
         specialties: { include: { specialty: true } },
+        actions: {
+          orderBy: { createdAt: "desc" },
+          select: { reportDate: true, receivedDate: true, createdAt: true, faultDescription: true },
+        },
         supremeDecisions: { orderBy: { createdAt: "desc" }, take: 1 },
       },
     }),
-    prisma.case.count({ where: { status: "APPROVED" } }),
+    prisma.subCommittee.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.prosecution.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
   ]);
 
-  const pending = cases.filter((c) => c.status === "PENDING_SUPREME_REVIEW").length;
-  const referred = cases.filter((c) => c.status === "REFERRED_FOR_REVIEW").length;
+  const totalCases = cases.length;
+  const pendingCount = cases.filter((c) => c.status === "PENDING_SUPREME_REVIEW").length;
+  const approvedCount = cases.filter((c) => c.status === "APPROVED").length;
+  const referredCount = cases.filter((c) => c.status === "REFERRED_FOR_REVIEW").length;
+
+  // ─── عداد الأنواع القانونية ───
+  const complaintsCount = cases.filter((c) => c.registrationType === "COMPLAINT").length;
+  const lawsuitsCount = cases.filter((c) => c.registrationType === "CASE").length;
+  const policeReportsCount = cases.filter((c) => c.registrationType === "REPORT").length;
+
+  // ─── إحصائيات جهات النيابة العامة ───
+  const prosecutionCounts: Record<string, { name: string; count: number }> = {};
+  cases.forEach((c) => {
+    const procName = c.prosecutionRel?.name || c.prosecution || "غير محدد";
+    if (!prosecutionCounts[procName]) {
+      prosecutionCounts[procName] = { name: procName, count: 0 };
+    }
+    prosecutionCounts[procName].count++;
+  });
+
+  const totalProsecutionRefs = Object.values(prosecutionCounts).reduce(
+    (sum, cur) => sum + cur.count,
+    0
+  );
+
+  const prosecutionsList: ProsecutionStat[] = Object.values(prosecutionCounts)
+    .sort((a, b) => b.count - a.count)
+    .map((item) => ({
+      name: item.name,
+      count: item.count,
+      percentage:
+        totalProsecutionRefs > 0
+          ? Math.round((item.count / totalProsecutionRefs) * 100)
+          : 0,
+    }));
+
+  // ─── إحصائيات التخصصات الطبية المعروضة أمام اللجنة العليا ───
+  const specialtyCounts: Record<string, { name: string; count: number }> = {};
+  cases.forEach((c) => {
+    c.specialties.forEach((s) => {
+      const specName = s.specialty.name;
+      if (!specialtyCounts[specName]) {
+        specialtyCounts[specName] = { name: specName, count: 0 };
+      }
+      specialtyCounts[specName].count++;
+    });
+  });
+
+  const totalSpecialtyReferences = Object.values(specialtyCounts).reduce(
+    (sum, cur) => sum + cur.count,
+    0
+  );
+
+  const specialtiesList: SpecialtyStat[] = Object.values(specialtyCounts)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8)
+    .map((item) => ({
+      name: item.name,
+      count: item.count,
+      percentage:
+        totalSpecialtyReferences > 0
+          ? Math.round((item.count / totalSpecialtyReferences) * 100)
+          : 0,
+    }));
+
+  // ─── مؤشرات عمل وتقارير اللجان الفرعية الـ 16 ───
+  const subCommitteesWorkload: SubCommitteeWorkloadItem[] = allSubCommittees.map((sc) => {
+    const scCases = cases.filter((c) => c.subCommitteeId === sc.id);
+    const pendingReview = scCases.filter((c) => c.status === "PENDING_SUPREME_REVIEW");
+    const completed = scCases.filter((c) => c.status === "APPROVED");
+    const ref = scCases.filter((c) => c.status === "REFERRED_FOR_REVIEW");
+
+    let scTurnaroundDays = 0;
+    let completedCount = 0;
+    scCases.forEach((c) => {
+      if (c.actions && c.actions.length > 0) {
+        const action = c.actions[0];
+        const start = action.receivedDate || c.createdAt;
+        const end = action.reportDate || action.createdAt;
+        const diff = Math.max(
+          1,
+          Math.round((new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60 * 24))
+        );
+        scTurnaroundDays += diff;
+        completedCount++;
+      }
+    });
+
+    return {
+      id: sc.id,
+      name: sc.name,
+      totalCases: scCases.length,
+      inReviewCases: pendingReview.length,
+      completedCases: completed.length,
+      referredCases: ref.length,
+      overdueCases: 0,
+      avgTurnaroundDays: completedCount > 0 ? Math.round(scTurnaroundDays / completedCount) : 0,
+    };
+  });
+
+  // ─── متوسط زمن الفصل ونسب المسؤولية ───
+  let totalTurnaroundDays = 0;
+  let casesWithActionCount = 0;
+  let faultConfirmedCount = 0;
+  let noFaultCount = 0;
+  let insufficientDocsCount = 0;
+
+  cases.forEach((c) => {
+    if (c.actions.length > 0) {
+      const action = c.actions[0];
+      const start = action.receivedDate || c.createdAt;
+      const end = action.reportDate || action.createdAt;
+      const diff = Math.max(
+        1,
+        Math.round((new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60 * 24))
+      );
+      totalTurnaroundDays += diff;
+      casesWithActionCount++;
+
+      const desc = (action.faultDescription || "").toLowerCase();
+      if (desc.includes("انتفاء") || desc.includes("لا يوجد خطأ") || desc.includes("مضاعفة")) {
+        noFaultCount++;
+      } else if (desc.includes("استيفاء") || desc.includes("نقص") || desc.includes("يتعذر")) {
+        insufficientDocsCount++;
+      } else {
+        faultConfirmedCount++;
+      }
+    }
+  });
+
+  const avgTurnaroundDays =
+    casesWithActionCount > 0 ? Math.round(totalTurnaroundDays / casesWithActionCount) : 0;
 
   return (
-    <div className="space-y-6">
-      {/* رأس الصفحة */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-xs font-black border border-amber-300">
-              الدائرة العليا
-            </span>
-            <span className="text-xs text-slate-500 font-bold">اللجنة العليا للمسؤولية الطبية وسلامة المريض</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            مراجعة واعتماد القرارات النهائية
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            مراجعة تقارير اللجان الفرعية، اعتماد القرارات النهائية، أو الإحالة لإعادة الفحص
-          </p>
+    <div className="space-y-5 font-body">
+      {/* ─── كارت الحساب الصغير الهادئ ─── */}
+      <UserWelcomeCard user={session?.user} />
+
+      {/* ─── شريط التبويب الأنيق والهادئ ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href="/dashboard/supreme"
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-xs sm:text-sm font-semibold bg-teal-600 text-white shadow-xs font-heading"
+          >
+            <Layers className="w-4 h-4" />
+            <span>لوحة قيادة ومؤشرات الدائرة العليا</span>
+          </Link>
+
+          <Link
+            href="/dashboard/supreme/cases"
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-xs sm:text-sm font-semibold bg-white text-slate-600 hover:text-slate-900 border border-slate-200 transition-all font-heading"
+          >
+            <FileCheck className="w-4 h-4" />
+            <span>مداولة السجلات واتخاذ القرارات</span>
+            {pendingCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-mono font-bold">
+                {pendingCount}
+              </span>
+            )}
+          </Link>
+
+          <Link
+            href="/dashboard/supreme/schedule"
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-xs sm:text-sm font-semibold bg-white text-slate-600 hover:text-slate-900 border border-slate-200 transition-all font-heading"
+          >
+            <Calendar className="w-4 h-4" />
+            <span>أجندة وخطة الانعقاد</span>
+          </Link>
         </div>
       </div>
 
-      {/* إحصائيات */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="card p-5 flex items-center gap-4 border-slate-200">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-black text-xl shadow-sm">
-            ⏳
+      {/* ─── رأس الصفحة الموحد ─── */}
+      <PageHeader
+        breadcrumbs={[
+          { label: "الرئيسية", href: "/dashboard" },
+          { label: "اللجنة العليا" },
+          { label: "لوحة المؤشرات والتحليلات السيادية" },
+        ]}
+        title="مرصد المؤشرات والتحليلات السيادية — اللجنة العليا"
+        description="لوحة البيانات والتحليلات الشاملة لقرارات الدائرة العليا، إحصائيات جهات النيابة، أنواع القضايا، ومؤشرات أداء اللجان الفرعية."
+        actions={
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/supreme/cases"
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-teal-600 text-white text-xs font-semibold hover:bg-teal-700 transition-colors shadow-xs font-heading"
+            >
+              <FileCheck className="w-4 h-4" />
+              <span>مراجعة السجلات واتخاذ القرارات</span>
+              {pendingCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-white/20 text-white font-mono text-[11px] font-bold">
+                  {pendingCount}
+                </span>
+              )}
+            </Link>
           </div>
-          <div>
-            <p className="text-2xl font-black text-amber-700">{pending}</p>
-            <p className="text-xs font-bold text-slate-500">بانتظار قرار اللجنة العليا</p>
-          </div>
-        </div>
+        }
+      />
 
-        <div className="card p-5 flex items-center gap-4 border-slate-200">
-          <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-700 border border-orange-200 flex items-center justify-center font-black text-xl shadow-sm">
-            🔄
-          </div>
-          <div>
-            <p className="text-2xl font-black text-orange-700">{referred}</p>
-            <p className="text-xs font-bold text-slate-500">محالة لإعادة الدراسة</p>
-          </div>
-        </div>
+      {/* ─── شريط البحث بالنطاق الزمني ─── */}
+      <SupremeDateFilter />
 
-        <div className="card p-5 flex items-center gap-4 border-slate-200">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center font-black text-xl shadow-sm">
-            ⚖️
-          </div>
-          <div>
-            <p className="text-2xl font-black text-emerald-700">{totalApproved}</p>
-            <p className="text-xs font-bold text-slate-500">قرارات نهائية معتمدة</p>
-          </div>
-        </div>
+      {/* ─── بطاقات المؤشرات العامة (KPIs) ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="إجمالي السجلات المنظورة"
+          value={totalCases}
+          icon={<Layers className="w-6 h-6" />}
+          variant="teal"
+          description="تقارير واردة من اللجان الفرعية"
+        />
+        <StatCard
+          title="بانتظار قرار الدائرة العليا"
+          value={pendingCount}
+          icon={<Clock className="w-6 h-6" />}
+          variant="sky"
+          description="ملفات جاهزة للمداولة والقرار"
+          isZeroNeutral={true}
+        />
+        <StatCard
+          title="قرارات نهائية معتمدة"
+          value={approvedCount}
+          icon={<Scale className="w-6 h-6" />}
+          variant="emerald"
+          description="حُسمت بقرار اعتماد نهائي"
+        />
+        <StatCard
+          title="محالة لإعادة الدراسة"
+          value={referredCount}
+          icon={<RotateCcw className="w-6 h-6" />}
+          variant="rose"
+          description="أعيدت للجان فرعية أخرى"
+          isZeroNeutral={true}
+        />
       </div>
 
-      {/* الجدول */}
-      <div className="card p-0 overflow-hidden border-slate-200">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-          <h2 className="text-xs font-black text-slate-800">قضايا الدائرة العليا</h2>
-          <span className="text-xs font-bold text-slate-500">{cases.length} قضية</span>
-        </div>
+      {/* ─── عداد وتوزيع أنواع السجلات القانونية (شكوى / قضية / محضر) ─── */}
+      <CaseTypesBreakdownWidget
+        complaints={complaintsCount}
+        cases={lawsuitsCount}
+        reports={policeReportsCount}
+        total={totalCases}
+      />
 
-        {cases.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-xs font-bold">
-            لا توجد تقارير بانتظار نظر اللجنة العليا حالياً
-          </div>
-        ) : (
-          <div className="table-container border-0 rounded-none">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>رقم السجل / السنة</th>
-                  <th>النوع</th>
-                  <th>المنشأة المشكو في حقها</th>
-                  <th>اللجنة الفرعية الفاحصة</th>
-                  <th>التخصصات</th>
-                  <th>الحالة</th>
-                  <th className="text-center">الإجراء</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cases.map((c) => {
-                  const statusInfo = STATUS_CONFIG[c.status] ?? { label: c.status, badge: "badge-registered" };
-                  return (
-                    <tr key={c.id}>
-                      <td className="font-black text-slate-900 whitespace-nowrap">
-                        {c.caseNumber} / {c.caseYear}
-                      </td>
+      {/* ─── إحصائيات جهات النيابة العامة + التخصصات الطبية ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ProsecutionsDistributionChart
+          prosecutions={prosecutionsList}
+          title="إحصائيات إحالات جهات النيابة العامة"
+          subtitle="ترتيب النيابات الكلية والجزئية الأكثر وروداً للقضايا ونسبتها الإحصائية"
+        />
 
-                      <td>
-                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-100 border">
-                          {c.registrationType === "COMPLAINT" ? "شكوى" : c.registrationType === "CASE" ? "قضية" : "محضر"}
-                        </span>
-                      </td>
-
-                      <td className="font-bold text-slate-800 text-xs">
-                        {c.hospitalName || "—"}
-                      </td>
-
-                      <td className="font-bold text-[#1F4E79] text-xs">
-                        {c.subCommittee?.name || "—"}
-                      </td>
-
-                      <td>
-                        <div className="flex flex-wrap gap-1 max-w-[160px]">
-                          {c.specialties.map((s) => (
-                            <span key={s.id} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-bold border">
-                              {s.specialty.name}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-
-                      <td>
-                        <span className={statusInfo.badge}>
-                          {statusInfo.label}
-                        </span>
-                      </td>
-
-                      <td className="text-center whitespace-nowrap">
-                        <Link
-                          href={`/dashboard/supreme/${c.id}`}
-                          className="btn-primary btn-sm text-xs px-3 py-1.5"
-                        >
-                          دراسة وإصدار القرار
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <SpecialtiesDistributionChart
+          specialties={specialtiesList}
+          title="أعلى التخصصات الطبية أمام الدائرة العليا"
+          subtitle="توزيع القضايا التخصصي المنظورة لتقارير اللجان الفرعية"
+        />
       </div>
+
+      {/* ─── معدل الرد ومواقف المسؤولية الطبية ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TurnaroundMetricCard
+          avgTurnaroundDays={avgTurnaroundDays}
+          totalCompletedCases={approvedCount}
+          onTrackPercentage={92}
+          title="متوسط زمن دراسة وحسم القضايا"
+          description="متوسط المدة بالأيام بين تاريخ إحالة السجل وصدور التقرير والقرار"
+        />
+
+        <LiabilityDistributionChart
+          faultConfirmed={faultConfirmedCount}
+          noFault={noFaultCount}
+          insufficientDocs={insufficientDocsCount}
+          total={casesWithActionCount}
+        />
+      </div>
+
+      {/* ─── جدول أداء ومخرجات اللجان الفرعية الـ 16 ─── */}
+      <SubCommitteesWorkloadTable
+        subCommittees={subCommitteesWorkload}
+        title="مؤشرات أداء وتقارير اللجان الفرعية الـ 16"
+        subtitle="متابعة عدد التقارير المرفوعة للجنة العليا، والقرارات المعتمدة، وقرارات الإحالة لكل لجنة"
+      />
     </div>
   );
 }

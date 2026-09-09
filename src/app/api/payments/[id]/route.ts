@@ -10,6 +10,8 @@ const schema = z.object({
   status: z.enum(["NOT_PAID", "UNDER_SETTLEMENT", "PAID"]).optional(),
   entitled: z.boolean().optional(),
   amount: z.number().optional(),
+  paidAt: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -24,9 +26,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const before = await prisma.payment.findUnique({ where: { id: params.id } });
   if (!before) return NextResponse.json({ error: "غير موجود" }, { status: 404 });
 
+  const updateData: any = { ...parsed.data };
+  if (parsed.data.paidAt !== undefined) {
+    updateData.paidAt = parsed.data.paidAt ? new Date(parsed.data.paidAt) : null;
+  } else if (parsed.data.status === "PAID" && !before.paidAt) {
+    updateData.paidAt = new Date();
+  } else if (parsed.data.status === "NOT_PAID") {
+    updateData.paidAt = null;
+  }
+
   const updated = await prisma.payment.update({
     where: { id: params.id },
-    data: parsed.data,
+    data: updateData,
   });
 
   await writeAuditLog({

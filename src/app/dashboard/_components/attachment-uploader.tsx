@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { Upload } from "lucide-react";
 
 const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg",
   "application/msword",
@@ -63,23 +64,20 @@ export function AttachmentUploader({ caseId }: { caseId: string }) {
         htmlFor={`attachment-${caseId}`}
         className={`flex flex-col items-center justify-center gap-2 w-full border-2 border-dashed rounded-xl p-4 cursor-pointer transition-colors
           ${uploading
-            ? "border-gov-300 bg-gov-50 opacity-70 cursor-not-allowed"
-            : "border-gray-300 hover:border-gov-400 hover:bg-gov-50"
+            ? "border-teal-300 bg-teal-50/50 opacity-70 cursor-not-allowed"
+            : "border-slate-300 hover:border-teal-400 hover:bg-teal-50/30"
           }`}
       >
         {uploading ? (
           <>
-            <div className="loading-spinner w-6 h-6" />
-            <span className="text-xs text-gray-500">جارِ الرفع...</span>
+            <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs text-slate-500">جارِ الرفع...</span>
           </>
         ) : (
           <>
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            <span className="text-xs text-gray-500">رفع مرفق جديد</span>
-            <span className="text-[10px] text-gray-400">PDF، صور، Word — حتى {MAX_MB}MB</span>
+            <Upload className="w-6 h-6 text-slate-400" />
+            <span className="text-xs text-slate-600 font-medium">رفع مرفق جديد</span>
+            <span className="text-[10px] text-slate-400">PDF، صور، Word — حتى {MAX_MB}MB</span>
           </>
         )}
         <input

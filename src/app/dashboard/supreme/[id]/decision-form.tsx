@@ -2,27 +2,28 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { CheckCircle2, RotateCcw, FileText, AlertTriangle, ShieldCheck } from "lucide-react";
 
 const DECISION_OPTIONS = [
   {
     value: "APPROVE",
     label: "اعتماد قرار اللجنة الفرعية",
     description: "الموافقة على قرار اللجنة الفرعية كما هو",
-    icon: "✅",
+    icon: CheckCircle2,
     cls: "border-emerald-400 bg-emerald-50 text-emerald-700",
   },
   {
     value: "REFER_BACK",
     label: "إحالة لإعادة الدراسة",
     description: "إعادة القضية للجنة فرعية أخرى أو نفس اللجنة",
-    icon: "🔄",
-    cls: "border-orange-400 bg-orange-50 text-orange-700",
+    icon: RotateCcw,
+    cls: "border-amber-400 bg-amber-50 text-amber-700",
   },
   {
     value: "DIFFERENT",
     label: "قرار مختلف",
     description: "إصدار قرار مغاير لقرار اللجنة الفرعية",
-    icon: "📝",
+    icon: FileText,
     cls: "border-purple-400 bg-purple-50 text-purple-700",
   },
 ];
@@ -92,29 +93,32 @@ export function DecisionForm({
       <div className="form-group">
         <label className="label label-required">نوع القرار</label>
         <div className="grid grid-cols-1 gap-3 mt-1">
-          {DECISION_OPTIONS.map(opt => (
-            <label
-              key={opt.value}
-              className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all duration-150
-                ${decisionType === opt.value ? opt.cls + " border-current" : "border-gray-200 hover:border-gray-300 bg-white"}`}
-            >
-              <input
-                type="radio"
-                name="decisionType"
-                value={opt.value}
-                checked={decisionType === opt.value}
-                onChange={() => setDecisionType(opt.value as any)}
-                className="mt-1 accent-gov-700"
-              />
-              <div>
-                <div className="flex items-center gap-2">
-                  <span>{opt.icon}</span>
-                  <span className="font-medium text-sm">{opt.label}</span>
+          {DECISION_OPTIONS.map(opt => {
+            const OptionIcon = opt.icon;
+            return (
+              <label
+                key={opt.value}
+                className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all duration-150
+                  ${decisionType === opt.value ? opt.cls + " border-current" : "border-slate-200 hover:border-slate-300 bg-white"}`}
+              >
+                <input
+                  type="radio"
+                  name="decisionType"
+                  value={opt.value}
+                  checked={decisionType === opt.value}
+                  onChange={() => setDecisionType(opt.value as any)}
+                  className="mt-1 accent-teal-600"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <OptionIcon className="w-4 h-4" />
+                    <span className="font-semibold text-sm font-heading">{opt.label}</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">{opt.description}</p>
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">{opt.description}</p>
-              </div>
-            </label>
-          ))}
+              </label>
+            );
+          })}
         </div>
       </div>
 
@@ -159,27 +163,28 @@ export function DecisionForm({
       </div>
 
       {/* زر الاعتماد */}
-      <div className="pt-3 border-t border-gray-100">
+      <div className="pt-3 border-t border-slate-100">
         <button
           type="submit"
           disabled={isPending || !meetingDate || !decisionDetails}
-          className="btn-primary w-full btn-lg"
+          className="w-full h-11 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50 font-heading"
         >
           {isPending ? (
-            <><div className="loading-spinner" /><span>جارِ اعتماد القرار...</span></>
+            <>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>جارِ اعتماد القرار...</span>
+            </>
           ) : (
             <>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              اعتماد القرار النهائي
+              <ShieldCheck className="w-5 h-5" />
+              <span>اعتماد القرار النهائي</span>
             </>
           )}
         </button>
 
-        <p className="text-xs text-amber-600 mt-2 text-center">
-          ⚠️ هذا الإجراء نهائي ولا يمكن التراجع عنه
+        <p className="text-xs text-amber-700 mt-2 text-center flex items-center justify-center gap-1 font-body">
+          <AlertTriangle className="w-3.5 h-3.5" />
+          <span>هذا الإجراء نهائي ولا يمكن التراجع عنه</span>
         </p>
       </div>
     </form>

@@ -348,10 +348,10 @@ async function main() {
   console.log("👤 إنشاء حساب موظف المالية (FINANCE)...");
   await prisma.user.upsert({
     where: { email: "finance@example.local" },
-    update: { fullName: "مسؤول الشؤون المالية والتعويضات", employer: "صندوق التأمين الحكومي" },
+    update: { fullName: "مسؤول الشؤون المالية والبدلات", employer: "صندوق التأمين الحكومي" },
     create: {
       email: "finance@example.local",
-      fullName: "مسؤول الشؤون المالية والتعويضات",
+      fullName: "مسؤول الشؤون المالية والبدلات",
       passwordHash,
       role: UserRole.FINANCE,
       employer: "صندوق التأمين الحكومي",

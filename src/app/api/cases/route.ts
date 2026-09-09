@@ -10,6 +10,7 @@ const createCaseSchema = z.object({
   registrationType: z.enum(["COMPLAINT", "CASE", "REPORT"]),
   caseNumber: z.string().min(1, "رقم السجل مطلوب"),
   caseYear: z.number().int().gte(1990).lte(2100, "سنة السجل غير صالحة"),
+  incomingDate: z.string().optional().nullable(),
   attachmentsCount: z.number().int().min(0).default(0),
   hospitalName: z.string().optional().nullable(),
   respondentName: z.string().optional().nullable(),
@@ -78,14 +79,34 @@ export async function POST(req: NextRequest) {
     if (p) prosecutionName = p.name;
   }
 
+  // التحقق من عدم تكرار قيد نفس السجل مسبقاً بنفس الرقم والسنة والنيابة ونوع القيد
+  const existingCase = await prisma.case.findFirst({
+    where: {
+      registrationType: data.registrationType,
+      caseNumber: data.caseNumber.trim(),
+      caseYear: data.caseYear,
+      ...(data.prosecutionId ? { prosecutionId: data.prosecutionId } : {}),
+    },
+  });
+
+  if (existingCase) {
+    return NextResponse.json(
+      {
+        error: `يوجد سجل مسجل مسبقاً بنفس رقم السجل (${data.caseNumber}) لسنة (${data.caseYear}) لذات النيابة/الجهة. يرجى مراجعة السجلات لتفادي التكرار.`,
+      },
+      { status: 409 }
+    );
+  }
+
   const created = await prisma.case.create({
     data: {
       registrationType: data.registrationType,
       caseNumber: data.caseNumber,
       caseYear: data.caseYear,
+      incomingDate: data.incomingDate ? new Date(data.incomingDate) : new Date(),
       attachmentsCount: data.attachmentsCount || 0,
-      hospitalName: data.hospitalName || null,
-      respondentName: data.respondentName || null,
+      hospitalName: data.respondentName || data.hospitalName || null,
+      respondentName: data.respondentName || data.hospitalName || null,
       prosecution: prosecutionName,
       prosecutionId: data.prosecutionId || null,
       governorate: data.governorate || null,

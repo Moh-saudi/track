@@ -13,12 +13,20 @@ const createSubCommitteeSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
+
+  const url = new URL(req.url);
+  const includeInactive = url.searchParams.get("all") === "true";
+
   const list = await prisma.subCommittee.findMany({
-    where: { active: true },
+    where: includeInactive ? {} : { active: true },
     orderBy: { code: "asc" },
     include: {
       _count: {
-        select: { cases: true, members: true },
+        select: { cases: true, members: true, doctors: true },
       },
     },
   });

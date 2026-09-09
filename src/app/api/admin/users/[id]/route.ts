@@ -11,8 +11,10 @@ import bcrypt from "bcryptjs";
 const updateSchema = z.object({
   active:         z.boolean().optional(),
   fullName:       z.string().min(2).optional(),
+  employer:       z.string().nullable().optional(),
   subCommitteeId: z.string().nullable().optional(),
-  role:           z.enum(["REGISTRATION_CLERK", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "FINANCE", "ADMIN", "FOLLOW_UP_OFFICER"]).optional(),
+  specialtyId:    z.string().nullable().optional(),
+  role:           z.enum(["REGISTRATION_CLERK", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "FINANCE", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER"]).optional(),
   newPassword:    z.string().min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل").optional(),
 });
 
@@ -40,7 +42,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const updateData: any = {};
   if (parsed.data.active !== undefined) updateData.active = parsed.data.active;
   if (parsed.data.fullName) updateData.fullName = parsed.data.fullName;
+  if (parsed.data.employer !== undefined) updateData.employer = parsed.data.employer?.trim() || null;
   if (parsed.data.subCommitteeId !== undefined) updateData.subCommitteeId = parsed.data.subCommitteeId;
+  if (parsed.data.specialtyId !== undefined) updateData.specialtyId = parsed.data.specialtyId;
   if (parsed.data.role) updateData.role = parsed.data.role;
   if (parsed.data.newPassword) {
     updateData.passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);

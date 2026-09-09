@@ -8,8 +8,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   const role = (session.user as any).role;
-  if (role !== "ADMIN" && role !== "FOLLOW_UP_OFFICER") {
-    return NextResponse.json({ error: "صلاحية التعديل للمسؤول فقط" }, { status: 403 });
+  if (role !== "ADMIN") {
+    return NextResponse.json({ error: "صلاحية التعديل لمدير المنظومة فقط" }, { status: 403 });
   }
 
   const body = await req.json();

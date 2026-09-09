@@ -22,6 +22,7 @@ enum UserRole {
   SUPREME_COMMITTEE   // عضو اللجنة العليا
   FINANCE             // موظف المالية
   ADMIN               // مدير النظام
+  RISK_OFFICER        // مسؤول إدارة المخاطر وتصحيح المسار
 }
 
 enum RegistrationType {
@@ -81,18 +82,48 @@ model User {
   specialtyId     String?
   specialty       Specialty?    @relation(fields: [specialtyId], references: [id])
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  // رصد الحضور والنشاط اللحظي ومدة العمل
+  lastSeenAt          DateTime?
+  todayActiveMinutes  Int               @default(0)
+  lastActiveDate      String?           // YYYY-MM-DD لتصفير العداد يومياً
+
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
   // علاقات
   createdCases        Case[]            @relation("CreatedBy")
   followUpCases       Case[]            @relation("FollowUpCases")
+  riskOverriddenCases Case[]            @relation("RiskOverriddenCases")
   reviewAssignments   CaseReviewer[]
   caseActions         CaseAction[]      @relation("RecordedBy")
   supremeDecisions    SupremeDecision[] @relation("DecidedBy")
   uploadedAttachments Attachment[]      @relation("UploadedBy")
   auditLogs           AuditLog[]        @relation("UserAuditLogs")
   payments            Payment[]         @relation("PaymentMember")
+  supremeSessionsCreated SupremeSession[] @relation("SupremeSessionCreatedBy")
+  meetingReschedules  MeetingReschedule[] @relation("MeetingReschedules")
+  sessions            UserSession[]
+}
+
+// ─── سجل جلسات المستخدمين ومدة استخدام كل شاشة ───
+
+model UserSession {
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionDate         String    // YYYY-MM-DD
+  loginAt             DateTime  @default(now())
+  lastActiveAt        DateTime  @default(now())
+  logoutAt            DateTime?
+  totalMinutes        Int       @default(1)
+  screenTimes         Json?     // e.g. {"/dashboard/registration": 15, "/dashboard/follow-up": 20}
+  actionsCount        Int       @default(0)
+  isActive            Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([userId, sessionDate])
+  @@index([sessionDate])
 }
 
 // ─── اللجان الفرعية الـ 16 المعتمدة وما يضاف مستقبلاً ───
@@ -102,7 +133,9 @@ model SubCommittee {
   name        String   @unique  // اسم اللجنة / الجهة الرسمية
   code        String   @unique  // رمز قصير (مثلاً: SC-01)
   scope       String?           // النطاق المؤسسي / الجغرافي
-  active      Boolean  @default(true)
+  active             Boolean  @default(true)
+  deactivationMode   String?  @default("READ_ONLY") // READ_ONLY (اطلاع فقط) أو LOCK_OUT (قفل الحسابات)
+  deactivationReason String?  @db.Text              // سبب أو توجيهات إيقاف نشاط اللجنة
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -199,6 +232,7 @@ model Case {
   // حقل رقم السجل وحقل سنة السجل منفصلان منعاً للتلاعب
   caseNumber       String                           // رقم السجل
   caseYear         Int                              // سنة السجل (حقل مستقل)
+  incomingDate     DateTime?                        // تاريخ الوارد (تاريخ استلام الشكوى / ورود كتاب النيابة)
   attachmentsCount Int              @default(0)     // عدد المرفقات المسلمة
   hospitalName     String?                          // اسم المنشأة الطبية المشكو في حقها (المستشفى / المركز الطبي)
   respondentName   String?                          // اسم المشكو في حقه (الطبيب / الكادر الطبي)
@@ -218,9 +252,28 @@ model Case {
   assignedAt       DateTime?                        // تاريخ الإحالة / التوجيه الفعلي
   expectedDueDate  DateTime?                        // الموعد النهائي المحدد لإنجاز التقرير
   meetingDate      DateTime?                        // تاريخ انعقاد جلسة اللجنة الفرعية الفعلي
+  meetingDateReason String?         @db.Text        // سبب تعديل أو تأجيل موعد انعقاد الجلسة
+  meetingDateUpdatedAt DateTime?                    // تاريخ آخر تعديل على موعد الانعقاد
   followUpOfficerId String?
   followUpOfficer  User?            @relation("FollowUpCases", fields: [followUpOfficerId], references: [id])
   followUpNotes    String?          @db.Text        // ملاحظات وتوجيهات موظف المتابعة
+
+  // مخاطبة النيابة بموعد انعقاد اللجنة الفرعية
+  prosecutionNotifiedAt      DateTime?                        // تاريخ إرسال الخطاب / إخطار النيابة
+  prosecutionLetterNumber    String?                          // رقم صادر المكاتبة
+  prosecutionNotificationNotes String?        @db.Text        // ملاحظات الإخطار
+
+  // ربط بجلسة انعقاد اللجنة العليا
+  supremeSessionId           String?
+  supremeSession             SupremeSession?  @relation(fields: [supremeSessionId], references: [id])
+
+  // وضع إدارة المخاطر وتصحيح المسار الإجرائي (Break-Glass Override)
+  isRiskOverridden           Boolean          @default(false)
+  riskOverrideReason         String?          @db.Text
+  riskOverrideDocument       String?          // رقم القرار أو السند الإداري للتصحيح
+  riskOverriddenAt           DateTime?
+  riskOverriddenById         String?
+  riskOverriddenBy           User?            @relation("RiskOverriddenCases", fields: [riskOverriddenById], references: [id])
 
   // موظف التسجيل الذي أنشأ القيد
   createdById      String
@@ -236,6 +289,7 @@ model Case {
   supremeDecisions SupremeDecision[]
   attachments      Attachment[]
   payments         Payment[]
+  meetingReschedules MeetingReschedule[]
 }
 
 // ─── فريق الفحص والاستشاريين وحق التنحي ───────────
@@ -303,6 +357,25 @@ model SupremeDecision {
   updatedAt             DateTime     @updatedAt
 }
 
+// ─── خطة وجلسات انعقاد اللجنة العليا ─────────────
+
+model SupremeSession {
+  id            String         @id @default(cuid())
+  sessionNumber String         // رقم أو عنوان الجلسة (مثلاً: الجلسة رقم 12 لسنة 2026)
+  sessionDate   DateTime       // موعد وتاريخ الانعقاد
+  location      String?        @default("قاعة الاجتماعات الرئيسية - الأمانة الفنية للجنة العليا")
+  status        String         @default("SCHEDULED") // SCHEDULED, IN_PROGRESS, COMPLETED, POSTPONED
+  notes         String?        @db.Text
+
+  createdById   String
+  createdBy     User           @relation("SupremeSessionCreatedBy", fields: [createdById], references: [id])
+
+  cases         Case[]
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
 // ─── الجدول المالي ────────────────────────────────
 
 model Payment {
@@ -316,9 +389,11 @@ model Payment {
   doctorId  String?                          // الطبيب الاستشاري المستحق (من سجل اللجنة الفرعية)
   doctor    SubCommitteeDoctor? @relation(fields: [doctorId], references: [id])
 
-  entitled  Boolean       @default(false)   // يستحق التعويض
-  amount    Float?                           // مبلغ التعويض (بالجنيه)
+  recipientRole String?                      // صفة المستحق: عضو لجنة فرعية / عضو اللجنة العليا
+  entitled  Boolean       @default(true)     // يستحق البدل
+  amount    Float?                           // مبلغ بدل الجلسة (بالجنيه: 5000 للفرعية / 8000 للعليا)
   status    PaymentStatus @default(NOT_PAID)
+  paidAt    DateTime?                        // تاريخ السداد الفعلي
   notes     String?       @db.Text
 
   createdAt DateTime      @default(now())
@@ -358,5 +433,22 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([userId])
+  @@index([createdAt])
+}
+
+// ─── سجل تعديلات وتأجيلات مواعيد انعقاد اللجان الفرعية ───
+
+model MeetingReschedule {
+  id           String    @id @default(cuid())
+  caseId       String
+  case         Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  oldDate      DateTime?
+  newDate      DateTime
+  reason       String    @db.Text
+  createdById  String
+  createdBy    User      @relation("MeetingReschedules", fields: [createdById], references: [id])
+  createdAt    DateTime  @default(now())
+
+  @@index([caseId])
   @@index([createdAt])
 }

@@ -12,6 +12,14 @@ export async function GET(req: NextRequest) {
   const user = session.user as any;
   const currentUserId = user.id;
 
+  const allowedRoles = ["REGISTRATION_CLERK", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER"];
+  if (!allowedRoles.includes(user.role)) {
+    return NextResponse.json(
+      { error: "غير مصرح لك بالاطلاع على تقارير وإحصائيات قيد السجلات" },
+      { status: 403 }
+    );
+  }
+
   const url = new URL(req.url);
   const startDateStr = url.searchParams.get("startDate");
   const endDateStr = url.searchParams.get("endDate");
@@ -40,10 +48,10 @@ export async function GET(req: NextRequest) {
   }
 
   if (respondentName && respondentName.trim() !== "") {
-    where.respondentName = {
-      contains: respondentName.trim(),
-      mode: "insensitive",
-    };
+    where.OR = [
+      { respondentName: { contains: respondentName.trim(), mode: "insensitive" } },
+      { hospitalName: { contains: respondentName.trim(), mode: "insensitive" } },
+    ];
   }
 
   if (createdById && createdById !== "ALL") {

@@ -34,6 +34,30 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "السجل غير موجود" }, { status: 404 });
   }
 
+  // التحقق من أن اللجنة الفرعية المستهدفة مفعلة ونشطة
+  const targetSubCommittee = await prisma.subCommittee.findUnique({
+    where: { id: parsed.data.subCommitteeId },
+    select: { id: true, active: true, name: true },
+  });
+  if (!targetSubCommittee) {
+    return NextResponse.json({ error: "اللجنة الفرعية المحددة غير موجودة" }, { status: 404 });
+  }
+  if (!targetSubCommittee.active) {
+    return NextResponse.json(
+      { error: `اللجنة الفرعية (${targetSubCommittee.name}) موقوفة إدارياً ولا يمكن توجيه قضايا إليها حالياً.` },
+      { status: 400 }
+    );
+  }
+
+  // لا يمكن توجيه السجل إذا كان معتمداً نهائياً أو بانتظار قرار العليا إلا عبر وضع إدارة المخاطر للمشرف
+  const role = (session.user as any).role;
+  if (before.status !== "REGISTERED" && before.status !== "REFERRED_FOR_REVIEW" && role !== "ADMIN") {
+    return NextResponse.json(
+      { error: "لا يمكن توجيه أو إعادة إسناد السجل إلا إذا كان بانتظار التوجيه أو محالاً لإعادة الدراسة من اللجنة العليا." },
+      { status: 400 }
+    );
+  }
+
   // حساب تاريخ المهلة المستهدفة (Expected Due Date)
   let computedDueDate: Date | null = null;
   if (parsed.data.expectedDueDate) {

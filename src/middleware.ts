@@ -3,10 +3,12 @@ import { NextResponse } from "next/server";
 
 // يفصل هذا الميدل-وير الوصول لكل مسار لوحة تحكم بحسب دور المستخدم (RBAC)
 const ROUTE_ROLE_PREFIX: Record<string, string[]> = {
+  "/dashboard/admin/risk-mode": ["ADMIN", "RISK_OFFICER"],
+  "/dashboard/admin/audit-logs": ["ADMIN", "RISK_OFFICER"],
   "/dashboard/registration": ["REGISTRATION_CLERK", "ADMIN"],
-  "/dashboard/follow-up": ["FOLLOW_UP_OFFICER", "ADMIN"],
+  "/dashboard/follow-up": ["FOLLOW_UP_OFFICER", "ADMIN", "RISK_OFFICER"],
   "/dashboard/subcommittee": ["SUBCOMMITTEE_MEMBER", "ADMIN"],
-  "/dashboard/supreme": ["SUPREME_COMMITTEE", "ADMIN"],
+  "/dashboard/supreme": ["SUPREME_COMMITTEE", "ADMIN", "RISK_OFFICER"],
   "/dashboard/finance": ["FINANCE", "ADMIN"],
   "/dashboard/admin": ["ADMIN"],
 };

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { DecisionForm } from "./decision-form";
 import { AttachmentUploader } from "@/app/dashboard/_components/attachment-uploader";
 import { formatDate } from "@/lib/formatters";
+import { Download } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING_SUPREME_REVIEW:"بانتظار القرار",
@@ -160,12 +161,23 @@ export default async function SupremeCaseDetail({ params }: { params: { id: stri
             ) : (
               <ul className="space-y-2">
                 {caseRecord.attachments.map(a => (
-                  <li key={a.id} className="flex items-center gap-2 text-xs p-2 rounded-lg bg-gray-50">
-                    <svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
-                    <span className="truncate text-gray-700">{a.fileName}</span>
+                  <li key={a.id} className="flex items-center justify-between gap-2 text-xs p-2 rounded-lg bg-gray-50 border border-gray-100">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <svg className="w-4 h-4 text-teal-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      <span className="truncate text-gray-700 font-medium">{a.fileName}</span>
+                    </div>
+                    <a
+                      href={`/api/cases/${caseRecord.id}/attachments/${a.id}/download`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 rounded bg-white border border-gray-200 text-teal-700 hover:bg-teal-50 transition-colors shrink-0"
+                      title="تحميل المرفق بأمان"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </a>
                   </li>
                 ))}
               </ul>

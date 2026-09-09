@@ -29,6 +29,28 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "هذه القضية ليست موجهة للجنتك" }, { status: 403 });
   }
 
+  // لا يمكن تعديل السجل إلا إذا كان قيد الدراسة أو محالاً لإعادة الدراسة
+  if (caseRecord.status !== "UNDER_SUBCOMMITTEE_REVIEW" && caseRecord.status !== "REFERRED_FOR_REVIEW") {
+    return NextResponse.json(
+      { error: "لا يمكن تعديل التقرير الطبي أو فتح السجل بعد اعتماده، إلا إذا أحيل السجل من اللجنة العليا لإعادة الدراسة." },
+      { status: 400 }
+    );
+  }
+
+  // فحص حالة اللجنة الفرعية
+  if (caseRecord.subCommitteeId) {
+    const sc = await prisma.subCommittee.findUnique({
+      where: { id: caseRecord.subCommitteeId },
+      select: { active: true },
+    });
+    if (sc && !sc.active) {
+      return NextResponse.json(
+        { error: "لا يمكن تحرير أو رفع التقرير الطبي لأن نشاط هذه اللجنة الفرعية موقوف مؤقتاً بقرار إداري." },
+        { status: 403 }
+      );
+    }
+  }
+
   const parsed = schema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const data = parsed.data;
@@ -39,6 +61,23 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       { error: "تاريخ إصدار التقرير يجب أن يكون بعد تاريخ انعقاد اللجنة" },
       { status: 400 }
     );
+  }
+
+  // التحقق من اكتمال أركان التقرير الفني عند الاعتماد والرفع للجنة العليا
+  if (data.finalize) {
+    if (
+      !data.meetingDate ||
+      !data.reportDate ||
+      !data.faultDescription?.trim() ||
+      (!data.reportText?.trim() && !data.actionTaken?.trim())
+    ) {
+      return NextResponse.json(
+        {
+          error: "لاعتماد التقرير الفني ورفعه رسمياً للجنة العليا، يجب تسجيل تاريخ الانعقاد، وتاريخ إصدار التقرير، وتوصيف الخطأ الطبي، والإجراء المتخذ كاملاً.",
+        },
+        { status: 400 }
+      );
+    }
   }
 
   const action = await prisma.caseAction.create({
@@ -54,10 +93,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     },
   });
 
+  const caseUpdateData: any = {};
+  if (data.meetingDate) {
+    caseUpdateData.meetingDate = new Date(data.meetingDate);
+  }
   if (data.finalize) {
+    caseUpdateData.status = "PENDING_SUPREME_REVIEW";
+  }
+  if (Object.keys(caseUpdateData).length > 0) {
     await prisma.case.update({
       where: { id: params.id },
-      data: { status: "PENDING_SUPREME_REVIEW" },
+      data: caseUpdateData,
     });
   }
 

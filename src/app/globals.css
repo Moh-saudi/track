@@ -1,22 +1,19 @@
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Cairo:wght@400;600;700;800;900&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ════════════════════════════════════════════════════════════════════
-   الملف الشامل الموحد للتصميم الحكومي الهادئ والرصين
-   جمهورية مصر العربية — رئاسة مجلس الوزراء
-   اللجنة العليا للمسؤولية الطبية وسلامة المريض
+   الهوية البصرية المعتمدة لمنظومة تتبع القضايا
+   اللجنة العليا للمسئولية الطبية
    ════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --gov-primary: #1F4E79;
-  --gov-primary-hover: #173d61;
+  --primary: #0D9488;
+  --primary-hover: #0F766E;
   --bg-page: #f8fafc;
   --bg-card: #ffffff;
   --border-color: #e2e8f0;
-  --text-main: #1e293b;
+  --text-main: #0f172a;
   --text-muted: #64748b;
 }
 
@@ -30,15 +27,19 @@ html {
 }
 
 body {
-  font-family: "Tajawal", "Cairo", sans-serif;
+  font-family: var(--font-body), "Tajawal", sans-serif;
   background-color: var(--bg-page);
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  line-height: 1.5;
+  line-height: 1.625;
 }
 
-/* تحسين مظهر التعبئة التلقائية للمتصفح لمنع الخلفيات الصفراء الفاقعة */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading), "Cairo", sans-serif;
+}
+
+/* تحسين مظهر التعبئة التلقائية للمتصفح */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus {
@@ -51,7 +52,7 @@ input:-webkit-autofill:focus {
 
   /* 1. البطاقات (Cards) */
   .card {
-    @apply bg-white rounded-xl border border-slate-200 shadow-sm p-6;
+    @apply bg-white rounded-2xl border border-slate-200 shadow-sm p-6;
   }
 
   .card-hover {
@@ -60,42 +61,42 @@ input:-webkit-autofill:focus {
 
   /* 2. بطاقات الإحصائيات (Stat Cards) */
   .stat-card {
-    @apply bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center gap-4;
+    @apply bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex items-center gap-4;
   }
 
   .stat-icon {
-    @apply w-12 h-12 rounded-xl flex items-center justify-center font-bold text-xl flex-shrink-0;
+    @apply w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl flex-shrink-0;
   }
 
-  /* 3. الأزرار (Buttons) — ألوان حكومية هادئة */
+  /* 3. الأزرار (Buttons) — هوية التصميم الموحدة */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs sm:text-sm font-bold
+    @apply inline-flex items-center justify-center gap-2 h-10 rounded-lg px-4 py-2 text-xs sm:text-sm font-medium
            transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1
-           disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer select-none;
+           disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer select-none font-body;
   }
 
   .btn-primary {
-    @apply btn bg-[#1F4E79] text-white hover:bg-[#173d61] focus:ring-[#1F4E79];
+    @apply btn bg-teal-600 text-white hover:bg-teal-700 focus:ring-teal-600;
   }
 
   .btn-secondary {
-    @apply btn bg-white text-[#1F4E79] border border-slate-300 hover:bg-slate-50 focus:ring-slate-300;
+    @apply btn bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 focus:ring-slate-300;
   }
 
   .btn-danger {
-    @apply btn bg-rose-700 text-white hover:bg-rose-800 focus:ring-rose-600;
+    @apply btn bg-rose-600 text-white hover:bg-rose-700 focus:ring-rose-600;
   }
 
   .btn-success {
-    @apply btn bg-emerald-700 text-white hover:bg-emerald-800 focus:ring-emerald-600;
+    @apply btn bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-600;
   }
 
   .btn-sm {
-    @apply px-3 py-1.5 text-xs rounded-md;
+    @apply h-8 px-3 py-1.5 text-xs rounded-md;
   }
 
   .btn-lg {
-    @apply px-6 py-3 text-base rounded-lg;
+    @apply h-12 px-6 py-3 text-base rounded-lg;
   }
 
   /* 4. حقول الإدخال والنماذج (Form Controls) */
@@ -105,7 +106,7 @@ input:-webkit-autofill:focus {
 
   .form-label,
   .label {
-    @apply block text-xs font-bold text-slate-700;
+    @apply block text-xs font-bold text-slate-700 font-body;
   }
 
   .form-label-required::after,
@@ -117,68 +118,80 @@ input:-webkit-autofill:focus {
   .form-input,
   .input {
     @apply w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900
-           placeholder-slate-400 transition-colors
-           focus:border-[#1F4E79] focus:outline-none focus:ring-1 focus:ring-[#1F4E79]
+           placeholder-slate-400 transition-colors font-body
+           focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600
            disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500;
+  }
+
+  input.form-input,
+  input.input,
+  select.form-input,
+  select.input,
+  .form-select,
+  .select {
+    @apply h-10;
   }
 
   .form-select,
   .select {
-    @apply form-input appearance-none bg-no-repeat;
+    @apply appearance-none bg-no-repeat;
   }
 
+  textarea,
+  textarea.form-input,
+  textarea.input,
   .form-textarea,
   .textarea {
-    @apply form-input min-h-[90px] resize-y;
+    @apply h-auto min-h-[110px] resize-y py-2.5 leading-relaxed;
   }
 
   /* 5. الشارات الموحدة (Badges) */
   .badge {
-    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap;
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap font-body;
   }
 
   .badge-registered {
-    @apply badge bg-amber-50 text-amber-800 border border-amber-300;
+    @apply badge bg-slate-100 text-slate-700 border border-slate-200;
   }
 
   .badge-review {
-    @apply badge bg-blue-50 text-[#1F4E79] border border-blue-200;
+    @apply badge bg-amber-100 text-amber-800 border border-amber-200;
   }
 
   .badge-pending {
-    @apply badge bg-purple-50 text-purple-800 border border-purple-200;
+    @apply badge bg-sky-100 text-sky-800 border border-sky-200;
   }
 
   .badge-approved {
-    @apply badge bg-emerald-50 text-emerald-800 border border-emerald-300;
+    @apply badge bg-emerald-100 text-emerald-800 border border-emerald-200;
   }
 
   .badge-referred {
-    @apply badge bg-orange-50 text-orange-800 border border-orange-200;
+    @apply badge bg-rose-100 text-rose-800 border border-rose-200;
   }
 
   .badge-closed {
-    @apply badge bg-slate-100 text-slate-700 border border-slate-300;
+    @apply badge bg-slate-100 text-slate-700 border border-slate-200;
   }
 
   .badge-delayed {
-    @apply badge bg-rose-50 text-rose-800 border border-rose-300 font-black;
+    @apply badge bg-red-100 text-red-800 border border-red-200 font-bold;
   }
 
   /* 6. الجداول الرسمية الهادئة (Tables) */
   .table-wrapper,
   .table-container {
-    @apply w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm;
+    @apply w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm;
   }
 
   .table-custom,
   .data-table {
-    @apply w-full text-right text-xs text-slate-700 border-collapse;
+    @apply w-full text-right text-xs text-slate-700 border-collapse font-body;
   }
 
   .table-custom thead,
   .data-table thead {
-    @apply bg-slate-50 text-[11px] font-bold text-slate-600 uppercase border-b border-slate-200;
+    @apply bg-slate-50 text-[11px] font-bold text-slate-600 border-b border-slate-200 font-heading;
   }
 
   .table-custom th,
@@ -201,14 +214,14 @@ input:-webkit-autofill:focus {
     @apply bg-slate-50/70;
   }
 
-  /* التنبيه الهادئ والواضح لمن تأخر توجيهه أكثر من 3 أيام */
+  /* التنبيه لمن تأخر */
   .table-row-delayed {
-    @apply bg-rose-50/80 hover:bg-rose-100/80 border-r-4 border-r-rose-600 text-slate-900;
+    @apply bg-red-50/80 hover:bg-red-100/80 border-r-4 border-r-red-600 text-slate-900;
   }
 
   /* 7. التنبيهات الرسمية (Alerts) */
   .alert {
-    @apply p-4 rounded-xl text-xs font-medium flex items-start gap-3 leading-relaxed;
+    @apply p-4 rounded-xl text-xs font-medium flex items-start gap-3 leading-relaxed font-body;
   }
 
   .alert-error {

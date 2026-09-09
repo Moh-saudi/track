@@ -41,7 +41,7 @@ Write-Host "Starting PostgreSQL server..."
 Start-Sleep -Seconds 3
 
 Write-Host "Configuring users and databases..."
-& "$binDir\psql.exe" -U postgres -c "DO \`$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'case_admin') THEN CREATE ROLE case_admin WITH LOGIN SUPERUSER PASSWORD 'change_me_locally'; END IF; END \`$\$;"
+& "$binDir\psql.exe" -U postgres -c "DO 'BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = ''case_admin'') THEN CREATE ROLE case_admin WITH LOGIN SUPERUSER PASSWORD ''change_me_locally''; END IF; END';"
 & "$binDir\psql.exe" -U postgres -c "SELECT 1 FROM pg_database WHERE datname = 'case_tracking'" | Out-Null
 & "$binDir\psql.exe" -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'case_tracking'" | ForEach-Object { $_.Trim() } | Tee-Object -Variable dbExists
 

@@ -20,7 +20,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     where: { caseId: params.id },
     include: {
       doctor: {
-        include: { specialty: true },
+        select: {
+          id: true,
+          name: true,
+          title: true,
+          employer: true,
+          phone: true,
+          specialty: true,
+        },
       },
       user: {
         select: {
@@ -52,10 +59,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const targetCase = await prisma.case.findUnique({
     where: { id: params.id },
-    select: { id: true, caseNumber: true, hospitalName: true, subCommitteeId: true },
+    select: { id: true, caseNumber: true, hospitalName: true, respondentName: true, subCommitteeId: true, status: true },
   });
   if (!targetCase) {
     return NextResponse.json({ error: "السجل غير موجود" }, { status: 404 });
+  }
+
+  // لا يمكن تعديل فريق الفحص بعد اعتماد السجل إلا عند الإحالة لإعادة الدراسة
+  if ((session.user as any).role !== "ADMIN" && targetCase.status !== "UNDER_SUBCOMMITTEE_REVIEW" && targetCase.status !== "REFERRED_FOR_REVIEW") {
+    return NextResponse.json({
+      error: "لا يمكن تعديل فريق الفحص بعد اعتماد السجل ورفعه للجنة العليا، إلا إذا أُحيل السجل لإعادة الدراسة",
+    }, { status: 400 });
   }
 
   let doctorName = "";
@@ -93,19 +107,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   // ─── فحص آلي صارم لتعارض المصالح (Conflict of Interest Check) ───
-  if (targetCase.hospitalName && doctorEmployer) {
-    const normHospital = targetCase.hospitalName.trim().toLowerCase();
+  const targetEntity = (targetCase.respondentName || targetCase.hospitalName || "").trim();
+  if (targetEntity && doctorEmployer) {
+    const normTarget = targetEntity.toLowerCase();
     const normEmployer = doctorEmployer.trim().toLowerCase();
 
     if (
-      normHospital === normEmployer ||
-      normEmployer.includes(normHospital) ||
-      normHospital.includes(normEmployer)
+      normTarget === normEmployer ||
+      normEmployer.includes(normTarget) ||
+      normTarget.includes(normEmployer)
     ) {
       return NextResponse.json(
         {
           error: "تعارض مصالح محظور",
-          details: `لا يمكن إسناد فحص القضية للطبيب (${doctorName}) نظراً لتطابق جهة عمله (${doctorEmployer}) مع المنشأة المشكو في حقها (${targetCase.hospitalName}). يرجى اختيار استشاري آخر لضمان الحيدة والنزاهة وفقاً لقواعد المنظومة.`,
+          details: `لا يمكن إسناد فحص القضية للطبيب (${doctorName}) نظراً لتطابق جهة عمله (${doctorEmployer}) مع المشكو في حقه (${targetEntity}). يرجى اختيار استشاري آخر لضمان الحيدة والنزاهة وفقاً لقواعد المنظومة.`,
           conflictDetected: true,
         },
         { status: 400 }
@@ -136,8 +151,26 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           assignedAt: new Date(),
         },
         include: {
-          doctor: { include: { specialty: true } },
-          user: true,
+          doctor: {
+            select: {
+              id: true,
+              name: true,
+              title: true,
+              employer: true,
+              phone: true,
+              specialty: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              employer: true,
+              specialty: true,
+              role: true,
+            },
+          },
         },
       })
     : await prisma.caseReviewer.create({
@@ -149,8 +182,26 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           status: "ASSIGNED",
         },
         include: {
-          doctor: { include: { specialty: true } },
-          user: true,
+          doctor: {
+            select: {
+              id: true,
+              name: true,
+              title: true,
+              employer: true,
+              phone: true,
+              specialty: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              employer: true,
+              specialty: true,
+              role: true,
+            },
+          },
         },
       });
 

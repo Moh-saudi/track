@@ -11,6 +11,11 @@ const prosecutionSchema = z.object({
 });
 
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
+
   const prosecutions = await prisma.prosecution.findMany({
     where: { active: true },
     orderBy: { name: "asc" },

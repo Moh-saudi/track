@@ -25,7 +25,11 @@ export async function POST(
 
   const reviewer = await prisma.caseReviewer.findUnique({
     where: { id: params.reviewerId },
-    include: { user: true },
+    include: {
+      user: {
+        select: { id: true, fullName: true, role: true },
+      },
+    },
   });
 
   if (!reviewer) {

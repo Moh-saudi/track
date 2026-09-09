@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatDate } from "@/lib/formatters";
+import { Paperclip, Clock, Check } from "lucide-react";
 
 interface SubCommittee {
   id: string;
@@ -22,6 +23,7 @@ interface CaseDetails {
   caseYear: number;
   registrationType: string;
   respondentName?: string;
+  hospitalName?: string;
   complainantName?: string;
   prosecution?: string;
   description: string;
@@ -160,7 +162,10 @@ export default function FollowUpAssignPage({ params }: { params: { id: string } 
       <div className="card space-y-3 bg-slate-50/50">
         <div className="flex items-center justify-between border-b border-slate-200 pb-2">
           <span className="text-xs font-bold text-slate-800">بيانات السجل</span>
-          <span className="badge bg-slate-100 text-slate-700 border">📎 {caseData.attachmentsCount} مرفقات</span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium font-mono">
+            <Paperclip className="w-3.5 h-3.5 text-slate-500" />
+            <span>{caseData.attachmentsCount} مرفقات</span>
+          </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
@@ -176,7 +181,7 @@ export default function FollowUpAssignPage({ params }: { params: { id: string } 
           </div>
           <div>
             <span className="text-slate-400 block font-medium">المشكو في حقه:</span>
-            <span className="font-bold text-slate-900">{caseData.respondentName || "—"}</span>
+            <span className="font-bold text-slate-900">{caseData.respondentName || caseData.hospitalName || "—"}</span>
           </div>
           <div>
             <span className="text-slate-400 block font-medium">النيابة العامة:</span>
@@ -249,12 +254,12 @@ export default function FollowUpAssignPage({ params }: { params: { id: string } 
                     onClick={() => toggleSpecialty(spec.id)}
                     className={`p-2 rounded text-xs font-bold text-right border transition-colors flex items-center justify-between ${
                       isSelected
-                        ? "bg-[#1F4E79] text-white border-[#1F4E79]"
+                        ? "bg-teal-600 text-white border-teal-600"
                         : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
                     }`}
                   >
                     <span>{spec.name}</span>
-                    {isSelected && <span>✓</span>}
+                    {isSelected && <Check className="w-3.5 h-3.5" />}
                   </button>
                 );
               })}
@@ -262,13 +267,13 @@ export default function FollowUpAssignPage({ params }: { params: { id: string } 
           </div>
 
           {/* المهلة الزمنية لإنجاز التقرير — طبقاً للقانون 30 يوماً فقط */}
-          <div className="p-4 bg-blue-50/70 border border-blue-200 rounded-xl space-y-2">
+          <div className="p-4 bg-teal-50/70 border border-teal-200 rounded-xl space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#1F4E79] flex items-center gap-1.5">
-                <span>⏱️</span>
+              <label className="text-xs font-bold text-teal-900 flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-teal-700" />
                 <span>المهلة القانونية المقررة لإنجاز ورفع التقرير الطبي</span>
               </label>
-              <span className="px-2.5 py-1 rounded-full bg-[#1F4E79] text-white text-xs font-black shadow-sm">
+              <span className="px-2.5 py-1 rounded-full bg-teal-600 text-white text-xs font-bold shadow-xs">
                 30 يوماً فقط (طبقاً للقانون)
               </span>
             </div>
@@ -277,9 +282,9 @@ export default function FollowUpAssignPage({ params }: { params: { id: string } 
               تنص المادة القانونية على إنجاز ورفع تقرير اللجنة الفرعية الفاحصة خلال مهلة أقصاها <strong>30 يوماً</strong> من تاريخ قرار التوجيه والإحالة.
             </p>
 
-            <div className="pt-2 border-t border-blue-200/70 flex items-center justify-between text-xs">
+            <div className="pt-2 border-t border-teal-200/70 flex items-center justify-between text-xs">
               <span className="text-slate-600 font-medium">تاريخ الاستحقاق القانوني الأقصى:</span>
-              <span className="font-bold text-[#1F4E79] bg-white px-3 py-1 rounded-lg border border-blue-200 shadow-sm font-mono">
+              <span className="font-bold text-teal-800 bg-white px-3 py-1 rounded-lg border border-teal-200 shadow-xs font-mono">
                 {(() => {
                   const d = new Date();
                   d.setDate(d.getDate() + 30);

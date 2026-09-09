@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
+import Link from "next/link";
+import { UserCheck, Plus, CreditCard, Building, Building2, Stethoscope, AlertTriangle, CheckCircle2, Pause, Play, Trash2, X } from "lucide-react";
+import { PageHeader, StatCard, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Badge } from "@/components/ui";
 
 interface Specialty {
   id: string;
@@ -26,47 +29,13 @@ interface Doctor {
   createdAt: string;
 }
 
-const EGYPTIAN_BANKS = [
-  "البنك الأهلي المصري (ميزة / مرتبات حكومية)",
-  "بنك مصر (فيزا / ميزة مرتبات)",
-  "بنك القاهرة",
-  "بنك التعمير والإسكان",
-  "بنك الإسكندرية",
-  "البنك التجاري الدولي (CIB)",
-  "بنك قناة السويس",
-  "بنك فيصل الإسلامي المصري",
-  "مصرف أبو ظبي الإسلامي",
-  "بنك قطر الوطني (QNB)",
-  "بنك البركة مصر",
-  "أخرى / بنك آخر",
-];
-
 export default function SubcommitteeDoctorsPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
   const [isPending, startTransition] = useTransition();
-  const [showAddForm, setShowAddForm] = useState(false);
-
-  // حقول إضافة طبيب جديد
-  const [name, setName] = useState("");
-  const [title, setTitle] = useState("أستاذ دكتور");
-  const [employer, setEmployer] = useState("");
-  const [specialtyId, setSpecialtyId] = useState("");
-  const [phone, setPhone] = useState("");
-  const [notes, setNotes] = useState("");
-
-  // البيانات المالية - الافتراضي فيزا مرتبات للأطباء الحكوميين
-  const [nationalId, setNationalId] = useState("");
-  const [financialType, setFinancialType] = useState<"PAYROLL_CARD" | "BANK_ACCOUNT" | "BANK_CARD">("PAYROLL_CARD");
-  const [bankName, setBankName] = useState("البنك الأهلي المصري (ميزة / مرتبات حكومية)");
-  const [customBankName, setCustomBankName] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [iban, setIban] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
 
   // نافذة تعديل البيانات المالية
   const [editingFinanceDoc, setEditingFinanceDoc] = useState<Doctor | null>(null);
@@ -103,58 +72,6 @@ export default function SubcommitteeDoctorsPage() {
   useEffect(() => {
     loadData();
   }, []);
-
-  async function handleAddDoctor(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSuccessMsg(null);
-
-    const resolvedBankName = bankName === "أخرى / بنك آخر" ? customBankName : bankName;
-
-    startTransition(async () => {
-      try {
-        const res = await fetch("/api/subcommittee/doctors", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name,
-            title,
-            employer,
-            specialtyId: specialtyId || undefined,
-            phone: phone || undefined,
-            notes: notes || undefined,
-            nationalId: nationalId || undefined,
-            financialType: financialType,
-            bankName: resolvedBankName || undefined,
-            accountNumber: financialType === "BANK_ACCOUNT" ? (accountNumber || undefined) : undefined,
-            iban: financialType === "BANK_ACCOUNT" ? (iban || undefined) : undefined,
-            cardNumber: (financialType === "PAYROLL_CARD" || financialType === "BANK_CARD") ? (cardNumber || undefined) : undefined,
-          }),
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || "تعذر إضافة الطبيب");
-        }
-
-        setSuccessMsg(`تم قيد الطبيب (${data.name}) وحفظ بياناته المالية بنجاح`);
-        setName("");
-        setEmployer("");
-        setSpecialtyId("");
-        setPhone("");
-        setNotes("");
-        setNationalId("");
-        setAccountNumber("");
-        setIban("");
-        setCardNumber("");
-        setCustomBankName("");
-        setShowAddForm(false);
-        await loadData();
-      } catch (err: any) {
-        setError(err.message);
-      }
-    });
-  }
 
   function openFinanceModal(doc: Doctor) {
     setEditingFinanceDoc(doc);
@@ -251,31 +168,25 @@ export default function SubcommitteeDoctorsPage() {
 
   return (
     <div className="space-y-6">
-      {/* رأس الصفحة */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded bg-[#1F4E79]/10 text-[#1F4E79] border border-[#1F4E79]/20 text-[11px] font-bold">
-              👨‍⚕️ إدارة الاستشاريين والبيانات المالية
-            </span>
-            <span className="text-xs text-slate-500 font-bold">اللجنة العليا للمسؤولية الطبية وسلامة المريض</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            سجل الأطباء واستشاريي اللجنة والبيانات المالية
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            قيد الأطباء وبيانات صرف المستحقات (فيزا مرتبات حكومية / حساب بنكي / كارت بنكي) لتظهر فوراً للمسؤول المالي
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="btn-primary text-xs font-bold px-4 py-2.5 shadow-sm self-start sm:self-auto"
-        >
-          {showAddForm ? "إلغاء الإضافة" : "➕ قيد طبيب / استشاري جديد"}
-        </button>
-      </div>
+      {/* ─── رأس الصفحة الموحد ─── */}
+      <PageHeader
+        breadcrumbs={[
+          { label: "الرئيسية", href: "/dashboard" },
+          { label: "اللجان الفرعية", href: "/dashboard/subcommittee" },
+          { label: "سجل أطباء اللجنة" },
+        ]}
+        title="سجل الأطباء واستشاريي اللجنة والبيانات المالية"
+        description="قيد الأطباء وبيانات صرف المستحقات المصرفية لتظهر فوراً للمسؤول المالي."
+        actions={
+          <Link
+            href="/dashboard/subcommittee/doctors/new"
+            className="h-10 px-4 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold font-heading shadow-xs inline-flex items-center gap-1.5 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>إضافة طبيب جديد</span>
+          </Link>
+        }
+      />
 
       {/* التنبيهات ورسائل النجاح */}
       {error && (
@@ -290,325 +201,30 @@ export default function SubcommitteeDoctorsPage() {
         </div>
       )}
 
-      {/* نموذج إضافة طبيب جديد (قابل للطي) */}
-      {showAddForm && (
-        <div className="card border-slate-200 p-6 space-y-5 bg-slate-50/80 animate-in fade-in zoom-in-95">
-          <div className="border-b border-slate-200 pb-3">
-            <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
-              <span>📝</span>
-              <span>إضافة طبيب استشاري جديد وبياناته المالية لسجل اللجنة</span>
-            </h2>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              الأطباء يسجلون في هذا الحصر فقط دون حسابات دخول، وتُربط حساباتهم بالشؤون المالية للصرف
-            </p>
-          </div>
 
-          <form onSubmit={handleAddDoctor} className="space-y-5">
-            {/* البيانات الشخصية والمهنية */}
-            <div className="space-y-3">
-              <span className="text-xs font-black text-[#1F4E79] flex items-center gap-1.5">
-                <span>👤</span>
-                <span>البيانات الشخصية والمهنية</span>
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="form-group">
-                  <label className="form-label form-label-required">اسم الطبيب الاستشاري كاملاً</label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="مثال: أ.د. شريف كمال الدين"
-                    className="form-input text-xs"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label form-label-required">الدرجة واللقب العلمي</label>
-                  <select
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="form-select text-xs"
-                  >
-                    <option value="أستاذ دكتور">أستاذ دكتور (Prof. Dr.)</option>
-                    <option value="أستاذ مساعد">أستاذ مساعد</option>
-                    <option value="استشاري أول">استشاري أول</option>
-                    <option value="استشاري">استشاري</option>
-                    <option value="زميل / باحث">زميل / باحث</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label form-label-required">جهة العمل / المستشفى التابع لها</label>
-                  <input
-                    type="text"
-                    required
-                    value={employer}
-                    onChange={(e) => setEmployer(e.target.value)}
-                    placeholder="مثال: مستشفى قصر العيني الفرنساوي"
-                    className="form-input text-xs"
-                  />
-                  <span className="text-[10px] text-slate-500">لفحص تعارض المصالح آلياً ضد المستشفى المشكو في حقه</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="form-group">
-                  <label className="form-label">التخصص الطبي الدقيق</label>
-                  <select
-                    value={specialtyId}
-                    onChange={(e) => setSpecialtyId(e.target.value)}
-                    className="form-select text-xs"
-                  >
-                    <option value="">— اختر التخصص الطبي —</option>
-                    {specialties.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">الرقم القومي (14 رقماً)</label>
-                  <input
-                    type="text"
-                    maxLength={14}
-                    value={nationalId}
-                    onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ""))}
-                    placeholder="2XXXXXXXXXXXXX"
-                    className="form-input text-xs font-mono"
-                    dir="ltr"
-                  />
-                  <span className="text-[10px] text-slate-500">إلزامي لصرف المكافآت الحكومية</span>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">رقم الهاتف للتواصل الرسمي</label>
-                  <input
-                    type="text"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="01XXXXXXXXX"
-                    className="form-input text-xs font-mono"
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* البيانات المالية وصرف المستحقات */}
-            <div className="p-4 rounded-xl bg-purple-50/40 border border-purple-200/80 space-y-4">
-              <div className="flex items-center justify-between border-b border-purple-200/60 pb-2">
-                <span className="text-xs font-black text-purple-950 flex items-center gap-1.5">
-                  <span>💳</span>
-                  <span>البيانات المالية وصرف المستحقات (تظهر للمسؤول المالي مباشرة)</span>
-                </span>
-                <span className="text-[11px] text-purple-800 font-bold">فيزا مرتبات / حساب بنكي / كارت</span>
-              </div>
-
-              {/* اختيار نوع وسيلة الصرف والتحويل */}
-              <div className="space-y-2">
-                <span className="text-xs font-black text-slate-700 block">طريقة تحويل وصرف الأتعاب والمكافآت:</span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                  <label className={`p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
-                    financialType === "PAYROLL_CARD"
-                      ? "bg-purple-100/70 border-purple-400 text-purple-950 shadow-sm"
-                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                  }`}>
-                    <input
-                      type="radio"
-                      name="financialType"
-                      checked={financialType === "PAYROLL_CARD"}
-                      onChange={() => setFinancialType("PAYROLL_CARD")}
-                      className="text-purple-700 focus:ring-purple-700"
-                    />
-                    <div>
-                      <span className="font-black block">💳 فيزا مرتبات حكومية</span>
-                      <span className="text-[10px] text-slate-500">كارت ميزة مرتبات للمستشفيات والجامعات</span>
-                    </div>
-                  </label>
-
-                  <label className={`p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
-                    financialType === "BANK_ACCOUNT"
-                      ? "bg-blue-100/70 border-blue-400 text-blue-950 shadow-sm"
-                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                  }`}>
-                    <input
-                      type="radio"
-                      name="financialType"
-                      checked={financialType === "BANK_ACCOUNT"}
-                      onChange={() => setFinancialType("BANK_ACCOUNT")}
-                      className="text-[#1F4E79] focus:ring-[#1F4E79]"
-                    />
-                    <div>
-                      <span className="font-black block">🏦 حساب بنكي شخصي</span>
-                      <span className="text-[10px] text-slate-500">تحويل بنكي / IBAN شخصي</span>
-                    </div>
-                  </label>
-
-                  <label className={`p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
-                    financialType === "BANK_CARD"
-                      ? "bg-emerald-100/70 border-emerald-400 text-emerald-950 shadow-sm"
-                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                  }`}>
-                    <input
-                      type="radio"
-                      name="financialType"
-                      checked={financialType === "BANK_CARD"}
-                      onChange={() => setFinancialType("BANK_CARD")}
-                      className="text-emerald-700 focus:ring-emerald-700"
-                    />
-                    <div>
-                      <span className="font-black block">💳 فيزا / كارت بنكي خاص</span>
-                      <span className="text-[10px] text-slate-500">كارت بنكي شخصي عادي</span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {/* حقول الإدخال حسب نوع الوسيلة */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="form-group">
-                  <label className="form-label">
-                    {financialType === "PAYROLL_CARD" ? "بنك صرف المرتبات" : "اسم البنك"}
-                  </label>
-                  <select
-                    value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
-                    className="form-select text-xs"
-                  >
-                    {EGYPTIAN_BANKS.map((b) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {bankName === "أخرى / بنك آخر" && (
-                  <div className="form-group">
-                    <label className="form-label">حدد اسم البنك</label>
-                    <input
-                      type="text"
-                      value={customBankName}
-                      onChange={(e) => setCustomBankName(e.target.value)}
-                      placeholder="اسم البنك..."
-                      className="form-input text-xs"
-                    />
-                  </div>
-                )}
-
-                {financialType === "PAYROLL_CARD" ? (
-                  <div className="form-group sm:col-span-2">
-                    <label className="form-label form-label-required">رقم كارت فيزا المرتبات (16 رقماً)</label>
-                    <input
-                      type="text"
-                      maxLength={19}
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      placeholder="XXXX XXXX XXXX XXXX"
-                      className="form-input text-xs font-mono"
-                      dir="ltr"
-                    />
-                    <span className="text-[10px] text-purple-900 font-medium">
-                      رقم كارت ميزة للمرتبات الحكومية المسلم للطبيب من جهة عمله الحكومية
-                    </span>
-                  </div>
-                ) : financialType === "BANK_ACCOUNT" ? (
-                  <>
-                    <div className="form-group">
-                      <label className="form-label">رقم الحساب البنكي</label>
-                      <input
-                        type="text"
-                        value={accountNumber}
-                        onChange={(e) => setAccountNumber(e.target.value)}
-                        placeholder="رقم الحساب لدى البنك..."
-                        className="form-input text-xs font-mono"
-                        dir="ltr"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">رقم الآيبان (IBAN) اختياري</label>
-                      <input
-                        type="text"
-                        value={iban}
-                        onChange={(e) => setIban(e.target.value)}
-                        placeholder="EGXXXXXXXXXXXXXXXXXXXXXXXXXX"
-                        className="form-input text-xs font-mono"
-                        dir="ltr"
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div className="form-group sm:col-span-2">
-                    <label className="form-label">رقم كارت الفيزا / ميزة</label>
-                    <input
-                      type="text"
-                      maxLength={19}
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      placeholder="XXXX XXXX XXXX XXXX"
-                      className="form-input text-xs font-mono"
-                      dir="ltr"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">ملاحظات إدارية</label>
-              <input
-                type="text"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="أي ملاحظات تخص الطبيب أو جدول مواعيده..."
-                className="form-input text-xs"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => setShowAddForm(false)}
-                className="btn-secondary text-xs px-4 py-2"
-              >
-                إلغاء
-              </button>
-              <button
-                type="submit"
-                disabled={isPending}
-                className="btn-primary text-xs px-5 py-2 font-bold"
-              >
-                {isPending ? "جارٍ الحفظ..." : "حفظ وقيد الطبيب باللجنة"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
 
       {/* نافذة منبثقة لتعديل أو تحديث البيانات المالية */}
       {editingFinanceDoc && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="card max-w-lg w-full bg-white p-6 space-y-4 shadow-xl border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
-                  <span>💳</span>
+                <h3 className="text-sm font-bold font-heading text-slate-900 flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-teal-600" />
                   <span>تحديث البيانات المالية: {editingFinanceDoc.name}</span>
                 </h3>
-                <p className="text-[11px] text-slate-500">تحديث فيزا المرتبات أو الحساب البنكي للصرف المالي المباشر</p>
+                <p className="text-xs text-slate-500 font-body">تحديث فيزا المرتبات أو الحساب البنكي للصرف المالي المباشر</p>
               </div>
               <button
                 type="button"
                 onClick={() => setEditingFinanceDoc(null)}
-                className="text-slate-400 hover:text-slate-700 text-sm font-bold"
+                className="text-slate-400 hover:text-slate-700 p-1"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveFinanceUpdate} className="space-y-4">
+            <form onSubmit={handleSaveFinanceUpdate} className="space-y-4 font-body">
               <div className="form-group">
                 <label className="form-label">الرقم القومي (14 رقماً)</label>
                 <input
@@ -635,19 +251,21 @@ export default function SubcommitteeDoctorsPage() {
                       onChange={() => setEditFinancialType("PAYROLL_CARD")}
                       className="text-purple-700"
                     />
-                    <span>💳 فيزا مرتبات</span>
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>فيزا مرتبات</span>
                   </label>
                   <label className={`p-2 rounded-lg border flex items-center gap-2 cursor-pointer ${
-                    editFinancialType === "BANK_ACCOUNT" ? "bg-blue-50 border-blue-400 text-blue-950 font-bold" : "border-slate-200"
+                    editFinancialType === "BANK_ACCOUNT" ? "bg-teal-50 border-teal-400 text-teal-950 font-bold" : "border-slate-200"
                   }`}>
                     <input
                       type="radio"
                       name="editFinancialType"
                       checked={editFinancialType === "BANK_ACCOUNT"}
                       onChange={() => setEditFinancialType("BANK_ACCOUNT")}
-                      className="text-[#1F4E79]"
+                      className="text-teal-600"
                     />
-                    <span>🏦 حساب بنكي</span>
+                    <Building className="w-3.5 h-3.5" />
+                    <span>حساب بنكي</span>
                   </label>
                   <label className={`p-2 rounded-lg border flex items-center gap-2 cursor-pointer ${
                     editFinancialType === "BANK_CARD" ? "bg-emerald-50 border-emerald-400 text-emerald-950 font-bold" : "border-slate-200"
@@ -659,7 +277,8 @@ export default function SubcommitteeDoctorsPage() {
                       onChange={() => setEditFinancialType("BANK_CARD")}
                       className="text-emerald-700"
                     />
-                    <span>💳 كارت بنكي خاص</span>
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>كارت بنكي خاص</span>
                   </label>
                 </div>
               </div>
@@ -749,213 +368,208 @@ export default function SubcommitteeDoctorsPage() {
 
       {/* بطاقات إحصائيات سريعة للجنة */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="card p-4 border-slate-200 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#1F4E79] flex items-center justify-center text-xl font-bold border border-blue-200">
-            👨‍⚕️
-          </div>
-          <div>
-            <p className="text-2xl font-black text-slate-900">{doctors.length}</p>
-            <p className="text-xs font-bold text-slate-500">إجمالي الأطباء المقيدين</p>
-          </div>
-        </div>
-
-        <div className="card p-4 border-slate-200 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-800 flex items-center justify-center text-xl font-bold border border-purple-200">
-            💳
-          </div>
-          <div>
-            <p className="text-2xl font-black text-purple-900">
-              {doctors.filter((d) => d.financialType === "PAYROLL_CARD").length}
-            </p>
-            <p className="text-xs font-bold text-slate-500">فيزا مرتبات حكومية</p>
-          </div>
-        </div>
-
-        <div className="card p-4 border-slate-200 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-800 flex items-center justify-center text-xl font-bold border border-blue-200">
-            🏦
-          </div>
-          <div>
-            <p className="text-2xl font-black text-blue-900">
-              {doctors.filter((d) => d.financialType === "BANK_ACCOUNT").length}
-            </p>
-            <p className="text-xs font-bold text-slate-500">حسابات بنكية شخصية</p>
-          </div>
-        </div>
-
-        <div className="card p-4 border-slate-200 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-xl font-bold border border-emerald-200">
-            🟢
-          </div>
-          <div>
-            <p className="text-2xl font-black text-slate-900">{doctors.filter((d) => d.active).length}</p>
-            <p className="text-xs font-bold text-slate-500">أطباء متاحون للفحص</p>
-          </div>
-        </div>
+        <StatCard
+          title="إجمالي الأطباء المقيدين"
+          value={doctors.length}
+          icon={<UserCheck className="w-5 h-5" />}
+          color="teal"
+        />
+        <StatCard
+          title="فيزا مرتبات حكومية"
+          value={doctors.filter((d) => d.financialType === "PAYROLL_CARD").length}
+          icon={<CreditCard className="w-5 h-5" />}
+          color="purple"
+        />
+        <StatCard
+          title="حسابات بنكية شخصية"
+          value={doctors.filter((d) => d.financialType === "BANK_ACCOUNT").length}
+          icon={<Building className="w-5 h-5" />}
+          color="teal"
+        />
+        <StatCard
+          title="أطباء متاحون للفحص"
+          value={doctors.filter((d) => d.active).length}
+          icon={<CheckCircle2 className="w-5 h-5" />}
+          color="emerald"
+        />
       </div>
 
       {/* جدول أطباء واستشاريي اللجنة الفرعية */}
-      <div className="card p-0 overflow-hidden border-slate-200">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+      <Card className="p-0 overflow-hidden">
+        <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-black text-slate-800">قائمة الأطباء والاستشاريين والحسابات البنكية</h2>
-            <p className="text-[11px] text-slate-500 mt-0.5">تُفحص جهة عمل الطبيب لمنع تعارض المصالح، وتُحال بياناته البنكية للشؤون المالية</p>
+            <h2 className="text-sm font-bold font-heading text-slate-800">قائمة الأطباء والاستشاريين والحسابات البنكية</h2>
+            <p className="text-xs text-slate-500 mt-0.5 font-body">تُفحص جهة عمل الطبيب لمنع تعارض المصالح، وتُحال بياناته البنكية للشؤون المالية</p>
           </div>
-          <span className="text-xs font-bold text-slate-500">{doctors.length} طبيب مقيد</span>
+          <span className="text-xs text-slate-500 font-body">{doctors.length} طبيب مقيد</span>
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-xs text-slate-500">جارٍ تحميل سجل الأطباء...</div>
+          <div className="p-8 text-center text-xs text-slate-500 font-body">جارٍ تحميل سجل الأطباء...</div>
         ) : doctors.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-500 space-y-2">
+          <div className="p-8 text-center text-xs text-slate-500 space-y-3 font-body">
             <p>لا يوجد أطباء مسجلون في حصر اللجنة الفرعية حتى الآن.</p>
-            <button
-              type="button"
-              onClick={() => setShowAddForm(true)}
-              className="btn-primary text-xs px-4 py-2"
+            <Link
+              href="/dashboard/subcommittee/doctors/new"
+              className="inline-flex items-center gap-1 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold font-heading transition-colors"
             >
-              ➕ قيد أول طبيب استشاري
-            </button>
+              <Plus className="w-3.5 h-3.5" />
+              <span>قيد أول طبيب استشاري</span>
+            </Link>
           </div>
         ) : (
-          <div className="table-wrapper border-0 rounded-none">
-            <table className="table-custom">
-              <thead>
-                <tr>
-                  <th>اسم الطبيب / اللقب</th>
-                  <th>التخصص الطبي</th>
-                  <th>جهة العمل / المستشفى</th>
-                  <th>البيانات المالية وصرف المستحقات</th>
-                  <th>الحالة في اللجنة</th>
-                  <th>الهاتف</th>
-                  <th className="text-center">الإجراءات والتحكم</th>
-                </tr>
-              </thead>
-              <tbody>
-                {doctors.map((doc) => (
-                  <tr key={doc.id} className={!doc.active ? "bg-slate-50/90 opacity-75" : undefined}>
-                    <td className="font-bold text-slate-900 whitespace-nowrap">
-                      <span className="text-slate-500 text-xs ml-1">{doc.title || "د."}</span>
-                      <span>{doc.name}</span>
-                      {doc.nationalId && (
-                        <span className="block text-[10px] text-slate-400 font-mono">
-                          الرقم القومي: {doc.nationalId}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>اسم الطبيب / اللقب</TableHead>
+                <TableHead>التخصص الطبي</TableHead>
+                <TableHead>جهة العمل / المستشفى</TableHead>
+                <TableHead>البيانات المالية وصرف المستحقات</TableHead>
+                <TableHead>الحالة في اللجنة</TableHead>
+                <TableHead>الهاتف</TableHead>
+                <TableHead className="text-center">الإجراءات والتحكم</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {doctors.map((doc) => (
+                <TableRow key={doc.id} className={!doc.active ? "bg-slate-50/90 opacity-75" : undefined}>
+                  <TableCell className="font-bold text-slate-900 whitespace-nowrap font-heading">
+                    <span className="text-slate-500 text-xs ml-1 font-body">{doc.title || "د."}</span>
+                    <span>{doc.name}</span>
+                    {doc.nationalId && (
+                      <span className="block text-[11px] text-slate-400 font-mono font-normal">
+                        الرقم القومي: {doc.nationalId}
+                      </span>
+                    )}
+                  </TableCell>
+
+                  <TableCell>
+                    {doc.specialty ? (
+                      <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 font-medium border border-teal-200 font-body">
+                        <Stethoscope className="w-3 h-3 text-teal-600" />
+                        <span>{doc.specialty.name}</span>
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-xs font-body">—</span>
+                    )}
+                  </TableCell>
+
+                  <TableCell className="font-medium text-slate-800 text-xs font-body">
+                    <div className="flex items-center gap-1">
+                      <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      <span>{doc.employer}</span>
+                    </div>
+                  </TableCell>
+
+                  {/* البيانات المالية والمصرفية */}
+                  <TableCell className="text-xs font-body">
+                    {doc.financialType === "PAYROLL_CARD" && (doc.bankName || doc.cardNumber) ? (
+                      <div className="space-y-0.5">
+                        <span className="inline-flex items-center gap-1 font-semibold text-purple-900 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md text-[11px]">
+                          <CreditCard className="w-3 h-3 text-purple-700" />
+                          <span>فيزا مرتبات حكومية ({doc.bankName || "ميزة"})</span>
                         </span>
-                      )}
-                    </td>
-
-                    <td>
-                      {doc.specialty ? (
-                        <span className="inline-block text-[11px] px-2 py-0.5 rounded bg-blue-50 text-[#1F4E79] font-bold border border-blue-200">
-                          🩺 {doc.specialty.name}
+                        <span className="block text-xs font-mono text-purple-950 font-bold" dir="ltr">
+                          {doc.cardNumber || "—"}
                         </span>
-                      ) : (
-                        <span className="text-slate-400 text-xs">—</span>
-                      )}
-                    </td>
-
-                    <td className="font-bold text-slate-800 text-xs">
-                      🏥 {doc.employer}
-                    </td>
-
-                    {/* البيانات المالية والمصرفية */}
-                    <td className="text-xs">
-                      {doc.financialType === "PAYROLL_CARD" && (doc.bankName || doc.cardNumber) ? (
-                        <div className="space-y-0.5">
-                          <span className="inline-flex items-center gap-1 font-black text-purple-900 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded text-[11px]">
-                            <span>💳</span>
-                            <span>فيزا مرتبات حكومية ({doc.bankName || "ميزة"})</span>
-                          </span>
-                          <span className="block text-[11px] font-mono text-purple-950 font-bold" dir="ltr">
-                            {doc.cardNumber || "—"}
-                          </span>
-                        </div>
-                      ) : doc.financialType === "BANK_ACCOUNT" && (doc.bankName || doc.accountNumber) ? (
-                        <div className="space-y-0.5">
-                          <span className="inline-flex items-center gap-1 font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded text-[11px]">
-                            <span>🏦</span>
-                            <span>حساب بنكي شخصي ({doc.bankName})</span>
-                          </span>
-                          <span className="block text-[11px] font-mono text-blue-900 font-bold" dir="ltr">
-                            {doc.accountNumber || "—"}
-                          </span>
-                        </div>
-                      ) : doc.financialType === "BANK_CARD" && (doc.bankName || doc.cardNumber) ? (
-                        <div className="space-y-0.5">
-                          <span className="inline-flex items-center gap-1 font-bold text-emerald-900 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-[11px]">
-                            <span>💳</span>
-                            <span>كارت بنكي خاص ({doc.bankName})</span>
-                          </span>
-                          <span className="block text-[11px] font-mono text-slate-700 font-bold" dir="ltr">
-                            {doc.cardNumber || "—"}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-medium">
-                          ⚠️ بانتظار استيفاء البيانات
-                        </span>
-                      )}
-                    </td>
-
-                    <td>
-                      {doc.active ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                          <span>نشط ومتاح للفحص</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 text-xs font-bold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-                          <span>موقوف مؤقتاً</span>
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="text-xs text-slate-600 font-mono" dir="ltr">
-                      {doc.phone || "—"}
-                    </td>
-
-                    <td className="text-center whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => openFinanceModal(doc)}
-                          className="text-xs px-2 py-1 rounded bg-purple-50 text-purple-900 hover:bg-purple-100 border border-purple-200 font-bold transition-colors"
-                          title="تعديل أو استكمال فيزا المرتبات / الحساب البنكي"
-                        >
-                          💳 البيانات المالية
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(doc)}
-                          className={`text-xs px-2.5 py-1 rounded font-bold transition-colors ${
-                            doc.active
-                              ? "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
-                              : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
-                          }`}
-                          title={doc.active ? "إيقاف الطبيب مؤقتاً عن استلام قضايا جديدة" : "إعادة تنشيط الطبيب وإتاحته للفحص"}
-                        >
-                          {doc.active ? "⏸️ تجميد" : "▶️ تنشيط"}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteDoctor(doc)}
-                          className="text-xs px-2 py-1 rounded text-rose-700 hover:bg-rose-50 border border-rose-200 font-bold transition-colors"
-                          title="حذف من السجل"
-                        >
-                          🗑️
-                        </button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    ) : doc.financialType === "BANK_ACCOUNT" && (doc.bankName || doc.accountNumber) ? (
+                      <div className="space-y-0.5">
+                        <span className="inline-flex items-center gap-1 font-semibold text-teal-900 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md text-[11px]">
+                          <Building className="w-3 h-3 text-teal-700" />
+                          <span>حساب بنكي شخصي ({doc.bankName})</span>
+                        </span>
+                        <span className="block text-xs font-mono text-teal-900 font-bold" dir="ltr">
+                          {doc.accountNumber || "—"}
+                        </span>
+                      </div>
+                    ) : doc.financialType === "BANK_CARD" && (doc.bankName || doc.cardNumber) ? (
+                      <div className="space-y-0.5">
+                        <span className="inline-flex items-center gap-1 font-semibold text-emerald-900 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md text-[11px]">
+                          <CreditCard className="w-3 h-3 text-emerald-700" />
+                          <span>كارت بنكي خاص ({doc.bankName})</span>
+                        </span>
+                        <span className="block text-xs font-mono text-slate-700 font-bold" dir="ltr">
+                          {doc.cardNumber || "—"}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
+                        <AlertTriangle className="w-3 h-3 text-amber-600" />
+                        <span>بانتظار استيفاء البيانات</span>
+                      </span>
+                    )}
+                  </TableCell>
+
+                  <TableCell>
+                    {doc.active ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-medium font-body">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                        <span>نشط ومتاح للفحص</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium font-body">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                        <span>موقوف مؤقتاً</span>
+                      </span>
+                    )}
+                  </TableCell>
+
+                  <TableCell className="text-xs text-slate-600 font-mono" dir="ltr">
+                    {doc.phone || "—"}
+                  </TableCell>
+
+                  <TableCell className="text-center whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => openFinanceModal(doc)}
+                        className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 hover:bg-purple-100 border border-purple-200 font-semibold font-body transition-colors"
+                        title="تعديل أو استكمال فيزا المرتبات / الحساب البنكي"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        <span>البيانات المالية</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStatus(doc)}
+                        className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-semibold font-body transition-colors ${
+                          doc.active
+                            ? "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
+                            : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
+                        }`}
+                        title={doc.active ? "إيقاف الطبيب مؤقتاً عن استلام قضايا جديدة" : "إعادة تنشيط الطبيب وإتاحته للفحص"}
+                      >
+                        {doc.active ? (
+                          <>
+                            <Pause className="w-3.5 h-3.5" />
+                            <span>تجميد</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3.5 h-3.5" />
+                            <span>تنشيط</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDoctor(doc)}
+                        className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors"
+                        title="حذف من السجل"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

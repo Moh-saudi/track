@@ -11,8 +11,10 @@ const createUserSchema = z.object({
   email:          z.string().email("بريد إلكتروني غير صحيح"),
   fullName:       z.string().min(2, "الاسم مطلوب"),
   password:       z.string().min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل"),
-  role:           z.enum(["REGISTRATION_CLERK", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "FINANCE", "ADMIN"]),
-  subCommitteeId: z.string().optional(),
+  role:           z.enum(["REGISTRATION_CLERK", "FOLLOW_UP_OFFICER", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "FINANCE", "ADMIN", "RISK_OFFICER"]),
+  employer:       z.string().optional().nullable(),
+  subCommitteeId: z.string().optional().nullable(),
+  specialtyId:    z.string().optional().nullable(),
 });
 
 // GET — قائمة المستخدمين
@@ -27,8 +29,9 @@ export async function GET() {
     // لا نُعيد passwordHash أبداً
     select: {
       id: true, email: true, fullName: true, role: true,
-      active: true, createdAt: true, subCommitteeId: true,
+      employer: true, active: true, createdAt: true, subCommitteeId: true,
       subCommittee: { select: { name: true, code: true } },
+      specialty: { select: { name: true } },
     },
   });
 
@@ -46,21 +49,23 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const data = parsed.data;
 
-  const existing = await prisma.user.findUnique({ where: { email: data.email } });
+  const existing = await prisma.user.findUnique({ where: { email: data.email.toLowerCase().trim() } });
   if (existing) return NextResponse.json({ error: "البريد الإلكتروني مستخدم بالفعل" }, { status: 409 });
 
   const passwordHash = await bcrypt.hash(data.password, 12);
 
   const user = await prisma.user.create({
     data: {
-      email:          data.email,
-      fullName:       data.fullName,
+      email:          data.email.toLowerCase().trim(),
+      fullName:       data.fullName.trim(),
       passwordHash,
       role:           data.role as any,
-      subCommitteeId: data.role === "SUBCOMMITTEE_MEMBER" ? data.subCommitteeId : null,
+      employer:       data.employer?.trim() || null,
+      subCommitteeId: data.role === "SUBCOMMITTEE_MEMBER" ? (data.subCommitteeId || null) : null,
+      specialtyId:    data.specialtyId || null,
       active:         true,
     },
-    select: { id: true, email: true, fullName: true, role: true, active: true },
+    select: { id: true, email: true, fullName: true, role: true, employer: true, active: true },
   });
 
   await writeAuditLog({

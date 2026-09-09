@@ -28,6 +28,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const data = parsed.data;
 
+  const caseRecord = await prisma.case.findUnique({
+    where: { id: params.id },
+    select: { id: true, status: true, subCommitteeId: true },
+  });
+
+  if (!caseRecord) {
+    return NextResponse.json({ error: "السجل غير موجود" }, { status: 404 });
+  }
+
+  // لا يمكن اعتماد القرار النهائي إلا للسجلات التي صدر تقريرها الفني ورُفعت للجنة العليا
+  if (caseRecord.status !== "PENDING_SUPREME_REVIEW") {
+    return NextResponse.json(
+      {
+        error: "لا يمكن إصدار قرار اللجنة العليا إلا بعد صدور التقرير الفني من اللجنة الفرعية ورفع السجل رسمياً (حالة بانتظار الاعتماد).",
+      },
+      { status: 400 }
+    );
+  }
+
   const decision = await prisma.supremeDecision.create({
     data: {
       caseId: params.id,
@@ -59,27 +78,97 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     afterData: decision,
   });
 
-  // ─── إنشاء سجل مالي تلقائياً عند الاعتماد ─────────────────────────────────
-  // عند اعتماد القرار (APPROVE أو DIFFERENT) — ينشئ سجل Payment تلقائياً
-  // للجنة المالية لمتابعة صرف التعويض
+  // ─── إنشاء سجلات البدلات المالية تلقائياً عند الاعتماد ──────────────────
+  // بدل حضور جلسة لكل عضو من أعضاء اللجنة الفرعية: 5000 ج.م
+  // بدل حضور جلسة لكل عضو من أعضاء اللجنة العليا: 8000 ج.م
   if (nextStatus === "APPROVED") {
-    const existingPayment = await prisma.payment.findFirst({ where: { caseId: params.id } });
-    if (!existingPayment) {
-      const payment = await prisma.payment.create({
+    // 1. استرجاع بيانات القضية مع فريق الفحص واللجنة الفرعية
+    const caseDetails = await prisma.case.findUnique({
+      where: { id: params.id },
+      include: {
+        reviewers: {
+          where: { status: { not: "RECUSED" } },
+          include: { doctor: true, user: true },
+        },
+        subCommittee: {
+          include: { members: true },
+        },
+      },
+    });
+
+    // 2. إنشاء بدلات أعضاء اللجنة الفرعية (5000 جنيه لكل عضو)
+    if (caseDetails?.reviewers && caseDetails.reviewers.length > 0) {
+      for (const rev of caseDetails.reviewers) {
+        const existing = await prisma.payment.findFirst({
+          where: {
+            caseId: params.id,
+            ...(rev.doctorId ? { doctorId: rev.doctorId } : {}),
+            ...(rev.userId ? { memberId: rev.userId } : {}),
+          },
+        });
+        if (!existing) {
+          await prisma.payment.create({
+            data: {
+              caseId: params.id,
+              doctorId: rev.doctorId || null,
+              memberId: rev.userId || null,
+              recipientRole: "عضو لجنة فرعية",
+              amount: 5000,
+              entitled: true,
+              status: "NOT_PAID",
+            },
+          });
+        }
+      }
+    } else if (caseDetails?.subCommittee?.members && caseDetails.subCommittee.members.length > 0) {
+      for (const member of caseDetails.subCommittee.members) {
+        const existing = await prisma.payment.findFirst({
+          where: { caseId: params.id, memberId: member.id },
+        });
+        if (!existing) {
+          await prisma.payment.create({
+            data: {
+              caseId: params.id,
+              memberId: member.id,
+              recipientRole: "مقرر اللجنة الفرعية",
+              amount: 5000,
+              entitled: true,
+              status: "NOT_PAID",
+            },
+          });
+        }
+      }
+    }
+
+    // 3. إنشاء بدل عضو اللجنة العليا (8000 جنيه)
+    const supremeUserId = (session.user as any).id;
+    const existingSupremePayment = await prisma.payment.findFirst({
+      where: {
+        caseId: params.id,
+        memberId: supremeUserId,
+        recipientRole: "عضو اللجنة العليا",
+      },
+    });
+    if (!existingSupremePayment) {
+      await prisma.payment.create({
         data: {
           caseId: params.id,
+          memberId: supremeUserId,
+          recipientRole: "عضو اللجنة العليا",
+          amount: 8000,
+          entitled: true,
           status: "NOT_PAID",
-          entitled: false, // تُحدَّد لاحقاً بواسطة إدارة المالية
         },
       });
-      await writeAuditLog({
-        entityType: "Payment",
-        entityId: payment.id,
-        action: "CREATE",
-        userId: (session.user as any).id,
-        afterData: { caseId: params.id, autoCreated: true },
-      });
     }
+
+    await writeAuditLog({
+      entityType: "Payment",
+      entityId: params.id,
+      action: "CREATE",
+      userId: (session.user as any).id,
+      afterData: { caseId: params.id, message: "تم توليد مستحقات بدلات الجلسات تلقائياً (5000 للفرعية / 8000 للعليا)" },
+    });
   }
 
   return NextResponse.json({ decision, case: updated }, { status: 201 });
