@@ -16,9 +16,45 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-          include: { subCommittee: true },
+        const inputEmail = credentials.email.trim().toLowerCase();
+        // دعم الدخول بكلا النطاقين سواء كان @example.local أو @medical-committee.gov.eg
+        const emailsToTry = [inputEmail];
+        if (inputEmail.endsWith("@medical-committee.gov.eg")) {
+          const prefix = inputEmail.split("@")[0];
+          if (prefix === "router") emailsToTry.push("followup@example.local");
+          else if (prefix === "member") emailsToTry.push("dr.ahmed@example.local");
+          else emailsToTry.push(`${prefix}@example.local`);
+        } else if (inputEmail.endsWith("@example.local")) {
+          const prefix = inputEmail.split("@")[0];
+          if (prefix === "followup") emailsToTry.push("router@medical-committee.gov.eg");
+          else if (prefix === "dr.ahmed") emailsToTry.push("member@medical-committee.gov.eg");
+          else emailsToTry.push(`${prefix}@medical-committee.gov.eg`);
+        }
+
+        const user = await prisma.user.findFirst({
+          where: {
+            email: { in: emailsToTry, mode: "insensitive" },
+          },
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            passwordHash: true,
+            role: true,
+            employer: true,
+            active: true,
+            subCommitteeId: true,
+            specialtyId: true,
+            subCommittee: {
+              select: {
+                id: true,
+                name: true,
+                active: true,
+                deactivationMode: true,
+                deactivationReason: true,
+              },
+            },
+          },
         });
         if (!user || !user.active) return null;
 
