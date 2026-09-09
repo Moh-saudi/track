@@ -4,19 +4,12 @@ import { useState, useTransition } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
-  Scale,
-  FileEdit,
-  UserCheck,
-  Settings,
   Headphones,
   Lightbulb,
   Eye,
   EyeOff,
   X,
-  Lock,
-  Mail,
   ShieldCheck,
-  Coins,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -57,12 +50,6 @@ export default function LoginPage() {
       router.push("/dashboard");
       router.refresh();
     });
-  }
-
-  function fillRole(roleEmail: string) {
-    setEmail(roleEmail);
-    setPassword("ChangeMe123!");
-    setError(null);
   }
 
   return (
@@ -206,54 +193,20 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* أزرار التجربة السريعة للأدوار */}
-            <div className="pt-3 border-t border-slate-100 space-y-2">
-              <p className="text-xs font-medium text-slate-500 text-center font-body">
-                دخول سريع لاختبار الأدوار الرسمية (كلمة المرور: ChangeMe123!):
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => fillRole("clerk@medical-committee.gov.eg")}
-                  className="p-2 rounded-lg bg-sky-50 text-sky-800 border border-sky-200 hover:bg-sky-100 text-center font-medium font-body transition-colors"
-                >
-                  موظف التسجيل
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fillRole("router@medical-committee.gov.eg")}
-                  className="p-2 rounded-lg bg-violet-50 text-violet-800 border border-violet-200 hover:bg-violet-100 text-center font-medium font-body transition-colors"
-                >
-                  موظف التوجيه
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fillRole("member@medical-committee.gov.eg")}
-                  className="p-2 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 text-center font-medium font-body transition-colors"
-                >
-                  اللجنة الفرعية
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fillRole("supreme@medical-committee.gov.eg")}
-                  className="p-2 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100 text-center font-medium font-body transition-colors"
-                >
-                  اللجنة العليا
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fillRole("finance@medical-committee.gov.eg")}
-                  className="p-2 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 text-center font-medium font-body transition-colors"
-                >
-                  الإدارة المالية
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fillRole("admin@medical-committee.gov.eg")}
-                  className="p-2 rounded-lg bg-slate-100 text-slate-800 border border-slate-300 hover:bg-slate-200 text-center font-medium font-body transition-colors"
-                >
-                  مدير النظام
-                </button>
+            {/* إشعار الأمان والسرية الحكومية */}
+            <div className="pt-4 border-t border-slate-100">
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-700 border border-teal-200 flex items-center justify-center shrink-0 mt-0.5">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5 text-xs">
+                  <p className="font-bold text-slate-800 font-heading">
+                    منظومة حكومية رسمية مشفرة
+                  </p>
+                  <p className="text-[11px] text-slate-500 leading-relaxed font-body">
+                    الدخول مقصور على السادة الأعضاء والموظفين المصرح لهم رسمياً بموجب القرار الوزاري. كافة محاولات الدخول وأنشطة المستخدمين مسجلة ومراقبة أمنياً.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
