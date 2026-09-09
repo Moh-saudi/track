@@ -153,20 +153,53 @@ async function main() {
   }
 
   // 3. تسجيل النيابات الرسمية
-  console.log("\n⚖️ تسجيل النيابات الرسمية المعتمدة:");
+  console.log("\n⚖️ تسجيل النيابات الرسمية المعتمدة مع ربط المحافظات:");
+  function inferGovernorate(name: string): string | null {
+    if (name.includes("أسوان")) return "أسوان";
+    if (name.includes("أكتوبر") || name.includes("الجيزة")) return "الجيزة";
+    if (name.includes("الأقصر") || name.includes("إسنا")) return "الأقصر";
+    if (name.includes("الإسماعيلية")) return "الإسماعيلية";
+    if (name.includes("البحر الأحمر")) return "البحر الأحمر";
+    if (name.includes("الإسكندرية") || name.includes("الدخيلة")) return "الإسكندرية";
+    if (name.includes("دمياط") || name.includes("الزرقا")) return "دمياط";
+    if (name.includes("الشرقية") || name.includes("الزقازيق")) return "الشرقية";
+    if (name.includes("السويس")) return "السويس";
+    if (name.includes("القاهرة") || name.includes("السيدة زينب") || name.includes("حلوان") || name.includes("روض الفرج") || name.includes("الوايلي") || name.includes("المحكمة التأديبية للصحة")) return "القاهرة";
+    if (name.includes("الفيوم")) return "الفيوم";
+    if (name.includes("بني سويف")) return "بني سويف";
+    if (name.includes("بورسعيد")) return "بورسعيد";
+    if (name.includes("أسيوط")) return "أسيوط";
+    if (name.includes("المنصورة") || name.includes("الدقهلية")) return "الدقهلية";
+    if (name.includes("المنيا")) return "المنيا";
+    if (name.includes("بنها") || name.includes("القليوبية")) return "القليوبية";
+    if (name.includes("دمنهور") || name.includes("البحيرة")) return "البحيرة";
+    if (name.includes("سوهاج")) return "سوهاج";
+    if (name.includes("شبين الكوم") || name.includes("تلا") || name.includes("المنوفية")) return "المنوفية";
+    if (name.includes("طنطا") || name.includes("الغربية")) return "الغربية";
+    if (name.includes("قنا")) return "قنا";
+    if (name.includes("كفر الشيخ")) return "كفر الشيخ";
+    if (name.includes("مطروح")) return "مطروح";
+    if (name.includes("شمال سيناء")) return "شمال سيناء";
+    if (name.includes("جنوب سيناء")) return "جنوب سيناء";
+    if (name.includes("الوادي الجديد")) return "الوادي الجديد";
+    return null;
+  }
+
   let procIdx = 1;
   for (const procName of OFFICIAL_PROSECUTIONS) {
     const code = `PROC-${String(procIdx).padStart(2, "0")}`;
+    const gov = inferGovernorate(procName);
     await prisma.prosecution.upsert({
       where: { name: procName },
-      update: {},
+      update: { governorate: gov },
       create: {
         name: procName,
         code,
+        governorate: gov,
         active: true,
       },
     });
-    console.log(`  ✅ [${code}] ${procName}`);
+    console.log(`  ✅ [${code}] ${procName} ${gov ? `(${gov})` : ""}`);
     procIdx++;
   }
 

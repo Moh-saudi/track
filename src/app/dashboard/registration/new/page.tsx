@@ -17,11 +17,12 @@ import {
   X,
   ArrowRight,
 } from "lucide-react";
-
+import { EGYPT_GOVERNORATES } from "@/lib/constants/governorates";
 
 interface Prosecution {
   id: string;
   name: string;
+  governorate?: string | null;
 }
 
 export default function NewCasePage() {
@@ -69,6 +70,11 @@ export default function NewCasePage() {
 
     if (!caseNumber.trim()) {
       setError("يرجى إدخال رقم السجل بشكل صحيح");
+      return;
+    }
+
+    if (!complainantName.trim()) {
+      setError("اسم الشاكي / المبلّغ حقل إلزامي");
       return;
     }
 
@@ -237,9 +243,10 @@ export default function NewCasePage() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">الشاكي / المبلّغ</label>
+              <label className="form-label form-label-required">الشاكي / المبلّغ</label>
               <input
                 type="text"
+                required
                 value={complainantName}
                 onChange={(e) => setComplainantName(e.target.value)}
                 placeholder="اسم مقدم الشكوى أو المتضرر..."
@@ -249,13 +256,18 @@ export default function NewCasePage() {
 
             <div className="form-group">
               <label className="form-label">المحافظة</label>
-              <input
-                type="text"
+              <select
                 value={governorate}
                 onChange={(e) => setGovernorate(e.target.value)}
-                placeholder="مثال: القاهرة، الجيزة..."
-                className="form-input text-xs"
-              />
+                className="form-select text-xs font-medium"
+              >
+                <option value="">-- حدد المحافظة ({EGYPT_GOVERNORATES.length} محافظة) --</option>
+                {EGYPT_GOVERNORATES.map((gov) => (
+                  <option key={gov} value={gov}>
+                    {gov}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -266,9 +278,16 @@ export default function NewCasePage() {
                 النيابة العامة المختصة
               </label>
               {selectedProsecution && (
-                <Badge variant="teal" size="sm">
-                  المحددة حالياً: {selectedProsecution.name}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="teal" size="sm">
+                    المحددة: {selectedProsecution.name}
+                  </Badge>
+                  {selectedProsecution.governorate && (
+                    <Badge variant="slate" size="sm">
+                      محافظة {selectedProsecution.governorate}
+                    </Badge>
+                  )}
+                </div>
               )}
             </div>
 
@@ -285,6 +304,9 @@ export default function NewCasePage() {
                   );
                   if (match && query.trim().length >= 2) {
                     setSelectedProsecutionId(match.id);
+                    if (match.governorate && !governorate) {
+                      setGovernorate(match.governorate);
+                    }
                   }
                 }}
                 placeholder="اكتب هنا للبحث الفوري في قائمة النيابات (مثال: غرب القاهرة، شبين الكوم...)"
@@ -306,7 +328,14 @@ export default function NewCasePage() {
             <div>
               <select
                 value={selectedProsecutionId}
-                onChange={(e) => setSelectedProsecutionId(e.target.value)}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setSelectedProsecutionId(id);
+                  const p = prosecutions.find((item) => item.id === id);
+                  if (p?.governorate && !governorate) {
+                    setGovernorate(p.governorate);
+                  }
+                }}
                 className="form-select text-xs font-medium text-slate-900 bg-white border-slate-300"
               >
                 <option value="">
@@ -314,7 +343,7 @@ export default function NewCasePage() {
                 </option>
                 {filteredProsecutions.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name}
+                    {p.name} {p.governorate ? `(${p.governorate})` : ""}
                   </option>
                 ))}
               </select>

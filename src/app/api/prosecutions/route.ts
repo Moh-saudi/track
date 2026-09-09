@@ -6,19 +6,32 @@ import { prisma } from "@/lib/prisma";
 
 const prosecutionSchema = z.object({
   name: z.string().min(2, "يجب إدخال اسم النيابة بشكل صحيح"),
-  code: z.string().optional(),
+  code: z.string().optional().nullable(),
+  governorate: z.string().optional().nullable(),
   active: z.boolean().optional(),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
 
+  const { searchParams } = new URL(req.url);
+  const all = searchParams.get("all") === "true";
+  const governorate = searchParams.get("governorate");
+
+  const where: any = {};
+  if (!all) {
+    where.active = true;
+  }
+  if (governorate) {
+    where.governorate = governorate;
+  }
+
   const prosecutions = await prisma.prosecution.findMany({
-    where: { active: true },
-    orderBy: { name: "asc" },
+    where,
+    orderBy: [{ governorate: "asc" }, { name: "asc" }],
   });
   return NextResponse.json(prosecutions);
 }
@@ -52,6 +65,7 @@ export async function POST(req: NextRequest) {
     data: {
       name: parsed.data.name.trim(),
       code: parsed.data.code?.trim() || null,
+      governorate: parsed.data.governorate?.trim() || null,
       active: parsed.data.active ?? true,
     },
   });
