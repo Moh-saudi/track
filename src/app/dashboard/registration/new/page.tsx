@@ -36,6 +36,7 @@ export default function NewCasePage() {
   const [respondentName, setRespondentName] = useState("");
   const [complainantName, setComplainantName] = useState("");
   const [governorate, setGovernorate] = useState("");
+  const [showAllProsecutions, setShowAllProsecutions] = useState(false);
   const [description, setDescription] = useState("");
   const [attachmentsCount, setAttachmentsCount] = useState<number>(0);
 
@@ -58,11 +59,42 @@ export default function NewCasePage() {
     loadData();
   }, []);
 
-  const filteredProsecutions = prosecutions.filter((p) =>
-    p.name.toLowerCase().includes(prosecutionSearch.trim().toLowerCase())
-  );
-
   const selectedProsecution = prosecutions.find((p) => p.id === selectedProsecutionId);
+
+  // الفلترة الذكية للنيابات بحسب المحافظة المختارة وكلمات البحث
+  const filteredProsecutions = prosecutions.filter((p) => {
+    const q = prosecutionSearch.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      p.name.toLowerCase().includes(q) ||
+      (p.governorate && p.governorate.toLowerCase().includes(q));
+
+    // إذا حدد المستخدم محافظة ولم يطلب إظهار كل النيابات
+    const matchesGov =
+      !governorate || showAllProsecutions || p.governorate === governorate;
+
+    return matchesSearch && matchesGov;
+  });
+
+  function handleGovernorateChange(gov: string) {
+    setGovernorate(gov);
+    setShowAllProsecutions(false);
+    // إذا كانت النيابة المختارة حالياً تتبع محافظة أخرى، يتم إلغاء تحديدها
+    if (gov && selectedProsecution && selectedProsecution.governorate && selectedProsecution.governorate !== gov) {
+      setSelectedProsecutionId("");
+    }
+  }
+
+  function handleProsecutionSelect(procId: string) {
+    setSelectedProsecutionId(procId);
+    if (!procId) return;
+    const p = prosecutions.find((item) => item.id === procId);
+    // الميزة الذكية: ضبط المحافظة تلقائياً بحسب النيابة المختارة
+    if (p?.governorate) {
+      setGovernorate(p.governorate);
+      setShowAllProsecutions(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -258,7 +290,7 @@ export default function NewCasePage() {
               <label className="form-label">المحافظة</label>
               <select
                 value={governorate}
-                onChange={(e) => setGovernorate(e.target.value)}
+                onChange={(e) => handleGovernorateChange(e.target.value)}
                 className="form-select text-xs font-medium"
               >
                 <option value="">-- حدد المحافظة ({EGYPT_GOVERNORATES.length} محافظة) --</option>
@@ -291,6 +323,32 @@ export default function NewCasePage() {
               )}
             </div>
 
+            {/* شريط ذكي لتوضيح حالة تصفية النيابات بالمحافظة */}
+            {governorate && (
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-teal-50 border border-teal-200/80 text-xs text-teal-950 font-body">
+                <span className="font-medium">
+                  💡 تصفية النيابات المتاحة تلقائياً لمحافظة <strong>{governorate}</strong> ({filteredProsecutions.length} نيابة متاحة)
+                </span>
+                {!showAllProsecutions ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllProsecutions(true)}
+                    className="text-xs text-teal-800 hover:text-teal-950 underline font-bold"
+                  >
+                    عرض جميع نيابات الجمهورية
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllProsecutions(false)}
+                    className="text-xs text-teal-800 hover:text-teal-950 underline font-bold"
+                  >
+                    إعادة التصفية لـ {governorate} فقط
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* أ. حقل البحث الفوري المباشر */}
             <div className="relative">
               <input
@@ -299,17 +357,18 @@ export default function NewCasePage() {
                 onChange={(e) => {
                   const query = e.target.value;
                   setProsecutionSearch(query);
-                  const match = prosecutions.find((p) =>
-                    p.name.toLowerCase().includes(query.trim().toLowerCase())
-                  );
+                  const match = prosecutions.find((p) => {
+                    const q = query.trim().toLowerCase();
+                    return (
+                      p.name.toLowerCase().includes(q) ||
+                      (p.governorate && p.governorate.toLowerCase().includes(q))
+                    );
+                  });
                   if (match && query.trim().length >= 2) {
-                    setSelectedProsecutionId(match.id);
-                    if (match.governorate && !governorate) {
-                      setGovernorate(match.governorate);
-                    }
+                    handleProsecutionSelect(match.id);
                   }
                 }}
-                placeholder="اكتب هنا للبحث الفوري في قائمة النيابات (مثال: غرب القاهرة، شبين الكوم...)"
+                placeholder="اكتب هنا للبحث الفوري في قائمة النيابات أو المحافظة..."
                 className="form-input text-xs pr-3 pl-8 bg-white border-slate-300 focus:border-teal-600"
               />
               {prosecutionSearch && (
@@ -324,18 +383,11 @@ export default function NewCasePage() {
               )}
             </div>
 
-            {/* ب. قائمة النيابات المرتبطة بالبحث مباشرة */}
+            {/* ب. قائمة النيابات المرتبطة بالبحث والمحافظة */}
             <div>
               <select
                 value={selectedProsecutionId}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  setSelectedProsecutionId(id);
-                  const p = prosecutions.find((item) => item.id === id);
-                  if (p?.governorate && !governorate) {
-                    setGovernorate(p.governorate);
-                  }
-                }}
+                onChange={(e) => handleProsecutionSelect(e.target.value)}
                 className="form-select text-xs font-medium text-slate-900 bg-white border-slate-300"
               >
                 <option value="">
