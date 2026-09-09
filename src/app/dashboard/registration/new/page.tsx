@@ -32,7 +32,6 @@ export default function NewCasePage() {
   const [caseNumber, setCaseNumber] = useState("");
   const [caseYear, setCaseYear] = useState<number>(new Date().getFullYear());
   const [incomingDate, setIncomingDate] = useState<string>(new Date().toISOString().split("T")[0]);
-  const [reportYear, setReportYear] = useState<string>("");
   const [respondentName, setRespondentName] = useState("");
   const [complainantName, setComplainantName] = useState("");
   const [governorate, setGovernorate] = useState("");
@@ -73,11 +72,6 @@ export default function NewCasePage() {
       return;
     }
 
-    if (registrationType === "REPORT" && !reportYear) {
-      setError("سنة المحضر إلزامية عند اختيار نوع السجل (محضر)");
-      return;
-    }
-
     startTransition(async () => {
       try {
         const payload = {
@@ -85,7 +79,6 @@ export default function NewCasePage() {
           caseNumber: caseNumber.trim(),
           caseYear: Number(caseYear),
           incomingDate: incomingDate || undefined,
-          reportYear: reportYear ? Number(reportYear) : null,
           respondentName: respondentName.trim() || undefined,
           complainantName: complainantName.trim() || undefined,
           prosecution: selectedProsecution?.name || undefined,
@@ -176,8 +169,22 @@ export default function NewCasePage() {
             </div>
           </div>
 
-          {/* 2. رقم السجل + سنة السجل + تاريخ الوارد + عدد المرفقات */}
+          {/* 2. تاريخ الوارد + رقم السجل + سنة القيد + عدد المرفقات */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="form-group">
+              <label className="form-label form-label-required">تاريخ الوارد (الاستلام)</label>
+              <input
+                type="date"
+                required
+                value={incomingDate}
+                onChange={(e) => setIncomingDate(e.target.value)}
+                className="form-input text-xs font-mono font-medium"
+              />
+              <span className="text-[10px] text-slate-500 mt-0.5 block font-body">
+                تاريخ ورود كتاب النيابة أو استلام الشكوى
+              </span>
+            </div>
+
             <div className="form-group">
               <label className="form-label form-label-required">رقم السجل</label>
               <input
@@ -204,20 +211,6 @@ export default function NewCasePage() {
             </div>
 
             <div className="form-group">
-              <label className="form-label form-label-required">تاريخ الوارد (الاستلام)</label>
-              <input
-                type="date"
-                required
-                value={incomingDate}
-                onChange={(e) => setIncomingDate(e.target.value)}
-                className="form-input text-xs font-mono font-medium"
-              />
-              <span className="text-[10px] text-slate-500 mt-0.5 block font-body">
-                تاريخ ورود كتاب النيابة أو استلام الشكوى
-              </span>
-            </div>
-
-            <div className="form-group">
               <label className="form-label">عدد المرفقات الورقية/الرقمية</label>
               <input
                 type="number"
@@ -228,21 +221,6 @@ export default function NewCasePage() {
                 dir="ltr"
               />
             </div>
-
-            {registrationType === "REPORT" && (
-              <div className="form-group sm:col-span-3 pt-2 border-t border-slate-200">
-                <label className="form-label form-label-required">سنة المحضر القضائي</label>
-                <input
-                  type="number"
-                  required
-                  value={reportYear}
-                  onChange={(e) => setReportYear(e.target.value)}
-                  placeholder="مثال: 2024"
-                  className="form-input text-xs font-mono font-medium max-w-xs"
-                  dir="ltr"
-                />
-              </div>
-            )}
           </div>
 
           {/* 3. أطراف السجل */}
