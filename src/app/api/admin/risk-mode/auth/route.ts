@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit";
 import { createRiskSessionToken, RISK_SESSION_MAX_AGE } from "@/lib/risk-session";
+import { assertLoginAllowed, clearLoginFailures, recordLoginFailure } from "@/lib/auth-rate-limit";
 
 const schema = z.object({
   password: z.string().min(1, "كلمة المرور مطلوبة"),
@@ -18,6 +19,9 @@ export async function POST(req: NextRequest) {
   if (!session?.user || (user?.role !== "ADMIN" && user?.role !== "RISK_OFFICER")) {
     return NextResponse.json({ error: "غير مصرح — مخصص لمدير المنظومة ومسؤول إدارة المخاطر فقط" }, { status: 403 });
   }
+
+  const throttleKey = `risk-mode:${user.id}`;
+  await assertLoginAllowed(throttleKey);
 
   const parsed = schema.safeParse(await req.json());
   if (!parsed.success) {
@@ -34,8 +38,11 @@ export async function POST(req: NextRequest) {
 
   const isValid = await bcrypt.compare(parsed.data.password, dbUser.passwordHash);
   if (!isValid) {
+    await recordLoginFailure(throttleKey);
     return NextResponse.json({ error: "كلمة المرور غير صحيحة" }, { status: 401 });
   }
+
+  await clearLoginFailures(throttleKey);
 
   await writeAuditLog({
     entityType: "SystemSecurity",
