@@ -105,6 +105,20 @@ async function main() {
     "Payment with two recipient types must be rejected"
   );
 
+  const reviewerConstraint = await prisma.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*)::bigint AS count
+    FROM pg_constraint
+    WHERE conname = 'CaseReviewer_exactly_one_reviewer_check'
+  `;
+  assert.equal(Number(reviewerConstraint[0]?.count || 0), 1, "Reviewer identity check constraint must exist");
+
+  const auditTrigger = await prisma.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*)::bigint AS count
+    FROM pg_trigger
+    WHERE tgname = 'AuditLog_immutable_trigger' AND NOT tgisinternal
+  `;
+  assert.equal(Number(auditTrigger[0]?.count || 0), 1, "Immutable AuditLog trigger must exist");
+
   const throttleId = `security-throttle-${suffix}@gov.test`;
   await clearLoginFailures(throttleId);
   for (let i = 0; i < 5; i++) await recordLoginFailure(throttleId);
