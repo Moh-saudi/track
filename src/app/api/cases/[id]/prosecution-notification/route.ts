@@ -14,7 +14,7 @@ const schema = z.object({
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
@@ -28,7 +28,7 @@ export async function PATCH(
   }
 
   const existingCase = await prisma.case.findUnique({
-    where: { id: params.id },
+    where: { id: (await params).id },
   });
   if (!existingCase) {
     return NextResponse.json({ error: "السجل غير موجود" }, { status: 404 });
@@ -39,7 +39,7 @@ export async function PATCH(
     : null;
 
   const updatedCase = await prisma.case.update({
-    where: { id: params.id },
+    where: { id: (await params).id },
     data: {
       prosecutionNotifiedAt: notifiedAtDate,
       prosecutionLetterNumber: parsed.data.prosecutionLetterNumber?.trim() || null,
@@ -49,7 +49,7 @@ export async function PATCH(
 
   await writeAuditLog({
     entityType: "Case",
-    entityId: params.id,
+    entityId: (await params).id,
     action: "UPDATE",
     userId: (session.user as any).id,
     beforeData: {
