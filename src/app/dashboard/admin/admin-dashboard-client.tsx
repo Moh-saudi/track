@@ -495,7 +495,7 @@ export function AdminDashboardClient({
                             {humanizeActionShort(log.action, log.entityType)}
                           </span>
                           <span className="text-[11px] text-slate-400 font-mono">
-                            #{log.entityId.slice(-6)}
+                            #{typeof log.entityId === "string" && log.entityId.length >= 6 ? log.entityId.slice(-6) : log.entityId || "—"}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-slate-500 font-body">
@@ -511,7 +511,7 @@ export function AdminDashboardClient({
                       </div>
 
                       <div className="shrink-0 text-left">
-                        <span className="inline-block px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[11px] font-medium font-body">
+                        <span className="inline-block px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[11px] font-medium font-body" suppressHydrationWarning>
                           {formatRelativeTimeArabic(log.createdAt)}
                         </span>
                       </div>
