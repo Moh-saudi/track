@@ -12,7 +12,12 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
     "db:deploy": "prisma migrate deploy",
-    "db:up": "docker compose up -d db"
+    "db:up": "docker compose up -d db",
+    "typecheck": "tsc --noEmit",
+    "test:security": "tsx scripts/security-self-test.ts",
+    "test:security-db": "tsx scripts/security-db-test.ts",
+    "verify": "npm run typecheck && npm run test:security && npm run build",
+    "admin:bootstrap": "tsx scripts/create-initial-admin.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
