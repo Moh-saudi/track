@@ -18,13 +18,13 @@ const updateSchema = z.object({
   newPassword:    z.string().optional(),
 });
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user || !can((session.user as any).role, "MANAGE_USERS_AND_ROLES")) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
 
-  if ((session.user as any).id === params.id) {
+  if ((session.user as any).id === (await params).id) {
     return NextResponse.json({ error: "لا يمكن تعديل حسابك الشخصي من هنا" }, { status: 400 });
   }
 
@@ -32,7 +32,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   const before = await prisma.user.findUnique({
-    where: { id: params.id },
+    where: { id: (await params).id },
     select: { id: true, email: true, role: true, active: true, sessionVersion: true },
   });
   if (!before) return NextResponse.json({ error: "المستخدم غير موجود" }, { status: 404 });
@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const updated = await prisma.user.update({
-    where: { id: params.id },
+    where: { id: (await params).id },
     data: updateData,
     select: { id: true, email: true, fullName: true, role: true, active: true, sessionVersion: true },
   });
