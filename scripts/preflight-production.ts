@@ -21,6 +21,16 @@ async function main() {
   `;
   checks.push({ name: "Duplicate caseNumber/caseYear groups", count: Number(duplicateCases[0]?.count || 0), severity: "BLOCKER" });
 
+  const invalidReviewerTargets = await prisma.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*)::bigint AS count
+    FROM "CaseReviewer"
+    WHERE (
+      (CASE WHEN "doctorId" IS NOT NULL THEN 1 ELSE 0 END) +
+      (CASE WHEN "userId" IS NOT NULL THEN 1 ELSE 0 END)
+    ) <> 1
+  `;
+  checks.push({ name: "Reviewer assignments with invalid identity cardinality", count: Number(invalidReviewerTargets[0]?.count || 0), severity: "BLOCKER" });
+
   const duplicateDoctorReviewers = await prisma.$queryRaw<Array<{ count: bigint }>>`
     SELECT COUNT(*)::bigint AS count
     FROM (
