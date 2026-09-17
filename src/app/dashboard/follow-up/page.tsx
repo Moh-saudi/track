@@ -49,7 +49,8 @@ export default async function FollowUpDashboard() {
   const specialtyCounts: Record<string, { name: string; count: number }> = {};
   cases.forEach((c) => {
     c.specialties.forEach((s) => {
-      const specName = s.specialty.name;
+      const specName = s.specialty?.name;
+      if (!specName) return;
       if (!specialtyCounts[specName]) {
         specialtyCounts[specName] = { name: specName, count: 0 };
       }
@@ -140,7 +141,7 @@ export default async function FollowUpDashboard() {
     subCommitteeId: c.subCommitteeId,
     specialties: c.specialties.map((s) => ({
       id: s.id,
-      specialty: { id: s.specialty.id, name: s.specialty.name },
+      specialty: { id: s.specialty?.id || s.id, name: s.specialty?.name || "تخصص غير محدد" },
     })),
     status: c.status,
     meetingReschedules: c.meetingReschedules.map((r) => ({

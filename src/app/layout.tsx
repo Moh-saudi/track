@@ -20,6 +20,14 @@ export const metadata = {
   title: "منظومة تتبع القضايا — اللجنة العليا للمسئولية الطبية",
   description: "نظام إلكتروني لتتبع قضايا المسئولية الطبية — اللجنة العليا للمسئولية الطبية",
   robots: "noindex, nofollow",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

@@ -92,7 +92,7 @@ export default async function SubCommitteeDashboard({
     createdAt: c.createdAt.toISOString(),
     specialties: c.specialties.map((s) => ({
       id: s.id,
-      specialty: { id: s.specialty.id, name: s.specialty.name },
+      specialty: { id: s.specialty?.id || s.id, name: s.specialty?.name || "تخصص غير محدد" },
     })),
     actions: c.actions.map((a) => ({
       id: a.id,

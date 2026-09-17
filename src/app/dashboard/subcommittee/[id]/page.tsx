@@ -322,7 +322,7 @@ export default async function SubCommitteeCaseDetail({ params }: { params: { id:
                   {caseRecord.specialties.map((s) => (
                     <span key={s.id} className="px-2.5 py-1 rounded-full bg-teal-50 text-teal-800 font-medium text-xs border border-teal-200 flex items-center gap-1 font-body">
                       <Stethoscope className="w-3 h-3 text-teal-600" />
-                      <span>{s.specialty.name}</span>
+                      <span>{s.specialty?.name || "تخصص غير محدد"}</span>
                     </span>
                   ))}
                 </div>

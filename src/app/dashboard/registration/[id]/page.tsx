@@ -322,7 +322,7 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
                   <div className="flex flex-wrap gap-1.5">
                     {caseRecord.specialties.map((s) => (
                       <Badge key={s.id} variant="teal" size="sm">
-                        {s.specialty.name}
+                        {s.specialty?.name || "تخصص غير محدد"}
                       </Badge>
                     ))}
                   </div>

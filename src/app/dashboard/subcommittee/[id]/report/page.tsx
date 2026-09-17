@@ -24,7 +24,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 
 export default async function SubCommitteeReportPage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/auth/login");
+  if (!session?.user) redirect("/login");
 
   const caseRecord = await prisma.case.findUnique({
     where: { id: params.id },

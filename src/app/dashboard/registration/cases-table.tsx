@@ -333,7 +333,7 @@ export function CasesTable({ initialCases, subCommittees = [] }: CasesTableProps
                           <div className="flex flex-wrap gap-1">
                             {c.specialties.slice(0, 2).map((s) => (
                               <Badge key={s.id} variant="slate" size="sm">
-                                {s.specialty.name}
+                                {s.specialty?.name || "غير محدد"}
                               </Badge>
                             ))}
                             {c.specialties.length > 2 && (

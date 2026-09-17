@@ -426,7 +426,7 @@ export function FollowUpDashboardClient({
                           {c.specialties.length > 0 ? (
                             c.specialties.map((s) => (
                               <Badge key={s.id} variant="teal" size="sm">
-                                {s.specialty.name}
+                                {s.specialty?.name || "غير محدد"}
                               </Badge>
                             ))
                           ) : (
@@ -534,7 +534,7 @@ export function FollowUpDashboardClient({
                         <div className="flex flex-wrap gap-1 max-w-[150px]">
                           {c.specialties.map((s) => (
                             <Badge key={s.id} variant="slate" size="sm">
-                              {s.specialty.name}
+                              {s.specialty?.name || "غير محدد"}
                             </Badge>
                           ))}
                         </div>

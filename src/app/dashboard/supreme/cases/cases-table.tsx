@@ -238,7 +238,7 @@ export function SupremeCasesTable({ initialCases }: SupremeCasesTableProps) {
                         <div className="flex flex-wrap gap-1 max-w-[160px]">
                           {c.specialties.map((s) => (
                             <Badge key={s.id} variant="slate" size="sm">
-                              {s.specialty.name}
+                              {s.specialty?.name || "غير محدد"}
                             </Badge>
                           ))}
                         </div>

@@ -447,7 +447,7 @@ export default function SubcommitteeDoctorsPage() {
                     {doc.specialty ? (
                       <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 font-medium border border-teal-200 font-body">
                         <Stethoscope className="w-3 h-3 text-teal-600" />
-                        <span>{doc.specialty.name}</span>
+                        <span>{doc.specialty?.name || "—"}</span>
                       </span>
                     ) : (
                       <span className="text-slate-400 text-xs font-body">—</span>

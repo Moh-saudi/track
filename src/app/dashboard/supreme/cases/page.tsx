@@ -53,7 +53,7 @@ export default async function SupremeCasesPage() {
     subCommittee: c.subCommittee,
     specialties: c.specialties.map((s) => ({
       id: s.id,
-      specialty: { id: s.specialty.id, name: s.specialty.name },
+      specialty: { id: s.specialty?.id || s.id, name: s.specialty?.name || "تخصص غير محدد" },
     })),
     supremeDecisions: c.supremeDecisions.map((d) => ({
       id: d.id,

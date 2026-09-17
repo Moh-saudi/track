@@ -139,7 +139,8 @@ export default async function SupremeDashboard({ searchParams }: SupremeDashboar
   const specialtyCounts: Record<string, { name: string; count: number }> = {};
   cases.forEach((c) => {
     c.specialties.forEach((s) => {
-      const specName = s.specialty.name;
+      const specName = s.specialty?.name;
+      if (!specName) return;
       if (!specialtyCounts[specName]) {
         specialtyCounts[specName] = { name: specName, count: 0 };
       }
