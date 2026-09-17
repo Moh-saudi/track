@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
   const entityType = searchParams.get("entityType");
   const action = searchParams.get("action");
   const userId = searchParams.get("userId");
-  const limit = parseInt(searchParams.get("limit") || "100", 10);
+  const requestedLimit = parseInt(searchParams.get("limit") || "100", 10);
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.min(Math.max(requestedLimit, 1), 200)
+    : 100;
 
   const where: any = {};
   if (entityType && entityType !== "ALL") where.entityType = entityType;
