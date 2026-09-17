@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { UserWelcomeCard } from "@/components/ui/UserWelcomeCard";
 import { formatCurrency, formatNumber, formatDate } from "@/lib/formatters";
 import { StatCard } from "@/components/ui/StatCard";
+import { decryptDoctorSensitiveFields } from "@/lib/doctor-sensitive";
 import Link from "next/link";
 import {
   Table,
@@ -38,7 +39,7 @@ export const revalidate = 0;
 export default async function FinanceDashboard() {
   const session = await getServerSession(authOptions);
 
-  const [payments, doctors, subCommittees] = await Promise.all([
+  const [rawPayments, rawDoctors, subCommittees] = await Promise.all([
     prisma.payment.findMany({
       include: {
         case: { select: { caseNumber: true, reportYear: true } },
@@ -68,13 +69,20 @@ export default async function FinanceDashboard() {
     }),
   ]);
 
+  const payments = rawPayments.map((payment) => ({
+    ...payment,
+    amount: payment.amount === null ? null : Number(payment.amount),
+    doctor: payment.doctor ? decryptDoctorSensitiveFields(payment.doctor) : null,
+  }));
+  const doctors = rawDoctors.map((doctor) => decryptDoctorSensitiveFields(doctor));
+
   const notPaid = payments.filter((p) => p.status === "NOT_PAID");
   const settling = payments.filter((p) => p.status === "UNDER_SETTLEMENT");
   const paid = payments.filter((p) => p.status === "PAID");
 
-  const totalPaidAmt = paid.reduce((sum, p) => sum + (p.amount ?? 0), 0);
-  const totalSettlingAmt = settling.reduce((sum, p) => sum + (p.amount ?? 0), 0);
-  const totalNotPaidAmt = notPaid.reduce((sum, p) => sum + (p.amount ?? 0), 0);
+  const totalPaidAmt = paid.reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+  const totalSettlingAmt = settling.reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+  const totalNotPaidAmt = notPaid.reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
   const grandTotalAmt = totalPaidAmt + totalSettlingAmt + totalNotPaidAmt;
 
   const completedBankAccounts = doctors.filter(
