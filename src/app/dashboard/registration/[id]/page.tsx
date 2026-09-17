@@ -64,7 +64,14 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
     notFound();
   }
 
+  const currentRole = (session.user as any)?.role;
   const currentUserId = (session.user as any)?.id;
+
+  // موظف التسجيل لا يرى إلا قضاياه المسجلة بواسطته
+  if (currentRole === "REGISTRATION_CLERK" && caseRecord.createdById !== currentUserId) {
+    redirect("/dashboard/registration");
+  }
+
   const isCreatedByMe = caseRecord.createdById === currentUserId;
   const isModified =
     new Date(caseRecord.updatedAt).getTime() - new Date(caseRecord.createdAt).getTime() > 60000;
@@ -129,6 +136,11 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
                 {typeInfo.label}
               </Badge>
             </div>
+            {caseRecord.prosecutionCaseNumber && (
+              <span className="text-[11px] font-mono text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200 font-bold block mt-1">
+                رقم القضية / المحضر: {caseRecord.prosecutionCaseNumber}
+              </span>
+            )}
           </div>
 
           {/* مسجّل السجل (القائم بالقيد) */}
@@ -284,62 +296,64 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
 
         {/* العمود الأيسر (5 أعمدة): اللجنة الفرعية + المرفقات */}
         <div className="lg:col-span-5 space-y-6">
-          {/* موقف التوجيه والإحالة */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-            <h2 className="text-base font-bold font-heading text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-              <Stethoscope className="w-5 h-5 text-teal-600" />
-              <span>موقف التوجيه واللجنة الفرعية</span>
-            </h2>
+          {/* موقف التوجيه والإحالة (لا يظهر لموظف التسجيل) */}
+          {currentRole !== "REGISTRATION_CLERK" && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+              <h2 className="text-base font-bold font-heading text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+                <Stethoscope className="w-5 h-5 text-teal-600" />
+                <span>موقف التوجيه واللجنة الفرعية</span>
+              </h2>
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <span className="text-slate-500 font-medium block mb-1">اللجنة المحال إليها:</span>
-                {caseRecord.subCommittee ? (
-                  <div className="p-3 bg-teal-50/70 border border-teal-200 rounded-xl">
-                    <span className="font-bold text-teal-900 text-sm font-heading block">
-                      {caseRecord.subCommittee.name}
-                    </span>
-                    <span className="text-[11px] text-teal-700 font-mono">
-                      كود اللجنة: {caseRecord.subCommittee.code}
-                    </span>
+              <div className="space-y-3 text-xs">
+                <div>
+                  <span className="text-slate-500 font-medium block mb-1">اللجنة المحال إليها:</span>
+                  {caseRecord.subCommittee ? (
+                    <div className="p-3 bg-teal-50/70 border border-teal-200 rounded-xl">
+                      <span className="font-bold text-teal-900 text-sm font-heading block">
+                        {caseRecord.subCommittee.name}
+                      </span>
+                      <span className="text-[11px] text-teal-700 font-mono">
+                        كود اللجنة: {caseRecord.subCommittee.code}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900">
+                      <span className="font-bold text-xs font-heading block">
+                        بانتظار التوجيه
+                      </span>
+                      <span className="text-[11px] text-amber-700">
+                        منوط بموظف المتابعة والتوجيه بعد اكتمال القيد.
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* التخصصات */}
+                {caseRecord.specialties.length > 0 && (
+                  <div className="space-y-1.5 pt-2">
+                    <span className="text-slate-500 font-medium block">التخصصات الطبية المعنية:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {caseRecord.specialties.map((s) => (
+                        <Badge key={s.id} variant="teal" size="sm">
+                          {s.specialty?.name || "تخصص غير محدد"}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
-                ) : (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900">
-                    <span className="font-bold text-xs font-heading block">
-                      بانتظار التوجيه
-                    </span>
-                    <span className="text-[11px] text-amber-700">
-                      منوط بموظف المتابعة والتوجيه بعد اكتمال القيد.
+                )}
+
+                {/* موعد الجلسة إن وجد */}
+                {caseRecord.meetingDate && (
+                  <div className="pt-2 border-t border-slate-100 space-y-1">
+                    <span className="text-slate-500 font-medium block">موعد انعقاد الجلسة:</span>
+                    <span className="font-bold text-slate-900 font-mono text-sm block">
+                      {formatDate(caseRecord.meetingDate)}
                     </span>
                   </div>
                 )}
               </div>
-
-              {/* التخصصات */}
-              {caseRecord.specialties.length > 0 && (
-                <div className="space-y-1.5 pt-2">
-                  <span className="text-slate-500 font-medium block">التخصصات الطبية المعنية:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {caseRecord.specialties.map((s) => (
-                      <Badge key={s.id} variant="teal" size="sm">
-                        {s.specialty?.name || "تخصص غير محدد"}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* موعد الجلسة إن وجد */}
-              {caseRecord.meetingDate && (
-                <div className="pt-2 border-t border-slate-100 space-y-1">
-                  <span className="text-slate-500 font-medium block">موعد انعقاد الجلسة:</span>
-                  <span className="font-bold text-slate-900 font-mono text-sm block">
-                    {formatDate(caseRecord.meetingDate)}
-                  </span>
-                </div>
-              )}
             </div>
-          </div>
+          )}
 
           {/* المرفقات والوثائق المسلمة */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">

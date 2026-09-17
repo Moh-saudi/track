@@ -22,6 +22,7 @@ import {
   Globe,
   Layers,
   Edit3,
+  Scale,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -111,7 +112,7 @@ export function RegistrationDashboardClient({
             }`}
           >
             <ClipboardList className="w-4 h-4" />
-            <span>سجل القضايا والشكاوى والمحاضر ({totalSystemCasesCount})</span>
+            <span>سجل القضايا والشكاوى والمحاضر ({myTotalCasesCount})</span>
           </button>
         </div>
 
@@ -137,54 +138,53 @@ export function RegistrationDashboardClient({
       {/* ─── محتوى تبويب: لوحة قيادة ومؤشرات التسجيل المخصصة للموظف ─── */}
       {activeTab === "overview" && (
         <div className="space-y-6">
-          {/* ١. بطاقات المؤشرات الأربعة المخصصة لموظف التسجيل ومساره العملي */}
+          {/* ١. بطاقات المؤشرات المخصصة لموظف التسجيل وبيانات حسابه الشخصية فقط */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* كارت 1: إجمالي السجلات بالمنظومة منذ بدء العمل */}
-            <StatCard
-              title="إجمالي السجلات بالمنظومة"
-              value={formatNumber(totalSystemCasesCount)}
-              icon={<Globe className="w-6 h-6" />}
-              variant="slate"
-              description="إجمالي السجلات المقيدة منذ بدء تشغيل المنظومة"
-            />
-
-            {/* كارت 2: إجمالي السجلات الخاصة بحسابه هو الشخصي */}
+            {/* كارت 1: إجمالي تسجيلاته الشخصية */}
             <StatCard
               title="إجمالي تسجيلاتي الشخصية"
               value={formatNumber(myTotalCasesCount)}
               icon={<UserCheck className="w-6 h-6" />}
               variant="sky"
-              description={`تمثل ${myPercentage}% من إجمالي سجلات المنظومة (${formatNumber(totalSystemCasesCount)})`}
+              description="إجمالي السجلات المقيدة بواسطة حسابك"
             />
 
-            {/* كارت 3: تسجيلات حسابه اليوم */}
+            {/* كارت 2: تسجيلات حسابه اليوم */}
             <StatCard
               title="تسجيلاتي المقيدة اليوم"
               value={formatNumber(myTodayCount)}
               icon={<Clock className="w-6 h-6" />}
               variant={myTodayCount > 0 ? "teal" : "slate"}
-              description={`سجلات قيدتها اليوم (من إجمالي ${formatNumber(todaySystemCount)} بالمنظومة)`}
+              description="سجلات تم قيدها بنجاح اليوم"
             />
 
-            {/* كارت 4: سجلات حسابه بانتظار التوجيه */}
+            {/* كارت 3: الشكاوى المقيدة */}
             <StatCard
-              title="سجلاتي بانتظار التوجيه"
-              value={formatNumber(myPendingRoutingCount)}
-              icon={<Inbox className="w-6 h-6" />}
-              variant={myPendingRoutingCount > 0 ? "amber" : "slate"}
-              isZeroNeutral={true}
-              description={`قضايا: ${myProsecutionCasesCount} • شكاوى: ${myComplaintsCount} • محاضر: ${myReportsCount}`}
+              title="شكاوى مسجلة"
+              value={formatNumber(myComplaintsCount)}
+              icon={<Building2 className="w-6 h-6" />}
+              variant="slate"
+              description="شكاوى واردة مقيدة بحسابك"
+            />
+
+            {/* كارت 4: القضايا والمحاضر */}
+            <StatCard
+              title="قضايا ومحاضر مسجلة"
+              value={formatNumber(myProsecutionCasesCount + myReportsCount)}
+              icon={<Scale className="w-6 h-6" />}
+              variant="violet"
+              description={`قضايا: ${myProsecutionCasesCount} • محاضر: ${myReportsCount}`}
             />
           </div>
 
           {/* ٢. بوابات العمليات السريعة + الرصد اللحظي */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* الجانب الأيمن (7 أعمدة): أحدث السجلات المقيدة مع توضيح المسجّل والتعديل */}
+            {/* الجانب الأيمن (7 أعمدة): أحدث السجلات المقيدة بحساب الموظف */}
             <div className="lg:col-span-7 space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold font-heading text-slate-800 flex items-center gap-2">
                   <ClipboardList className="w-5 h-5 text-sky-600" />
-                  <span>أحدث السجلات المقيدة على المنظومة</span>
+                  <span>أحدث السجلات المقيدة بحسابك</span>
                 </h2>
 
                 <button
@@ -192,7 +192,7 @@ export function RegistrationDashboardClient({
                   onClick={() => setActiveTab("cases")}
                   className="text-xs font-semibold text-sky-700 hover:text-sky-800 flex items-center gap-1 font-heading"
                 >
-                  <span>عرض الكل ({totalSystemCasesCount})</span>
+                  <span>عرض الكل ({myTotalCasesCount})</span>
                   <ChevronLeft className="w-4 h-4" />
                 </button>
               </div>
@@ -200,7 +200,7 @@ export function RegistrationDashboardClient({
               <Card className="divide-y divide-slate-100 overflow-hidden shadow-xs border-slate-200">
                 {recentCases.length === 0 ? (
                   <div className="p-8 text-center text-slate-400 text-xs">
-                    لا توجد سجلات مسجلة مؤخراً
+                    لم تقم بقيد أي سجلات بعد
                   </div>
                 ) : (
                   recentCases.map((c) => (
@@ -216,20 +216,14 @@ export function RegistrationDashboardClient({
                           <Badge variant="slate" size="sm">
                             {c.registrationType === "COMPLAINT" ? "شكوى" : c.registrationType === "CASE" ? "قضية" : "محضر"}
                           </Badge>
+                          {c.prosecutionCaseNumber && (
+                            <span className="text-[11px] font-mono text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 font-bold" title="رقم القضية / المحضر">
+                              {c.prosecutionCaseNumber}
+                            </span>
+                          )}
                           {c.incomingDate && (
                             <span className="text-[11px] font-mono text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200/60 font-medium">
                               وارد: {c.incomingDate.split("T")[0]}
-                            </span>
-                          )}
-
-                          {/* مسجل السجل */}
-                          {c.isCreatedByMe ? (
-                            <span className="text-[10px] font-bold text-sky-800 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">
-                              قيدتك أنت
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                              بواسطة: {c.createdByName}
                             </span>
                           )}
 
@@ -258,13 +252,9 @@ export function RegistrationDashboardClient({
                       </div>
 
                       <div className="shrink-0 text-left">
-                        <Link
-                          href={`/dashboard/registration/${c.id}`}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-900 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200 font-heading transition-colors shadow-2xs"
-                        >
-                          <span>عرض الملف</span>
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                        </Link>
+                        <span className="inline-flex items-center gap-1 text-xs font-mono text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
+                          {c.attachmentsCount} مرفق
+                        </span>
                       </div>
                     </div>
                   ))

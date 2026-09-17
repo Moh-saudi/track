@@ -231,12 +231,13 @@ model Case {
   registrationType RegistrationType
 
   // حقل رقم السجل وحقل سنة السجل منفصلان منعاً للتلاعب
-  caseNumber       String                           // رقم السجل
-  caseYear         Int                              // سنة السجل (حقل مستقل)
-  incomingDate     DateTime?                        // تاريخ الوارد (تاريخ استلام الشكوى / ورود كتاب النيابة)
-  attachmentsCount Int              @default(0)     // عدد المرفقات المسلمة
-  hospitalName     String?                          // اسم المنشأة الطبية المشكو في حقها (المستشفى / المركز الطبي)
-  respondentName   String?                          // اسم المشكو في حقه (الطبيب / الكادر الطبي)
+  caseNumber            String                           // رقم السجل
+  caseYear              Int                              // سنة السجل (حقل مستقل)
+  prosecutionCaseNumber String?                          // رقم القضية / رقم محضر النيابة
+  incomingDate          DateTime?                        // تاريخ الوارد (تاريخ استلام الشكوى / ورود كتاب النيابة)
+  attachmentsCount      Int              @default(0)     // عدد المرفقات المسلمة
+  hospitalName          String?                          // اسم المنشأة الطبية المشكو في حقها (المستشفى / المركز الطبي)
+  respondentName        String?                          // اسم المشكو في حقه (الطبيب / الكادر الطبي)
 
   reportYear       Int?                             // سنة إضافية إن وجدت
   prosecution      String?                          // النيابة

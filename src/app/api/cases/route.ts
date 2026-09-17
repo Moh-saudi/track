@@ -10,6 +10,7 @@ const createCaseSchema = z.object({
   registrationType: z.enum(["COMPLAINT", "CASE", "REPORT"]),
   caseNumber: z.string().min(1, "رقم السجل مطلوب"),
   caseYear: z.number().int().gte(1990).lte(2100, "سنة السجل غير صالحة"),
+  prosecutionCaseNumber: z.string().optional().nullable(),
   incomingDate: z.string().optional().nullable(),
   attachmentsCount: z.number().int().min(0).default(0),
   hospitalName: z.string().optional().nullable(),
@@ -27,10 +28,14 @@ export async function GET(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   const role = (session.user as any).role;
+  const currentUserId = (session.user as any).id;
   const subCommitteeId = (session.user as any).subCommitteeId;
 
   let where: any = {};
-  if (role === "SUBCOMMITTEE_MEMBER") {
+  if (role === "REGISTRATION_CLERK") {
+    // موظف التسجيل يرى فقط السجلات التي قام بقيدها
+    where = { createdById: currentUserId };
+  } else if (role === "SUBCOMMITTEE_MEMBER") {
     // يرى القضايا الموجهة للجنته الفرعية
     where = { subCommitteeId };
   }
@@ -103,6 +108,7 @@ export async function POST(req: NextRequest) {
       registrationType: data.registrationType,
       caseNumber: data.caseNumber,
       caseYear: data.caseYear,
+      prosecutionCaseNumber: data.prosecutionCaseNumber?.trim() || null,
       incomingDate: data.incomingDate ? new Date(data.incomingDate) : new Date(),
       attachmentsCount: data.attachmentsCount || 0,
       hospitalName: data.respondentName || data.hospitalName || null,

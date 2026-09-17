@@ -25,15 +25,18 @@ export default async function RegistrationCasesPage() {
     myReportsCount,
     subCommittees,
   ] = await Promise.all([
-    prisma.case.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        subCommittee: { select: { id: true, name: true } },
-        specialties: { include: { specialty: { select: { id: true, name: true } } } },
-        createdBy: { select: { id: true, fullName: true } },
-      },
-      take: 200,
-    }),
+    currentUserId
+      ? prisma.case.findMany({
+          where: { createdById: currentUserId },
+          orderBy: { createdAt: "desc" },
+          include: {
+            subCommittee: { select: { id: true, name: true } },
+            specialties: { include: { specialty: { select: { id: true, name: true } } } },
+            createdBy: { select: { id: true, fullName: true } },
+          },
+          take: 300,
+        })
+      : Promise.resolve([]),
     prisma.case.count(),
     prisma.case.count({
       where: { createdAt: { gte: todayStart } },
@@ -97,6 +100,7 @@ export default async function RegistrationCasesPage() {
       id: c.id,
       caseNumber: c.caseNumber,
       caseYear: c.caseYear,
+      prosecutionCaseNumber: c.prosecutionCaseNumber,
       registrationType: c.registrationType,
       complainantName: c.complainantName,
       prosecution: c.prosecution,

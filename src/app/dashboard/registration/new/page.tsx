@@ -31,6 +31,7 @@ export default function NewCasePage() {
 
   const [registrationType, setRegistrationType] = useState<"COMPLAINT" | "CASE" | "REPORT">("COMPLAINT");
   const [caseNumber, setCaseNumber] = useState("");
+  const [prosecutionCaseNumber, setProsecutionCaseNumber] = useState("");
   const [caseYear, setCaseYear] = useState<number>(new Date().getFullYear());
   const [incomingDate, setIncomingDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [respondentName, setRespondentName] = useState("");
@@ -115,6 +116,7 @@ export default function NewCasePage() {
         const payload = {
           registrationType,
           caseNumber: caseNumber.trim(),
+          prosecutionCaseNumber: prosecutionCaseNumber.trim() || undefined,
           caseYear: Number(caseYear),
           incomingDate: incomingDate || undefined,
           respondentName: respondentName.trim() || undefined,
@@ -179,8 +181,8 @@ export default function NewCasePage() {
             <label className="form-label form-label-required">نوع السجل</label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
-                { type: "COMPLAINT", label: "شكوى رسمية", desc: "واردة من مواطن أو جهة", icon: Building2 },
-                { type: "CASE", label: "قضية متداولة", desc: "دعوى قضائية منظورة", icon: Scale },
+                { type: "COMPLAINT", label: "شكوى", desc: "واردة من مواطن أو جهة", icon: Building2 },
+                { type: "CASE", label: "قضية", desc: "دعوى قضائية منظورة", icon: Scale },
                 { type: "REPORT", label: "محضر نيابة عامة", desc: "إحالة من النيابة المختصة", icon: ClipboardList },
               ].map((item) => {
                 const Icon = item.icon;
@@ -207,8 +209,8 @@ export default function NewCasePage() {
             </div>
           </div>
 
-          {/* 2. تاريخ الوارد + رقم السجل + سنة القيد + عدد المرفقات */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+          {/* 2. تاريخ الوارد + رقم السجل + رقم القضية / محضر النيابة + سنة القيد + عدد المرفقات */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
             <div className="form-group">
               <label className="form-label form-label-required">تاريخ الوارد (الاستلام)</label>
               <input
@@ -216,10 +218,10 @@ export default function NewCasePage() {
                 required
                 value={incomingDate}
                 onChange={(e) => setIncomingDate(e.target.value)}
-                className="form-input text-xs font-mono font-medium"
+                className="form-input text-xs font-mono font-medium h-10"
               />
-              <span className="text-[10px] text-slate-500 mt-0.5 block font-body">
-                تاريخ ورود كتاب النيابة أو استلام الشكوى
+              <span className="text-[10px] text-slate-500 mt-0.5 block font-body truncate">
+                تاريخ ورود كتاب النيابة
               </span>
             </div>
 
@@ -231,9 +233,39 @@ export default function NewCasePage() {
                 value={caseNumber}
                 onChange={(e) => setCaseNumber(e.target.value)}
                 placeholder="مثال: 1425"
-                className="form-input text-xs font-mono font-medium"
+                className="form-input text-xs font-mono font-medium h-10"
                 dir="ltr"
               />
+              <span className="text-[10px] text-slate-500 mt-0.5 block font-body truncate">
+                الرقم الداخلي للمنظومة
+              </span>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                {registrationType === "REPORT"
+                  ? "رقم محضر النيابة"
+                  : registrationType === "CASE"
+                  ? "رقم القضية"
+                  : "رقم القضية / محضر النيابة"}
+              </label>
+              <input
+                type="text"
+                value={prosecutionCaseNumber}
+                onChange={(e) => setProsecutionCaseNumber(e.target.value)}
+                placeholder={
+                  registrationType === "REPORT"
+                    ? "مثال: 4521 إداري / جنح"
+                    : registrationType === "CASE"
+                    ? "مثال: 1082 مدني"
+                    : "رقم القضية أو المحضر"
+                }
+                className="form-input text-xs font-mono font-medium h-10"
+                dir="auto"
+              />
+              <span className="text-[10px] text-slate-500 mt-0.5 block font-body truncate">
+                رقم السجل بالنيابة المختصة
+              </span>
             </div>
 
             <div className="form-group">
@@ -243,21 +275,27 @@ export default function NewCasePage() {
                 required
                 value={caseYear}
                 onChange={(e) => setCaseYear(Number(e.target.value))}
-                className="form-input text-xs font-mono font-medium"
+                className="form-input text-xs font-mono font-medium h-10"
                 dir="ltr"
               />
+              <span className="text-[10px] text-slate-500 mt-0.5 block font-body truncate">
+                سنة تقييد السجل
+              </span>
             </div>
 
             <div className="form-group">
-              <label className="form-label">عدد المرفقات الورقية/الرقمية</label>
+              <label className="form-label">عدد المرفقات</label>
               <input
                 type="number"
                 min="0"
                 value={attachmentsCount}
                 onChange={(e) => setAttachmentsCount(Number(e.target.value))}
-                className="form-input text-xs font-mono font-medium"
+                className="form-input text-xs font-mono font-medium h-10"
                 dir="ltr"
               />
+              <span className="text-[10px] text-slate-500 mt-0.5 block font-body truncate">
+                الورقية / الرقمية
+              </span>
             </div>
           </div>
 
