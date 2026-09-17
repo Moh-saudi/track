@@ -73,6 +73,7 @@ model User {
   role            UserRole
   employer        String?   // جهة العمل / المستشفى التابع لها الطبيب (لفحص تعارض المصالح)
   active          Boolean   @default(true)
+  sessionVersion  Int       @default(1) // إبطال الجلسات فور تغيير الدور/كلمة المرور/حالة الحساب
 
   // ربط العضو بلجنة فرعية (فقط لدور SUBCOMMITTEE_MEMBER)
   subCommitteeId  String?
@@ -106,6 +107,16 @@ model User {
 }
 
 // ─── سجل جلسات المستخدمين ومدة استخدام كل شاشة ───
+
+model LoginThrottle {
+  identifierHash String   @id
+  failureCount   Int      @default(0)
+  windowStart    DateTime @default(now())
+  blockedUntil   DateTime?
+  updatedAt      DateTime @updatedAt
+
+  @@index([blockedUntil])
+}
 
 model UserSession {
   id                  String    @id @default(cuid())
@@ -292,6 +303,11 @@ model Case {
   attachments      Attachment[]
   payments         Payment[]
   meetingReschedules MeetingReschedule[]
+
+  @@unique([caseNumber, caseYear])
+  @@index([status])
+  @@index([subCommitteeId])
+  @@index([createdAt])
 }
 
 // ─── فريق الفحص والاستشاريين وحق التنحي ───────────
@@ -400,6 +416,11 @@ model Payment {
 
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+
+  @@index([caseId])
+  @@index([doctorId])
+  @@index([memberId])
+  @@index([status])
 }
 
 // ─── المرفقات ─────────────────────────────────────
