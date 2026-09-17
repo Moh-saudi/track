@@ -22,7 +22,7 @@ const schema = z.object({
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
@@ -50,7 +50,7 @@ export async function POST(
   const { targetStatus, riskOverrideReason, riskOverrideDocument } = parsed.data;
 
   const existingCase = await prisma.case.findUnique({
-    where: { id: params.id },
+    where: { id: (await params).id },
     include: {
       subCommittee: true,
       supremeDecisions: { orderBy: { createdAt: "desc" }, take: 1 },
@@ -61,7 +61,7 @@ export async function POST(
 
   const updatedCase = await prisma.$transaction(async (tx) => {
     const updated = await tx.case.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         status: targetStatus as any,
         isRiskOverridden: true,
@@ -75,7 +75,7 @@ export async function POST(
     await tx.auditLog.create({
       data: {
         entityType: "Case",
-        entityId: params.id,
+        entityId: (await params).id,
         action: "ADMIN_RISK_OVERRIDE",
         userId: user.id,
         beforeData: {
