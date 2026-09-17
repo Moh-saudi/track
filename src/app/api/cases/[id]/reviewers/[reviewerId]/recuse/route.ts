@@ -12,7 +12,7 @@ const recuseSchema = z.object({
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string; reviewerId: string } }
+  { params }: { params: Promise<{ id: string; reviewerId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
@@ -24,7 +24,7 @@ export async function POST(
   }
 
   const reviewer = await prisma.caseReviewer.findUnique({
-    where: { id: params.reviewerId },
+    where: { id: (await params).reviewerId },
     include: {
       user: {
         select: { id: true, fullName: true, role: true },
@@ -42,7 +42,7 @@ export async function POST(
   }
 
   const updated = await prisma.caseReviewer.update({
-    where: { id: params.reviewerId },
+    where: { id: (await params).reviewerId },
     data: {
       status: "RECUSED",
       recusalReason: parsed.data.reason,
