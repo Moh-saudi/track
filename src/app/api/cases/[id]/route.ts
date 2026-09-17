@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { can } from "@/lib/rbac";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   const role = (session.user as any).role;
+  const userId = (session.user as any).id;
   const subCommitteeId = (session.user as any).subCommitteeId;
-  const isFinanceOrAdmin = role === "FINANCE" || role === "ADMIN";
 
   const item = await prisma.case.findUnique({
     where: { id: params.id },
@@ -19,14 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       reviewers: {
         include: {
           doctor: {
-            select: {
-              id: true,
-              name: true,
-              title: true,
-              employer: true,
-              phone: true,
-              specialty: true,
-            },
+            select: { id: true, name: true, title: true, employer: true, phone: true, specialty: true },
           },
           user: {
             select: { id: true, fullName: true, employer: true, role: true, email: true },
@@ -35,39 +29,30 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       },
       followUpOfficer: { select: { id: true, fullName: true } },
       actions: {
-        include: {
-          recordedBy: {
-            select: { id: true, fullName: true, role: true },
-          },
-        },
+        include: { recordedBy: { select: { id: true, fullName: true, role: true } } },
         orderBy: { createdAt: "desc" },
       },
       supremeDecisions: {
-        include: {
-          decidedBy: {
-            select: { id: true, fullName: true, role: true },
-          },
-        },
+        include: { decidedBy: { select: { id: true, fullName: true, role: true } } },
         orderBy: { createdAt: "desc" },
       },
       attachments: {
-        include: {
-          uploadedBy: {
-            select: { id: true, fullName: true },
-          },
+        select: {
+          id: true,
+          fileName: true,
+          fileType: true,
+          fileSize: true,
+          uploadedAt: true,
+          uploadedBy: { select: { id: true, fullName: true } },
         },
         orderBy: { uploadedAt: "desc" },
       },
-      ...(isFinanceOrAdmin
+      ...(role === "ADMIN"
         ? {
             payments: {
               include: {
-                member: {
-                  select: { id: true, fullName: true, role: true, email: true },
-                },
-                doctor: {
-                  select: { id: true, name: true, employer: true, bankName: true, financialType: true },
-                },
+                member: { select: { id: true, fullName: true, role: true, email: true } },
+                doctor: { select: { id: true, name: true, employer: true, bankName: true, financialType: true } },
               },
             },
           }
@@ -77,10 +62,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   if (!item) return NextResponse.json({ error: "السجل غير موجود" }, { status: 404 });
 
-  // اللجنة الفرعية لا ترى إلا قضاياها
-  if (role === "SUBCOMMITTEE_MEMBER" && item.subCommitteeId !== subCommitteeId) {
-    return NextResponse.json({ error: "غير مصرح بالاطلاع على هذا السجل" }, { status: 403 });
-  }
+  const permitted =
+    (role === "REGISTRATION_CLERK" && item.createdById === userId) ||
+    (role === "SUBCOMMITTEE_MEMBER" && !!subCommitteeId && item.subCommitteeId === subCommitteeId) ||
+    can(role, "VIEW_ALL_CASES");
+
+  if (!permitted) return NextResponse.json({ error: "غير مصرح بالاطلاع على هذا السجل" }, { status: 403 });
 
   return NextResponse.json(item);
 }
