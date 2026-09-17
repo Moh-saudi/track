@@ -235,7 +235,6 @@ export default async function AdminDashboardPage({
       totalLogsCount={totalLogsCount}
       subCommitteesCount={subCommittees.length}
       specialtiesCount={specialties.length}
-      paymentsStats={{ totalCount: 0, paidCount: 0, pendingCount: 0, paidAmount: 0, pendingAmount: 0 }}
       recentLogs={serializedRecentLogs as any}
       liveUsers={serializedLiveUsers}
       users={serializedUsers}
