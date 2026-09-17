@@ -16,6 +16,22 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
+  const user = session.user as any;
+  const targetCase = await prisma.case.findUnique({
+    where: { id: params.id },
+    select: { id: true, createdById: true, subCommitteeId: true },
+  });
+  if (!targetCase) return NextResponse.json({ error: "السجل غير موجود" }, { status: 404 });
+
+  const permitted =
+    (user.role === "REGISTRATION_CLERK" && targetCase.createdById === user.id) ||
+    (user.role === "SUBCOMMITTEE_MEMBER" && !!user.subCommitteeId && targetCase.subCommitteeId === user.subCommitteeId) ||
+    can(user.role, "VIEW_ALL_CASES");
+
+  if (!permitted) {
+    return NextResponse.json({ error: "غير مصرح بالاطلاع على فريق فحص هذه القضية" }, { status: 403 });
+  }
+
   const reviewers = await prisma.caseReviewer.findMany({
     where: { caseId: params.id },
     include: {
@@ -63,6 +79,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   });
   if (!targetCase) {
     return NextResponse.json({ error: "السجل غير موجود" }, { status: 404 });
+  }
+
+  const actor = session.user as any;
+  if (
+    actor.role === "SUBCOMMITTEE_MEMBER" &&
+    (!actor.subCommitteeId || actor.subCommitteeId !== targetCase.subCommitteeId)
+  ) {
+    return NextResponse.json({ error: "لا يمكنك تعديل فريق فحص قضية خارج لجنتك" }, { status: 403 });
   }
 
   // لا يمكن تعديل فريق الفحص بعد اعتماد السجل إلا عند الإحالة لإعادة الدراسة
