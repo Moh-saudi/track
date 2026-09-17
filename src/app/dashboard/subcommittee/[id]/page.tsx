@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { AttachmentUploader } from "@/app/dashboard/_components/attachment-uploader";
 import { ReviewTeamManager } from "./review-team-manager";
 import { MeetingDateManager } from "./meeting-date-manager";
-import { formatDate, formatCurrency } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
 import {
   Scale,
   Calendar,
@@ -19,7 +19,6 @@ import {
   FolderOpen,
   ArrowRight,
   ArrowLeft,
-  DollarSign,
   Check,
   FileText,
   ChevronLeft,
@@ -64,7 +63,6 @@ export default async function SubCommitteeCaseDetail({ params }: { params: { id:
           referredSubCommittee: { select: { name: true } },
         },
       },
-      payments: true,
       meetingReschedules: {
         orderBy: { createdAt: "desc" },
         include: { createdBy: { select: { fullName: true } } },
@@ -269,18 +267,6 @@ export default async function SubCommitteeCaseDetail({ params }: { params: { id:
                         <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-center gap-2">
                           <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
                           <span>أُحيل السجل إلى: {dec.referredSubCommittee.name}</span>
-                        </div>
-                      )}
-
-                      {caseRecord.payments.length > 0 && caseRecord.payments[0].entitled && (
-                        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-emerald-950 font-semibold">
-                          <span className="flex items-center gap-1">
-                            <DollarSign className="w-4 h-4 text-emerald-600" />
-                            <span>تقدير البدل المستحق:</span>
-                          </span>
-                          <span className="text-sm font-bold font-mono">
-                            {formatCurrency(caseRecord.payments[0].amount)}
-                          </span>
                         </div>
                       )}
                     </div>
