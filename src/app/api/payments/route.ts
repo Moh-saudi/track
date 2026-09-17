@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/rbac";
+import { decryptDoctorSensitiveFields } from "@/lib/doctor-sensitive";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -10,7 +11,7 @@ export async function GET() {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
 
-  const payments = await prisma.payment.findMany({
+  const rawPayments = await prisma.payment.findMany({
     include: {
       case: true,
       member: {
@@ -26,5 +27,10 @@ export async function GET() {
     },
     orderBy: { createdAt: "desc" },
   });
+  const payments = rawPayments.map((payment) => ({
+    ...payment,
+    amount: payment.amount === null ? null : Number(payment.amount),
+    doctor: payment.doctor ? decryptDoctorSensitiveFields(payment.doctor) : null,
+  }));
   return NextResponse.json(payments);
 }
