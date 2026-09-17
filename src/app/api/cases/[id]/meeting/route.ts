@@ -10,7 +10,7 @@ const meetingSchema = z.object({
   reason: z.string().optional(),
 });
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const currentCase = await prisma.case.findUnique({
-    where: { id: params.id },
+    where: { id: (await params).id },
   });
 
   if (!currentCase) {
@@ -73,7 +73,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const updatedCase = await prisma.case.update({
-    where: { id: params.id },
+    where: { id: (await params).id },
     data: {
       meetingDate: newMeetingDate,
       meetingDateReason: isReschedule ? parsed.data.reason?.trim() : currentCase.meetingDateReason,
@@ -85,7 +85,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (isReschedule) {
     await prisma.meetingReschedule.create({
       data: {
-        caseId: params.id,
+        caseId: (await params).id,
         oldDate: oldMeetingDate,
         newDate: newMeetingDate,
         reason: parsed.data.reason!.trim(),
@@ -97,7 +97,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   // تسجيل العملية في سجل التدقيق الموحد
   await writeAuditLog({
     entityType: "Case",
-    entityId: params.id,
+    entityId: (await params).id,
     action: isReschedule ? "RESCHEDULE_MEETING" : "SCHEDULE_MEETING",
     userId,
     beforeData: {
