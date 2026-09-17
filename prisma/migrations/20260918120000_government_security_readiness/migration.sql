@@ -39,6 +39,11 @@ ALTER TABLE "Payment"
     (CASE WHEN "doctorId" IS NOT NULL THEN 1 ELSE 0 END) = 1
   );
 
+-- Store money as fixed precision instead of floating point.
+ALTER TABLE "Payment"
+  ALTER COLUMN "amount" TYPE DECIMAL(12,2)
+  USING CASE WHEN "amount" IS NULL THEN NULL ELSE ROUND("amount"::numeric, 2) END;
+
 -- Guard against negative / unreasonable payment values at the database layer.
 ALTER TABLE "Payment"
   DROP CONSTRAINT IF EXISTS "Payment_amount_range_check";
