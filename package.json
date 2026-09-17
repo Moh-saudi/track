@@ -60,5 +60,6 @@
     "next": {
       "postcss": "8.5.28"
     }
-  }
+  },
+  "packageManager": "npm@10.9.2"
 }
