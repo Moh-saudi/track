@@ -45,8 +45,8 @@ const SUPREME_DECISION_CONFIG: Record<string, { label: string; badgeClass: strin
   REJECTED:   { label: "رفض التقرير", badgeClass: "bg-rose-50 text-rose-800 border-rose-300" },
 };
 
-export default async function SubCommitteeCaseDetail({ const { id } = await params;
-  params }: { params: Promise<{ id: string }> }) {
+export default async function SubCommitteeCaseDetail({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   const currentUserId = (session?.user as any)?.id;
 
