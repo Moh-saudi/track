@@ -8,6 +8,7 @@ import { writeAuditLog } from "@/lib/audit";
 
 const DOCUMENT_DIR = path.resolve(process.cwd(), "uploads", "doctor-national-id");
 const MAX_PDF_BYTES = 12 * 1024 * 1024;
+const LOCAL_DOCUMENT_UPLOAD_ENABLED = process.env.ENABLE_LOCAL_DOCUMENT_UPLOAD === "true";
 
 async function authorizeDoctorAccess(doctorId: string, user: any, write = false) {
   const doctor = await prisma.subCommitteeDoctor.findUnique({
@@ -36,7 +37,16 @@ function documentPath(doctorId: string) {
   return path.join(DOCUMENT_DIR, `${doctorId}.pdf`);
 }
 
+function storageDisabledResponse() {
+  return NextResponse.json(
+    { error: "تخزين ملفات بطاقة الرقم القومي غير مفعل على بيئة الاستضافة الحالية" },
+    { status: 503 }
+  );
+}
+
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  if (!LOCAL_DOCUMENT_UPLOAD_ENABLED) return storageDisabledResponse();
+
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
@@ -79,6 +89,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 }
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  if (!LOCAL_DOCUMENT_UPLOAD_ENABLED) return storageDisabledResponse();
+
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
