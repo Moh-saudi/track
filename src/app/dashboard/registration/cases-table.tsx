@@ -327,7 +327,13 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                 <div className="space-y-1.5 text-xs">
                   {c.prosecutionCaseNumber && (
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500">رقم القضية / المحضر:</span>
+                      <span className="text-slate-500">
+                        {c.registrationType === "COMPLAINT"
+                          ? "رقم الشكوى:"
+                          : c.registrationType === "CASE"
+                          ? "رقم القضية:"
+                          : "رقم المحضر:"}
+                      </span>
                       <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200" dir="auto">
                         {c.prosecutionCaseNumber}
                       </span>

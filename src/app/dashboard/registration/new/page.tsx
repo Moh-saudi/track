@@ -257,7 +257,7 @@ export default function NewCasePage() {
               <label
                 className={`form-label ${
                   registrationType === "CASE" || registrationType === "REPORT"
-                    ? "form-label-required font-bold text-slate-900"
+                    ? "form-label-required"
                     : ""
                 }`}
               >
@@ -265,12 +265,7 @@ export default function NewCasePage() {
                   ? "رقم محضر النيابة"
                   : registrationType === "CASE"
                   ? "رقم القضية"
-                  : "رقم القضية / محضر النيابة"}
-                {(registrationType === "CASE" || registrationType === "REPORT") && (
-                  <span className="text-[11px] text-rose-600 mr-1 font-semibold font-body">
-                    (إلزامي)
-                  </span>
-                )}
+                  : "رقم الشكوى"}
               </label>
               <input
                 type="text"
@@ -282,7 +277,7 @@ export default function NewCasePage() {
                     ? "مثال: 4521 إداري / جنح"
                     : registrationType === "CASE"
                     ? "مثال: 1082 مدني"
-                    : "رقم القضية أو المحضر"
+                    : "مثال: 582 لسنة 2026"
                 }
                 className={`form-input text-xs font-mono font-medium h-10 ${
                   (registrationType === "CASE" || registrationType === "REPORT") && !prosecutionCaseNumber.trim()
@@ -292,7 +287,9 @@ export default function NewCasePage() {
                 dir="auto"
               />
               <span className="text-[10px] text-slate-500 mt-0.5 block font-body truncate">
-                رقم السجل بالنيابة المختصة
+                {registrationType === "COMPLAINT"
+                  ? "رقم الشكوى الواردة (اختياري)"
+                  : "رقم السجل بالنيابة المختصة"}
               </span>
             </div>
 

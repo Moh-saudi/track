@@ -146,7 +146,12 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
             </div>
             {caseRecord.prosecutionCaseNumber && (
               <span className="text-[11px] font-mono text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200 font-bold block mt-1">
-                رقم القضية / المحضر: {caseRecord.prosecutionCaseNumber}
+                {caseRecord.registrationType === "COMPLAINT"
+                  ? "رقم الشكوى: "
+                  : caseRecord.registrationType === "CASE"
+                  ? "رقم القضية: "
+                  : "رقم محضر النيابة: "}
+                {caseRecord.prosecutionCaseNumber}
               </span>
             )}
           </div>
