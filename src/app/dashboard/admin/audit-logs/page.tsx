@@ -45,6 +45,7 @@ export default async function AdminAuditLogsPage({
       },
     }),
     prisma.auditLog.findMany({
+      where: { entityType: { not: "Payment" } },
       orderBy: { createdAt: "desc" },
       take: 300,
       include: {
