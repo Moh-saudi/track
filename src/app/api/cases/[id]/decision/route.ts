@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/rbac";
+import { getApprovedAllowanceRates } from "@/lib/finance-config";
 
 const schema = z.object({
   meetingDate: z.string().min(1),
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   try {
+    const allowanceRates = getApprovedAllowanceRates();
     const result = await prisma.$transaction(async (tx) => {
       const caseRecord = await tx.case.findUnique({
         where: { id: params.id },
@@ -108,7 +110,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
                   doctorId: rev.doctorId || null,
                   memberId: rev.userId || null,
                   recipientRole: "عضو لجنة فرعية",
-                  amount: 5000,
+                  amount: allowanceRates.subcommittee,
                   entitled: true,
                   status: "NOT_PAID",
                 },
@@ -126,7 +128,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
                   caseId: params.id,
                   memberId: member.id,
                   recipientRole: "مقرر اللجنة الفرعية",
-                  amount: 5000,
+                  amount: allowanceRates.subcommittee,
                   entitled: true,
                   status: "NOT_PAID",
                 },
@@ -144,7 +146,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
               caseId: params.id,
               memberId: user.id,
               recipientRole: "عضو اللجنة العليا",
-              amount: 8000,
+              amount: allowanceRates.supreme,
               entitled: true,
               status: "NOT_PAID",
             },
@@ -159,7 +161,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             userId: user.id,
             afterData: {
               caseId: params.id,
-              message: "تم توليد مستحقات بدلات الجلسات تلقائياً (5000 للفرعية / 8000 للعليا)",
+              message: "تم توليد مستحقات بدلات الجلسات تلقائياً وفق القيم المعتمدة في إعدادات الخادم",
             },
           },
         });
