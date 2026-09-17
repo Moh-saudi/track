@@ -47,16 +47,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         },
         orderBy: { uploadedAt: "desc" },
       },
-      ...(role === "ADMIN"
-        ? {
-            payments: {
-              include: {
-                member: { select: { id: true, fullName: true, role: true, email: true } },
-                doctor: { select: { id: true, name: true, employer: true, bankName: true, financialType: true } },
-              },
-            },
-          }
-        : {}),
     },
   });
 
