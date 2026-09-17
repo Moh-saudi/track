@@ -30,7 +30,7 @@ export default async function SubCommitteeDashboard({
     whereClause.subCommitteeId = userSubCommitteeId;
   }
 
-  const [cases, subCommittee, doctorsCount, payments] = await Promise.all([
+  const [cases, subCommittee, doctorsCount] = await Promise.all([
     prisma.case.findMany({
       where: whereClause,
       orderBy: { createdAt: "desc" },
@@ -54,28 +54,7 @@ export default async function SubCommitteeDashboard({
     prisma.subCommitteeDoctor.count({
       where: userSubCommitteeId ? { subCommitteeId: userSubCommitteeId } : {},
     }),
-    prisma.payment.findMany({
-      where: userSubCommitteeId ? { case: { subCommitteeId: userSubCommitteeId } } : {},
-      select: { amount: true, status: true },
-    }),
   ]);
-
-  // حساب إحصائيات البدلات
-  let paidCount = 0;
-  let pendingCount = 0;
-  let totalAmount = 0;
-  let paidAmount = 0;
-
-  payments.forEach((p) => {
-    const amt = Number(p.amount) || 0;
-    totalAmount += amt;
-    if (p.status === "PAID") {
-      paidCount++;
-      paidAmount += amt;
-    } else {
-      pendingCount++;
-    }
-  });
 
   const serializedCases = cases.map((c) => ({
     id: c.id,
@@ -113,13 +92,6 @@ export default async function SubCommitteeDashboard({
       cases={serializedCases as any}
       subCommittee={subCommittee}
       doctorsCount={doctorsCount}
-      paymentsStats={{
-        totalCount: payments.length,
-        paidCount,
-        pendingCount,
-        totalAmount,
-        paidAmount,
-      }}
       currentUser={{
         name: session.user.name,
         fullName: user.fullName,
