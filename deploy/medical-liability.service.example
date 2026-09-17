@@ -1,0 +1,34 @@
+[Unit]
+Description=Medical Liability Case Tracking
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=medical-liability
+Group=medical-liability
+WorkingDirectory=/opt/medical-liability/current
+EnvironmentFile=/etc/medical-liability/app.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0027
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+# Persistent application data and Next runtime cache only.
+ReadWritePaths=/srv/medical-liability/uploads
+ReadWritePaths=/opt/medical-liability/current/.next/cache
+
+[Install]
+WantedBy=multi-user.target
