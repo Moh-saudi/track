@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Clock,
@@ -19,6 +20,9 @@ import {
   Stethoscope,
   ShieldCheck,
   Calendar,
+  RotateCcw,
+  Lock,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -101,7 +105,44 @@ export function FollowUpDashboardClient({
   currentUser,
   initialTab = "overview",
 }: FollowUpDashboardProps) {
+  const router = useRouter();
+  const isAdmin = (currentUser as any)?.role === "ADMIN";
   const [activeTab, setActiveTab] = useState<"overview" | "unassigned" | "timeline">(initialTab);
+
+  // حالة إلغاء التوجيه من قبل الأدمن
+  const [revertingCase, setRevertingCase] = useState<SerializedFollowUpCase | null>(null);
+  const [revertReason, setRevertReason] = useState("");
+  const [isReverting, setIsReverting] = useState(false);
+  const [revertError, setRevertError] = useState<string | null>(null);
+  const [revertSuccess, setRevertSuccess] = useState<string | null>(null);
+
+  async function handleConfirmRevert() {
+    if (!revertingCase) return;
+    setIsReverting(true);
+    setRevertError(null);
+    try {
+      const res = await fetch(`/api/cases/${revertingCase.id}/revert-routing`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: revertReason }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "تعذر إلغاء توجيه السجل");
+      }
+      setRevertSuccess(data.message || "تم إلغاء التوجيه بنجاح وأُعيد السجل للمتابعة والتوجيه.");
+      setTimeout(() => {
+        setRevertingCase(null);
+        setRevertReason("");
+        setRevertSuccess(null);
+        router.refresh();
+      }, 1200);
+    } catch (err: any) {
+      setRevertError(err.message || "حدث خطأ أثناء إلغاء التوجيه");
+    } finally {
+      setIsReverting(false);
+    }
+  }
 
   const now = new Date();
 
@@ -497,6 +538,7 @@ export function FollowUpDashboardClient({
                   <TableHead>نسبة استهلاك المهلة</TableHead>
                   <TableHead>موقف الالتزام بالمهلة</TableHead>
                   <TableHead className="min-w-[200px]">فريق الفحص</TableHead>
+                  {isAdmin && <TableHead className="text-center min-w-[130px]">إدارة وتصحيح المسار</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -700,12 +742,144 @@ export function FollowUpDashboardClient({
                           </Badge>
                         )}
                       </TableCell>
+
+                      {/* إدارة وتصحيح المسار لمدير النظام حصراً */}
+                      {isAdmin && (
+                        <TableCell className="text-center whitespace-nowrap">
+                          {c.meetingDate ? (
+                            <span
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-400 text-[11px] font-medium border border-slate-200 cursor-not-allowed"
+                              title={`لا يمكن إلغاء التوجيه لأن اللجنة الفرعية حددت موعد انعقاد بالفعل (${formatDate(c.meetingDate)})`}
+                            >
+                              <Lock className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span>محجوزة بجلسة</span>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRevertingCase(c);
+                                setRevertReason("");
+                                setRevertError(null);
+                                setRevertSuccess(null);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-900 border border-rose-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                              title="سحب القضية من اللجنة الفرعية وإعادتها لمسؤول التوجيه"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                              <span>إلغاء التوجيه</span>
+                            </button>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })}
               </TableBody>
             </Table>
           )}
+        </div>
+      )}
+
+      {/* ─── نافذة تأكيد إلغاء التوجيه وتصحيح المسار للأدمن ─── */}
+      {revertingCase && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4 font-body animate-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold shrink-0">
+                  <RotateCcw className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold font-heading text-slate-900">
+                    إلغاء التوجيه وتصحيح المسار
+                  </h3>
+                  <p className="text-xs text-slate-500 font-body">
+                    صلاحية إدارية رقابية خاصة بمدير النظام (ADMIN)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRevertingCase(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">رقم السجل:</span>
+                <span className="font-bold font-mono text-slate-900 text-sm">
+                  #{revertingCase.caseNumber} / {revertingCase.caseYear}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">اللجنة الفرعية الموجه إليها حالياً:</span>
+                <span className="font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                  {revertingCase.subCommittee?.name || "غير محدد"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">حالة تاريخ الانعقاد:</span>
+                <span className="font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  لم يتم تحديد موعد انعقاد (متاح الإلغاء)
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed font-body">
+              <strong>تنبيه رقابي:</strong> سيتم سحب هذا السجل فوراً من اللجنة الفرعية الحالية وإعادته إلى قائمة <strong>"بانتظار التوجيه"</strong> لدى مسؤول المتابعة والتوجيه لإعادة إسناده للجنة المختصة. كما سيتم إلغاء أي تشكيل فحص سابق تحت هذه اللجنة.
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-800 font-heading block">
+                سبب إلغاء التوجيه (يُسجل في سجل التدقيق الرقابي):
+              </label>
+              <textarea
+                value={revertReason}
+                onChange={(e) => setRevertReason(e.target.value)}
+                placeholder="مثال: تم التوجيه بالخطأ إلى هذه اللجنة؛ السجل يخص تخصصاً جراحياً آخر..."
+                rows={2}
+                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 resize-none font-body"
+              />
+            </div>
+
+            {revertError && (
+              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{revertError}</span>
+              </div>
+            )}
+
+            {revertSuccess && (
+              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span>{revertSuccess}</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setRevertingCase(null)}
+                disabled={isReverting}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                تراجع
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRevert}
+                disabled={isReverting}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>{isReverting ? "جارٍ الإلغاء..." : "تأكيد سحب السجل وإعادته للتوجيه"}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

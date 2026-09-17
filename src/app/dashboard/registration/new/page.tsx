@@ -111,6 +111,18 @@ export default function NewCasePage() {
       return;
     }
 
+    if (
+      (registrationType === "CASE" || registrationType === "REPORT") &&
+      !prosecutionCaseNumber.trim()
+    ) {
+      setError(
+        registrationType === "CASE"
+          ? "يرجى إدخال رقم القضية المرتبط (حقل إلزامي عند قيد قضية)"
+          : "يرجى إدخال رقم محضر النيابة المرتبط (حقل إلزامي عند قيد محضر نيابة)"
+      );
+      return;
+    }
+
     startTransition(async () => {
       try {
         const payload = {
@@ -242,15 +254,27 @@ export default function NewCasePage() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">
+              <label
+                className={`form-label ${
+                  registrationType === "CASE" || registrationType === "REPORT"
+                    ? "form-label-required font-bold text-slate-900"
+                    : ""
+                }`}
+              >
                 {registrationType === "REPORT"
                   ? "رقم محضر النيابة"
                   : registrationType === "CASE"
                   ? "رقم القضية"
                   : "رقم القضية / محضر النيابة"}
+                {(registrationType === "CASE" || registrationType === "REPORT") && (
+                  <span className="text-[11px] text-rose-600 mr-1 font-semibold font-body">
+                    (إلزامي)
+                  </span>
+                )}
               </label>
               <input
                 type="text"
+                required={registrationType === "CASE" || registrationType === "REPORT"}
                 value={prosecutionCaseNumber}
                 onChange={(e) => setProsecutionCaseNumber(e.target.value)}
                 placeholder={
@@ -260,7 +284,11 @@ export default function NewCasePage() {
                     ? "مثال: 1082 مدني"
                     : "رقم القضية أو المحضر"
                 }
-                className="form-input text-xs font-mono font-medium h-10"
+                className={`form-input text-xs font-mono font-medium h-10 ${
+                  (registrationType === "CASE" || registrationType === "REPORT") && !prosecutionCaseNumber.trim()
+                    ? "border-amber-300 focus:border-teal-600"
+                    : ""
+                }`}
                 dir="auto"
               />
               <span className="text-[10px] text-slate-500 mt-0.5 block font-body truncate">

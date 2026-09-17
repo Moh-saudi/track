@@ -77,6 +77,22 @@ export async function POST(req: NextRequest) {
   }
   const data = parsed.data;
 
+  // التحقق الإلزامي: إذا كان نوع القيد قضية أو محضر، يكون رقم القضية / المحضر إلزامياً
+  if (
+    (data.registrationType === "CASE" || data.registrationType === "REPORT") &&
+    (!data.prosecutionCaseNumber || !data.prosecutionCaseNumber.trim())
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          data.registrationType === "CASE"
+            ? "رقم القضية حقل إلزامي عند اختيار نوع القيد (قضية)"
+            : "رقم محضر النيابة حقل إلزامي عند اختيار نوع القيد (محضر نيابة عامة)",
+      },
+      { status: 400 }
+    );
+  }
+
   // في حال اختيار prosecutionId ولم يحدد نص prosecution، نجلبه تلقائياً
   let prosecutionName = data.prosecution || null;
   if (data.prosecutionId && !prosecutionName) {
