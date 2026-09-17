@@ -17,8 +17,8 @@ const DECISION_LABELS: Record<string, string> = {
   DIFFERENT:  "قرار مغاير",
 };
 
-export default async function SupremeCaseDetail({ const { id } = await params;
-  params }: { params: Promise<{ id: string }> }) {
+export default async function SupremeCaseDetail({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const [caseRecord, subCommittees] = await Promise.all([
     prisma.case.findUnique({
       where: { id: id },
