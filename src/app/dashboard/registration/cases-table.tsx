@@ -248,9 +248,9 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                     </TableCell>
 
                     {/* تاريخ الوارد */}
-                    <TableCell>
+                    <TableCell suppressHydrationWarning>
                       {c.incomingDate ? (
-                        <span className="text-xs font-mono text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 whitespace-nowrap">
+                        <span className="text-xs font-mono text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 whitespace-nowrap" suppressHydrationWarning>
                           {formatDate(c.incomingDate)}
                         </span>
                       ) : (
@@ -267,7 +267,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                     </TableCell>
 
                     {/* تاريخ القيد */}
-                    <TableCell className="text-xs font-mono text-slate-600 whitespace-nowrap">
+                    <TableCell className="text-xs font-mono text-slate-600 whitespace-nowrap" suppressHydrationWarning>
                       {formatDate(c.createdAt)}
                     </TableCell>
 
@@ -313,7 +313,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                     <span className="text-base font-bold font-heading text-slate-900 block">
                       {c.caseNumber} / {c.caseYear}
                     </span>
-                    <span className="text-xs text-slate-500 font-mono mt-0.5 block">
+                    <span className="text-xs text-slate-500 font-mono mt-0.5 block" suppressHydrationWarning>
                       قيد: {formatDate(c.createdAt)}
                     </span>
                   </div>
@@ -351,7 +351,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                   {c.incomingDate && (
                     <div className="flex items-center justify-between">
                       <span className="text-slate-500">تاريخ الوارد:</span>
-                      <span className="font-mono text-teal-800">{formatDate(c.incomingDate)}</span>
+                      <span className="font-mono text-teal-800" suppressHydrationWarning>{formatDate(c.incomingDate)}</span>
                     </div>
                   )}
 

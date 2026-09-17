@@ -34,6 +34,7 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/Table";
+import { formatDate, formatTime } from "@/lib/formatters";
 
 export interface UserSessionItem {
   id: string;
@@ -135,34 +136,15 @@ function formatMinutesArabic(totalMin: number): string {
   return `${minutes} دقيقة`;
 }
 
-// تنسيق التاريخ والوقت
+// تنسيق التاريخ والوقت الحتمي لمنع تعارض Hydration بين السيرفر والمتصفح
 function formatDateTimeArabic(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
-  try {
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString("ar-EG", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    });
-  } catch {
-    return dateStr;
-  }
+  return formatTime(dateStr);
 }
 
 function formatDateOnlyArabic(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
-  try {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("ar-EG", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
+  return formatDate(dateStr);
 }
 
 // تحويل كائن الحركة الرقابية إلى نصوص وتفاصيل مفهومة بدون JSON إطلاقاً

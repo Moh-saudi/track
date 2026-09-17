@@ -5,35 +5,69 @@
  */
 
 /**
- * تنسيق التاريخ بالأرقام الإنجليزية (DD/MM/YYYY) أو (YYYY-MM-DD)
+ * تنسيق التاريخ بالأرقام الإنجليزية (DD/MM/YYYY)
+ * متوافق بنسبة 100% مع بيئة SSR و Hydration دون أي تفاوت زمني بين السيرفر والمتصفح
  */
 export function formatDate(date: string | Date | null | undefined): string {
   if (!date) return "—";
+
+  if (typeof date === "string") {
+    const match = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      const [, year, month, day] = match;
+      return `${day}/${month}/${year}`;
+    }
+  }
+
   const d = typeof date === "string" ? new Date(date) : date;
   if (isNaN(d.getTime())) return "—";
-  
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = d.getFullYear();
+
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const year = d.getUTCFullYear();
   return `${day}/${month}/${year}`;
 }
 
 /**
  * تنسيق التاريخ والوقت بالأرقام الإنجليزية (DD/MM/YYYY hh:mm AM/PM)
+ * يعتمد على UTC لضمان التطابق التام بين HTML السيرفر ورندر المتصفح ومنع أخطاء Hydration #425
  */
 export function formatDateTime(date: string | Date | null | undefined): string {
   if (!date) return "—";
   const d = typeof date === "string" ? new Date(date) : date;
   if (isNaN(d.getTime())) return "—";
 
-  return d.toLocaleString("en-GB", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const year = d.getUTCFullYear();
+
+  let hours = d.getUTCHours();
+  const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const hoursStr = String(hours).padStart(2, "0");
+
+  return `${day}/${month}/${year} ${hoursStr}:${minutes} ${ampm}`;
+}
+
+/**
+ * تنسيق الوقت فقط (hh:mm:ss AM/PM) بتوقيت UTC لتفادي عدم تطابق Hydration
+ */
+export function formatTime(date: string | Date | null | undefined): string {
+  if (!date) return "—";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (isNaN(d.getTime())) return "—";
+
+  let hours = d.getUTCHours();
+  const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(d.getUTCSeconds()).padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const hoursStr = String(hours).padStart(2, "0");
+
+  return `${hoursStr}:${minutes}:${seconds} ${ampm}`;
 }
 
 /**

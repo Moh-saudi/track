@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { formatDate } from "@/lib/formatters";
+import { formatDate, formatTime } from "@/lib/formatters";
 import {
   Users,
   Clock,
@@ -283,12 +283,12 @@ export function ActiveUsersClient({ initialUsers }: Props) {
                       {/* آخر ظهور وتفاعل */}
                       <td className="p-3.5 font-mono text-slate-600 whitespace-nowrap">
                         {lastSeen ? (
-                          <div>
-                            <div className="font-semibold text-slate-800">
+                          <div suppressHydrationWarning>
+                            <div className="font-semibold text-slate-800" suppressHydrationWarning>
                               {formatDate(lastSeen)}
                             </div>
-                            <div className="text-[10px] text-slate-400">
-                              {lastSeen.toLocaleTimeString("ar-EG")}
+                            <div className="text-[10px] text-slate-400" suppressHydrationWarning>
+                              {formatTime(lastSeen)}
                             </div>
                           </div>
                         ) : (

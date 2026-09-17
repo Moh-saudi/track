@@ -29,7 +29,7 @@ import { Badge } from "@/components/ui/Badge";
 import { StatCard } from "@/components/ui/StatCard";
 import { UserWelcomeCard } from "@/components/ui/UserWelcomeCard";
 import { CasesTable, SerializedCase } from "./cases-table";
-import { formatNumber } from "@/lib/formatters";
+import { formatNumber, formatDate } from "@/lib/formatters";
 
 export interface Props {
   cases: SerializedCase[];
@@ -222,8 +222,8 @@ export function RegistrationDashboardClient({
                             </span>
                           )}
                           {c.incomingDate && (
-                            <span className="text-[11px] font-mono text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200/60 font-medium">
-                              وارد: {c.incomingDate.split("T")[0]}
+                            <span className="text-[11px] font-mono text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200/60 font-medium" suppressHydrationWarning>
+                              وارد: {formatDate(c.incomingDate)}
                             </span>
                           )}
 

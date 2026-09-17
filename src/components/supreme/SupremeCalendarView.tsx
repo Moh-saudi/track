@@ -319,7 +319,7 @@ export function SupremeCalendarView({
                         >
                           <div className="flex items-center justify-between text-[11px] font-bold text-teal-950 truncate font-heading">
                             <span className="truncate">{s.sessionNumber}</span>
-                            <span className="font-mono text-[10px] text-teal-700 font-normal shrink-0 mr-1">
+                            <span className="font-mono text-[10px] text-teal-700 font-normal shrink-0 mr-1" suppressHydrationWarning>
                               {timeStr}
                             </span>
                           </div>
@@ -395,13 +395,13 @@ export function SupremeCalendarView({
                     <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600">
                       <div className="flex items-center gap-1.5">
                         <CalendarIcon className="w-3.5 h-3.5 text-teal-600" />
-                        <span className="font-semibold text-slate-800">
+                        <span className="font-semibold text-slate-800" suppressHydrationWarning>
                           {formattedDate}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 font-mono">
                         <Clock className="w-3.5 h-3.5 text-teal-600" />
-                        <span>الساعة {formattedTime}</span>
+                        <span suppressHydrationWarning>الساعة {formattedTime}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-slate-400" />

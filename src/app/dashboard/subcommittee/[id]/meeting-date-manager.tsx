@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, Clock, AlertCircle, CheckCircle2, Edit3, X, Save } from "lucide-react";
 import { Button, Badge } from "@/components/ui";
+import { formatDate } from "@/lib/formatters";
 
 export function MeetingDateManager({
   caseId,
@@ -38,13 +39,7 @@ export function MeetingDateManager({
   const [reason, setReason] = useState<string>("");
   const [savedReason, setSavedReason] = useState<string | null>(initialReason || null);
   const [savedDate, setSavedDate] = useState<string | null>(
-    initialMeetingDate
-      ? new Date(initialMeetingDate).toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-      : null
+    initialMeetingDate ? formatDate(initialMeetingDate) : null
   );
 
   const [isEditing, setIsEditing] = useState(!initialMeetingDate && !readOnly);
@@ -80,13 +75,7 @@ export function MeetingDateManager({
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "تعذر حفظ تاريخ الانعقاد");
 
-        setSavedDate(
-          new Date(meetingDate).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-        );
+        setSavedDate(formatDate(meetingDate));
         if (isReschedule) {
           setSavedReason(reason.trim());
         }
@@ -257,11 +246,11 @@ export function MeetingDateManager({
                   <div key={r.id} className="p-2.5 rounded-lg bg-white border border-amber-200/80 space-y-1">
                     <div className="flex items-center justify-between text-[11px] text-slate-500">
                       <span className="font-bold text-amber-900">تعديل رقم {initialReschedules.length - idx}</span>
-                      <span className="font-mono">{new Date(r.createdAt).toLocaleDateString("en-GB")}</span>
+                      <span className="font-mono" suppressHydrationWarning>{formatDate(r.createdAt)}</span>
                     </div>
-                    <div className="text-slate-600 text-[11px] font-mono">
-                      {r.oldDate && <span className="line-through text-slate-400 mr-1">{new Date(r.oldDate).toLocaleDateString("en-GB")}</span>}
-                      <span className="font-bold text-teal-800">← {new Date(r.newDate).toLocaleDateString("en-GB")}</span>
+                    <div className="text-slate-600 text-[11px] font-mono" suppressHydrationWarning>
+                      {r.oldDate && <span className="line-through text-slate-400 mr-1">{formatDate(r.oldDate)}</span>}
+                      <span className="font-bold text-teal-800">← {formatDate(r.newDate)}</span>
                     </div>
                     <p className="text-slate-800 text-xs leading-relaxed">
                       <strong className="text-amber-950">السبب: </strong>
