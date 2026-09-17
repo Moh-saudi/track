@@ -42,9 +42,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     entityId: updated.id,
     action: "UPDATE",
     userId: (session.user as any).id,
-    beforeData: before,
-    afterData: updated,
+    beforeData: {
+      ...before,
+      amount: before.amount === null ? null : Number(before.amount),
+    },
+    afterData: {
+      ...updated,
+      amount: updated.amount === null ? null : Number(updated.amount),
+    },
   });
 
-  return NextResponse.json(updated);
+  return NextResponse.json({
+    ...updated,
+    amount: updated.amount === null ? null : Number(updated.amount),
+  });
 }
