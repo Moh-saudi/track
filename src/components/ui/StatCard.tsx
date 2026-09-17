@@ -124,15 +124,15 @@ export function StatCard({
         onClick ? "cursor-pointer hover:border-slate-300 hover:shadow-md" : ""
       } ${className}`}
     >
-      <div className="space-y-1">
+      <div className="space-y-1 min-w-0">
         <p className="text-[13px] font-medium text-slate-600 font-body">{title}</p>
         <p
           suppressHydrationWarning
-          className={`text-4xl font-bold font-heading tracking-tight ${style.valueColor}`}
+          className={`text-2xl sm:text-3xl leading-tight font-bold font-heading tracking-tight break-words ${style.valueColor}`}
         >
           {value}
         </p>
-        {sub && <p className="text-xs text-slate-500 font-body">{sub}</p>}
+        {sub && <p className="text-xs leading-relaxed text-slate-500 font-body">{sub}</p>}
       </div>
       <div
         className={`w-10 h-10 rounded-xl flex items-center justify-center border shrink-0 ${style.iconBg}`}
