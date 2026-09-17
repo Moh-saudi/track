@@ -22,12 +22,13 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
 
-export default async function SubCommitteeReportPage({ params }: { params: { id: string } }) {
+export default async function SubCommitteeReportPage({ const { id } = await params;
+  params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
   const caseRecord = await prisma.case.findUnique({
-    where: { id: params.id },
+    where: { id: id },
     include: {
       subCommittee: true,
       specialties: { include: { specialty: true } },
@@ -52,7 +53,7 @@ export default async function SubCommitteeReportPage({ params }: { params: { id:
   }
 
   const reviewersCount = await prisma.caseReviewer.count({
-    where: { caseId: params.id, status: { not: "RECUSED" } },
+    where: { caseId: id, status: { not: "RECUSED" } },
   });
 
   const hasMeetingDate = !!caseRecord.meetingDate;
