@@ -22,8 +22,8 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
 
-export default async function SubCommitteeReportPage({ const { id } = await params;
-  params }: { params: Promise<{ id: string }> }) {
+export default async function SubCommitteeReportPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
