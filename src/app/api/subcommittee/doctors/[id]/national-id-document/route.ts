@@ -51,14 +51,14 @@ function storageDisabledResponse() {
   );
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!LOCAL_DOCUMENT_UPLOAD_ENABLED) return storageDisabledResponse();
 
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
-  const access = await authorizeDoctorAccess(params.id, user, true);
+  const access = await authorizeDoctorAccess((await params).id, user, true);
   if ("error" in access) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const formData = await req.formData();
@@ -79,8 +79,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   await ensureSecureDirectory(tempDir);
 
   const tempPath = path.join(tempDir, `national-id-${crypto.randomUUID()}.pdf`);
-  const targetPath = documentPath(params.id);
-  const replacementPath = path.join(docDir, `.${params.id}.${crypto.randomUUID()}.pdf`);
+  const targetPath = documentPath((await params).id);
+  const replacementPath = path.join(docDir, `.${(await params).id}.${crypto.randomUUID()}.pdf`);
 
   try {
     await fs.writeFile(tempPath, buffer, { flag: "wx", mode: 0o640 });
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   await writeAuditLog({
     entityType: "SubCommitteeDoctor",
-    entityId: params.id,
+    entityId: (await params).id,
     action: "UPLOAD_NATIONAL_ID_DOCUMENT",
     userId: user.id,
     afterData: { fileType: "application/pdf", fileSize: file.size },
@@ -112,21 +112,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json({
     success: true,
     hasNationalIdDocument: true,
-    downloadUrl: `/api/subcommittee/doctors/${params.id}/national-id-document`,
+    downloadUrl: `/api/subcommittee/doctors/${(await params).id}/national-id-document`,
   });
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!LOCAL_DOCUMENT_UPLOAD_ENABLED) return storageDisabledResponse();
 
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
-  const access = await authorizeDoctorAccess(params.id, user, false);
+  const access = await authorizeDoctorAccess((await params).id, user, false);
   if ("error" in access) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  const targetPath = documentPath(params.id);
+  const targetPath = documentPath((await params).id);
   try {
     const stat = await fs.stat(targetPath);
     if (!stat.isFile()) throw new Error("not-file");
