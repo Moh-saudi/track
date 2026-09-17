@@ -8,7 +8,7 @@ import { resolveStoredUploadPath } from "@/lib/storage";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string; attachmentId: string } }
+  { params }: { params: Promise<{ id: string; attachmentId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
@@ -18,7 +18,7 @@ export async function GET(
   const userSubCommitteeId = (session.user as any).subCommitteeId;
 
   const caseRecord = await prisma.case.findUnique({
-    where: { id: params.id },
+    where: { id: (await params).id },
     select: { id: true, subCommitteeId: true, createdById: true },
   });
   if (!caseRecord) return NextResponse.json({ error: "السجل غير موجود" }, { status: 404 });
@@ -32,7 +32,7 @@ export async function GET(
   }
 
   const attachment = await prisma.attachment.findFirst({
-    where: { id: params.attachmentId, caseId: params.id },
+    where: { id: (await params).attachmentId, caseId: (await params).id },
   });
   if (!attachment) return NextResponse.json({ error: "المرفق غير موجود" }, { status: 404 });
 
