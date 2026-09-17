@@ -1,22 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import fs from "fs/promises";
+import path from "path";
+import crypto from "crypto";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/rbac";
 import { writeAuditLog } from "@/lib/audit";
-import fs from "fs/promises";
-import path from "path";
+import {
+  canonicalMimeForExtension,
+  caseAttachmentDir,
+  ensureSecureDirectory,
+  getMaxUploadBytes,
+  quarantineDir,
+  scanFileForMalware,
+  toStoredUploadPath,
+  validateFileSignature,
+} from "@/lib/storage";
 
-const UPLOAD_DIR = path.join(process.cwd(), "uploads");
-const ALLOWED_TYPES = [
-  "application/pdf",
-  "image/png",
-  "image/jpeg",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-];
 const ALLOWED_EXTS = [".pdf", ".png", ".jpg", ".jpeg", ".doc", ".docx"];
-const MAX_SIZE_BYTES = 15 * 1024 * 1024;
 
 function canAccessCase(role: string, userId: string, userSubCommitteeId: string | null | undefined, record: any) {
   return (
@@ -34,9 +36,8 @@ function canUpload(role: string, userId: string, userSubCommitteeId: string | nu
   );
 }
 
-function publicAttachment(attachment: any) {
-  const { filePath, ...safe } = attachment;
-  return safe;
+function safeOriginalName(name: string): string {
+  return path.basename(name).replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 240) || "attachment";
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -58,42 +59,88 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "لم يتم إرفاق ملف" }, { status: 400 });
-  if (!ALLOWED_TYPES.includes(file.type)) return NextResponse.json({ error: "نوع الملف غير مسموح به" }, { status: 400 });
-  if (file.size > MAX_SIZE_BYTES) return NextResponse.json({ error: "حجم الملف يتجاوز الحد المسموح (15MB)" }, { status: 400 });
 
-  const safeBaseName = path.basename(file.name).replace(/[^\w.\-]+/g, "_");
-  const ext = path.extname(safeBaseName).toLowerCase();
+  const maxSize = getMaxUploadBytes();
+  if (file.size <= 0 || file.size > maxSize) {
+    return NextResponse.json(
+      { error: `حجم الملف غير صالح أو يتجاوز الحد المسموح (${Math.round(maxSize / 1024 / 1024)}MB)` },
+      { status: 400 }
+    );
+  }
+
+  const originalName = safeOriginalName(file.name);
+  const ext = path.extname(originalName).toLowerCase();
   if (!ALLOWED_EXTS.includes(ext)) {
     return NextResponse.json({ error: "امتداد الملف غير مسموح به لأسباب أمنية" }, { status: 400 });
   }
 
-  await fs.mkdir(UPLOAD_DIR, { recursive: true });
-  const safeName = `${Date.now()}-${crypto.randomUUID()}${ext}`;
-  const destPath = path.join(UPLOAD_DIR, safeName);
   const buffer = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(destPath, buffer, { flag: "wx" });
+  if (!validateFileSignature(buffer, ext)) {
+    return NextResponse.json({ error: "محتوى الملف لا يطابق نوعه أو امتداده" }, { status: 400 });
+  }
 
-  const attachment = await prisma.attachment.create({
-    data: {
-      caseId: params.id,
-      fileName: path.basename(file.name),
-      fileType: file.type,
-      filePath: destPath,
-      fileSize: file.size,
-      uploadedById: userId,
-    },
-    include: { uploadedBy: { select: { id: true, fullName: true, role: true } } },
-  });
+  const finalDir = caseAttachmentDir(params.id);
+  const tempDir = quarantineDir();
+  await ensureSecureDirectory(finalDir);
+  await ensureSecureDirectory(tempDir);
 
-  await writeAuditLog({
-    entityType: "Attachment",
-    entityId: attachment.id,
-    action: "UPLOAD",
-    userId,
-    afterData: { fileName: attachment.fileName, caseId: params.id, fileSize: attachment.fileSize },
-  });
+  const opaqueId = crypto.randomUUID();
+  const finalName = `${Date.now()}-${opaqueId}${ext}`;
+  const quarantinePath = path.join(tempDir, `${opaqueId}${ext}`);
+  const finalPath = path.join(finalDir, finalName);
 
-  return NextResponse.json(publicAttachment(attachment), { status: 201 });
+  try {
+    await fs.writeFile(quarantinePath, buffer, { flag: "wx", mode: 0o640 });
+    await scanFileForMalware(quarantinePath);
+    await fs.rename(quarantinePath, finalPath);
+    await fs.chmod(finalPath, 0o640).catch(() => undefined);
+  } catch (error: any) {
+    await fs.unlink(quarantinePath).catch(() => undefined);
+    await fs.unlink(finalPath).catch(() => undefined);
+
+    if (error?.message === "MALWARE_DETECTED") {
+      return NextResponse.json({ error: "تم رفض الملف بعد اكتشاف محتوى ضار" }, { status: 422 });
+    }
+    if (error?.message === "MALWARE_SCANNER_UNAVAILABLE") {
+      return NextResponse.json({ error: "خدمة فحص الملفات غير متاحة حاليًا، تم إيقاف الرفع حفاظًا على الأمان" }, { status: 503 });
+    }
+    console.error("Attachment storage error:", error);
+    return NextResponse.json({ error: "تعذر حفظ المرفق على مخزن الملفات الآمن" }, { status: 500 });
+  }
+
+  try {
+    const attachment = await prisma.attachment.create({
+      data: {
+        caseId: params.id,
+        fileName: originalName,
+        fileType: canonicalMimeForExtension(ext),
+        filePath: toStoredUploadPath(finalPath),
+        fileSize: file.size,
+        uploadedById: userId,
+      },
+      include: { uploadedBy: { select: { id: true, fullName: true, role: true } } },
+    });
+
+    await writeAuditLog({
+      entityType: "Attachment",
+      entityId: attachment.id,
+      action: "UPLOAD",
+      userId,
+      afterData: {
+        fileName: attachment.fileName,
+        caseId: params.id,
+        fileSize: attachment.fileSize,
+        fileType: attachment.fileType,
+      },
+    });
+
+    const { filePath, ...safeAttachment } = attachment;
+    return NextResponse.json(safeAttachment, { status: 201 });
+  } catch (error) {
+    await fs.unlink(finalPath).catch(() => undefined);
+    console.error("Attachment DB error:", error);
+    return NextResponse.json({ error: "تعذر تسجيل المرفق بعد حفظه" }, { status: 500 });
+  }
 }
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
