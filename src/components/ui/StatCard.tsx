@@ -98,6 +98,8 @@ export function StatCard({
 
   const style = variantStyles[effectiveVariant] || variantStyles.teal;
   const sub = subtitle || description;
+  const financialText = `${title} ${typeof value === "string" ? value : ""} ${sub || ""}`;
+  const isFinancialCard = /(بدل|بدلات|مستحق|مستحقات|صرف|تسديد|مدفوع|التسوية|ج\.م)/.test(financialText);
 
   const renderIcon = () => {
     if (!icon) return null;
@@ -120,7 +122,8 @@ export function StatCard({
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex items-center justify-between gap-4 transition-all ${
+      data-financial-card={isFinancialCard ? "true" : undefined}
+      className={`bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex items-center justify-between gap-4 transition-all ${
         onClick ? "cursor-pointer hover:border-slate-300 hover:shadow-md" : ""
       } ${className}`}
     >
@@ -128,7 +131,7 @@ export function StatCard({
         <p className="text-[13px] font-medium text-slate-600 font-body">{title}</p>
         <p
           suppressHydrationWarning
-          className={`text-2xl sm:text-3xl leading-tight font-bold font-heading tracking-tight break-words ${style.valueColor}`}
+          className={`text-xl sm:text-2xl leading-tight font-semibold font-heading tracking-tight break-words ${style.valueColor}`}
         >
           {value}
         </p>
