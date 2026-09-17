@@ -1,16 +1,10 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight, CreditCard, FileText, Save, User } from "lucide-react";
 import { PageHeader, Card, Button } from "@/components/ui";
-import {
-  User,
-  CreditCard,
-  Building,
-  Save,
-  ArrowRight,
-} from "lucide-react";
 
 interface Specialty {
   id: string;
@@ -32,23 +26,24 @@ const EGYPTIAN_BANKS = [
   "أخرى / بنك آخر",
 ];
 
+const MAX_NATIONAL_ID_PDF_BYTES = 12 * 1024 * 1024;
+const LOCAL_DOCUMENT_UPLOAD_ENABLED = process.env.NEXT_PUBLIC_ENABLE_LOCAL_DOCUMENT_UPLOAD === "true";
+
 export default function NewDoctorPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // حقول الطبيب الشخصية والمهنية
   const [name, setName] = useState("");
   const [title, setTitle] = useState("أستاذ دكتور");
   const [employer, setEmployer] = useState("");
   const [specialtyId, setSpecialtyId] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
-
-  // البيانات المالية والمصرفية
   const [nationalId, setNationalId] = useState("");
+  const [nationalIdDocument, setNationalIdDocument] = useState<File | null>(null);
+
   const [financialType, setFinancialType] = useState<"PAYROLL_CARD" | "BANK_ACCOUNT" | "BANK_CARD">("PAYROLL_CARD");
   const [bankName, setBankName] = useState("البنك الأهلي المصري (ميزة / مرتبات حكومية)");
   const [customBankName, setCustomBankName] = useState("");
@@ -57,36 +52,36 @@ export default function NewDoctorPage() {
   const [cardNumber, setCardNumber] = useState("");
 
   useEffect(() => {
-    async function loadSpecialties() {
-      try {
-        const res = await fetch("/api/specialties");
-        if (res.ok) setSpecialties(await res.json());
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    loadSpecialties();
+    fetch("/api/specialties")
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setSpecialties)
+      .catch(console.error);
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setError(null);
 
-    if (!name.trim()) {
-      setError("يرجى إدخال اسم الطبيب كاملاً");
-      return;
+    if (!name.trim()) return setError("يرجى إدخال اسم العضو كاملاً");
+    if (!employer.trim()) return setError("يرجى إدخال جهة عمل العضو");
+    if (nationalId && nationalId.length !== 14) return setError("الرقم القومي يجب أن يتكون من 14 رقماً");
+
+    if (nationalIdDocument) {
+      if (nationalIdDocument.type !== "application/pdf") {
+        return setError("ملف بطاقة الرقم القومي يجب أن يكون PDF");
+      }
+      if (nationalIdDocument.size <= 0 || nationalIdDocument.size > MAX_NATIONAL_ID_PDF_BYTES) {
+        return setError("حجم ملف بطاقة الرقم القومي يجب ألا يتجاوز 12 ميجابايت");
+      }
     }
 
-    if (!employer.trim()) {
-      setError("يرجى إدخال جهة عمل الطبيب لفحص تعارض المصالح آلياً");
-      return;
-    }
-
-    const resolvedBankName = bankName === "أخرى / بنك آخر" ? customBankName : bankName;
+    const resolvedBankName = bankName === "أخرى / بنك آخر" ? customBankName.trim() : bankName;
 
     startTransition(async () => {
+      let createdDoctorId: string | null = null;
+
       try {
-        const res = await fetch("/api/subcommittee/doctors", {
+        const createResponse = await fetch("/api/subcommittee/doctors", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -99,344 +94,200 @@ export default function NewDoctorPage() {
             nationalId: nationalId.trim() || undefined,
             financialType,
             bankName: resolvedBankName || undefined,
-            accountNumber: financialType === "BANK_ACCOUNT" ? (accountNumber.trim() || undefined) : undefined,
-            iban: financialType === "BANK_ACCOUNT" ? (iban.trim() || undefined) : undefined,
-            cardNumber: (financialType === "PAYROLL_CARD" || financialType === "BANK_CARD") ? (cardNumber.trim() || undefined) : undefined,
+            accountNumber: financialType === "BANK_ACCOUNT" ? accountNumber.trim() || undefined : undefined,
+            iban: financialType === "BANK_ACCOUNT" ? iban.trim() || undefined : undefined,
+            cardNumber: financialType !== "BANK_ACCOUNT" ? cardNumber.trim() || undefined : undefined,
           }),
         });
 
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || "تعذر إضافة الطبيب");
+        const doctor = await createResponse.json();
+        if (!createResponse.ok) throw new Error(doctor.error || "تعذر إضافة العضو");
+        createdDoctorId = doctor.id;
+
+        if (LOCAL_DOCUMENT_UPLOAD_ENABLED && nationalIdDocument) {
+          const formData = new FormData();
+          formData.append("file", nationalIdDocument);
+
+          const documentResponse = await fetch(`/api/subcommittee/doctors/${doctor.id}/national-id-document`, {
+            method: "POST",
+            body: formData,
+          });
+
+          const documentResult = await documentResponse.json();
+          if (!documentResponse.ok) {
+            await fetch(`/api/subcommittee/doctors/${doctor.id}`, { method: "DELETE" }).catch(() => undefined);
+            createdDoctorId = null;
+            throw new Error(documentResult.error || "تعذر رفع ملف بطاقة الرقم القومي");
+          }
         }
 
         router.push("/dashboard/subcommittee/doctors");
         router.refresh();
       } catch (err: any) {
-        setError(err.message);
+        if (createdDoctorId) {
+          console.error("Doctor creation or document upload failed for:", createdDoctorId);
+        }
+        setError(err?.message || "تعذر حفظ بيانات العضو");
       }
     });
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* ─── رأس الصفحة الموحد ─── */}
+    <div className="max-w-5xl mx-auto space-y-6">
       <PageHeader
         breadcrumbs={[
           { label: "الرئيسية", href: "/dashboard" },
           { label: "اللجان الفرعية", href: "/dashboard/subcommittee" },
-          { label: "سجل أطباء اللجنة", href: "/dashboard/subcommittee/doctors" },
-          { label: "قيد طبيب جديد" },
+          { label: "سجل أعضاء اللجنة", href: "/dashboard/subcommittee/doctors" },
+          { label: "إضافة عضو جديد" },
         ]}
-        title="قيد طبيب استشاري جديد وبياناته المالية"
-        description="تسجيل الأطباء وحسابات الصرف المصرفية لتظهر فوراً للمسؤول المالي عند صرف المستحقات."
+        title="إضافة عضو لجنة وبياناته المالية"
+        description="تسجيل بيانات العضو وتجهيز مستند بطاقة الرقم القومي للحفظ على السيرفر الحكومي عند تفعيل التخزين المحلي."
         actions={
           <Link
             href="/dashboard/subcommittee/doctors"
-            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs sm:text-sm font-medium hover:bg-slate-50 shadow-xs font-body"
+            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs sm:text-sm font-medium hover:bg-slate-50"
           >
-            <ArrowRight className="w-4 h-4" />
-            <span>عودة لسجل الأطباء</span>
+            <ArrowRight className="w-4 h-4" /> عودة للسجل
           </Link>
         }
       />
 
-      <Card className="space-y-6 p-6 sm:p-8">
-        {error && (
-          <div className="alert-error text-xs">
-            <span>{error}</span>
-          </div>
-        )}
+      <Card className="p-6 sm:p-8">
+        {error && <div className="alert-error text-xs mb-5"><span>{error}</span></div>}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 1. البيانات الشخصية والمهنية */}
-          <div className="space-y-4">
-            <span className="text-xs font-bold font-heading text-teal-800 flex items-center gap-1.5">
-              <User className="w-4 h-4 text-teal-600" />
-              <span>البيانات الشخصية والمهنية</span>
-            </span>
+        <form onSubmit={handleSubmit} className="space-y-7">
+          <section className="space-y-4">
+            <h2 className="text-sm font-bold text-teal-800 flex items-center gap-2">
+              <User className="w-4 h-4" /> البيانات الشخصية والمهنية
+            </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="form-group">
-                <label className="form-label form-label-required">اسم الطبيب الاستشاري كاملاً</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="مثال: أ.د. شريف كمال الدين"
-                  className="form-input text-xs"
-                />
+                <label className="form-label form-label-required">اسم العضو كاملاً</label>
+                <input required className="form-input text-xs" value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: أ.د. شريف كمال الدين" />
               </div>
 
               <div className="form-group">
                 <label className="form-label form-label-required">الدرجة واللقب العلمي</label>
-                <select
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="form-select text-xs"
-                >
-                  <option value="أستاذ دكتور">أستاذ دكتور (Prof. Dr.)</option>
-                  <option value="أستاذ مساعد">أستاذ مساعد</option>
-                  <option value="استشاري أول">استشاري أول</option>
-                  <option value="استشاري">استشاري</option>
-                  <option value="زميل / باحث">زميل / باحث</option>
+                <select className="form-select text-xs" value={title} onChange={(e) => setTitle(e.target.value)}>
+                  <option>أستاذ دكتور</option>
+                  <option>أستاذ مساعد</option>
+                  <option>استشاري أول</option>
+                  <option>استشاري</option>
+                  <option>زميل / باحث</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label className="form-label form-label-required">جهة العمل / المستشفى التابع لها</label>
-                <input
-                  type="text"
-                  required
-                  value={employer}
-                  onChange={(e) => setEmployer(e.target.value)}
-                  placeholder="مثال: مستشفى قصر العيني الفرنساوي"
-                  className="form-input text-xs"
-                />
-                <span className="text-[10px] text-slate-500">لفحص تعارض المصالح آلياً ضد المستشفى المشكو في حقه</span>
+                <label className="form-label form-label-required">جهة العمل / المستشفى</label>
+                <input required className="form-input text-xs" value={employer} onChange={(e) => setEmployer(e.target.value)} placeholder="جهة عمل العضو" />
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="form-group">
-                <label className="form-label">التخصص الطبي الدقيق</label>
-                <select
-                  value={specialtyId}
-                  onChange={(e) => setSpecialtyId(e.target.value)}
-                  className="form-select text-xs"
-                >
-                  <option value="">— اختر التخصص الطبي —</option>
-                  {specialties.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
+                <label className="form-label">التخصص الطبي</label>
+                <select className="form-select text-xs" value={specialtyId} onChange={(e) => setSpecialtyId(e.target.value)}>
+                  <option value="">— اختر التخصص —</option>
+                  {specialties.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
               </div>
 
               <div className="form-group">
                 <label className="form-label">الرقم القومي (14 رقماً)</label>
-                <input
-                  type="text"
-                  maxLength={14}
-                  value={nationalId}
-                  onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ""))}
-                  placeholder="2XXXXXXXXXXXXX"
-                  className="form-input text-xs font-mono"
-                  dir="ltr"
-                />
-                <span className="text-[10px] text-slate-500">إلزامي لصرف المكافآت الحكومية</span>
+                <input className="form-input text-xs font-mono" dir="ltr" maxLength={14} value={nationalId} onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ""))} placeholder="2XXXXXXXXXXXXX" />
               </div>
 
               <div className="form-group">
-                <label className="form-label">رقم الهاتف للتواصل الرسمي</label>
+                <label className="form-label">ملف بطاقة الرقم القومي (PDF)</label>
                 <input
-                  type="text"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="01XXXXXXXXX"
-                  className="form-input text-xs font-mono"
-                  dir="ltr"
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  disabled={!LOCAL_DOCUMENT_UPLOAD_ENABLED}
+                  className="form-input text-xs disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                  onChange={(e) => setNationalIdDocument(e.target.files?.[0] || null)}
                 />
+                <span className="text-[10px] text-slate-500 flex items-center gap-1 mt-1">
+                  <FileText className="w-3 h-3" />
+                  {LOCAL_DOCUMENT_UPLOAD_ENABLED
+                    ? "اختياري — ملف PDF واحد بحد أقصى 12MB"
+                    : "الحقل جاهز وسيتم تفعيل رفع الملف عند تشغيل النظام على السيرفر الحكومي"}
+                </span>
+                {nationalIdDocument && <span className="text-[10px] text-emerald-700 mt-1 block">✓ {nationalIdDocument.name}</span>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">رقم الهاتف</label>
+                <input className="form-input text-xs font-mono" dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="01XXXXXXXXX" />
               </div>
             </div>
-          </div>
+          </section>
 
-          {/* 2. البيانات المالية وصرف المستحقات */}
-          <div className="p-4 rounded-xl bg-purple-50/40 border border-purple-200/80 space-y-4">
-            <div className="flex items-center justify-between border-b border-purple-200/60 pb-2">
-              <span className="text-xs font-bold font-heading text-purple-950 flex items-center gap-1.5">
-                <CreditCard className="w-4 h-4 text-purple-700" />
-                <span>البيانات المالية وصرف المستحقات (تظهر للمسؤول المالي مباشرة)</span>
-              </span>
-              <span className="text-xs text-purple-800 font-medium font-body">فيزا مرتبات / حساب بنكي / كارت</span>
+          <section className="p-5 rounded-xl bg-purple-50/50 border border-purple-200 space-y-4">
+            <h2 className="text-sm font-bold text-purple-950 flex items-center gap-2">
+              <CreditCard className="w-4 h-4" /> البيانات المالية وصرف المستحقات
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              {([[
+                "PAYROLL_CARD",
+                "فيزا مرتبات حكومية",
+              ], [
+                "BANK_ACCOUNT",
+                "حساب بنكي شخصي",
+              ], [
+                "BANK_CARD",
+                "فيزا / كارت بنكي خاص",
+              ]] as const).map(([value, label]) => (
+                <label key={value} className={`p-3 rounded-xl border cursor-pointer ${financialType === value ? "bg-purple-100 border-purple-400" : "bg-white border-slate-200"}`}>
+                  <input type="radio" name="financialType" checked={financialType === value} onChange={() => setFinancialType(value)} className="ml-2" />
+                  {label}
+                </label>
+              ))}
             </div>
 
-            {/* اختيار نوع وسيلة الصرف والتحويل */}
-            <div className="space-y-2">
-              <span className="text-xs font-bold font-heading text-slate-700 block">طريقة تحويل وصرف الأتعاب والمكافآت:</span>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-body">
-                <label className={`p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
-                  financialType === "PAYROLL_CARD"
-                    ? "bg-purple-100/70 border-purple-400 text-purple-950 shadow-xs"
-                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                }`}>
-                  <input
-                    type="radio"
-                    name="financialType"
-                    checked={financialType === "PAYROLL_CARD"}
-                    onChange={() => setFinancialType("PAYROLL_CARD")}
-                    className="text-purple-700 focus:ring-purple-700"
-                  />
-                  <div>
-                    <span className="font-bold block flex items-center gap-1">
-                      <CreditCard className="w-3.5 h-3.5" />
-                      <span>فيزا مرتبات حكومية</span>
-                    </span>
-                    <span className="text-[10px] text-slate-500">كارت ميزة مرتبات للمستشفيات والجامعات</span>
-                  </div>
-                </label>
-
-                <label className={`p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
-                  financialType === "BANK_ACCOUNT"
-                    ? "bg-teal-50 border-teal-400 text-teal-950 shadow-xs"
-                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                }`}>
-                  <input
-                    type="radio"
-                    name="financialType"
-                    checked={financialType === "BANK_ACCOUNT"}
-                    onChange={() => setFinancialType("BANK_ACCOUNT")}
-                    className="text-teal-600 focus:ring-teal-600"
-                  />
-                  <div>
-                    <span className="font-bold block flex items-center gap-1">
-                      <Building className="w-3.5 h-3.5" />
-                      <span>حساب بنكي شخصي</span>
-                    </span>
-                    <span className="text-[10px] text-slate-500">تحويل بنكي / IBAN شخصي</span>
-                  </div>
-                </label>
-
-                <label className={`p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
-                  financialType === "BANK_CARD"
-                    ? "bg-emerald-100/70 border-emerald-400 text-emerald-950 shadow-xs"
-                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                }`}>
-                  <input
-                    type="radio"
-                    name="financialType"
-                    checked={financialType === "BANK_CARD"}
-                    onChange={() => setFinancialType("BANK_CARD")}
-                    className="text-emerald-700 focus:ring-emerald-700"
-                  />
-                  <div>
-                    <span className="font-bold block flex items-center gap-1">
-                      <CreditCard className="w-3.5 h-3.5" />
-                      <span>فيزا / كارت بنكي خاص</span>
-                    </span>
-                    <span className="text-[10px] text-slate-500">كارت بنكي شخصي عادي</span>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* حقول الإدخال حسب نوع الوسيلة */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="form-group">
-                <label className="form-label">
-                  {financialType === "PAYROLL_CARD" ? "بنك صرف المرتبات" : "اسم البنك"}
-                </label>
-                <select
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  className="form-select text-xs"
-                >
-                  {EGYPTIAN_BANKS.map((b) => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
+                <label className="form-label">اسم البنك</label>
+                <select className="form-select text-xs" value={bankName} onChange={(e) => setBankName(e.target.value)}>
+                  {EGYPTIAN_BANKS.map((bank) => <option key={bank}>{bank}</option>)}
                 </select>
               </div>
 
               {bankName === "أخرى / بنك آخر" && (
                 <div className="form-group">
-                  <label className="form-label">حدد اسم البنك</label>
-                  <input
-                    type="text"
-                    value={customBankName}
-                    onChange={(e) => setCustomBankName(e.target.value)}
-                    placeholder="اسم البنك..."
-                    className="form-input text-xs"
-                  />
+                  <label className="form-label">اسم البنك الآخر</label>
+                  <input className="form-input text-xs" value={customBankName} onChange={(e) => setCustomBankName(e.target.value)} />
                 </div>
               )}
 
-              {financialType === "PAYROLL_CARD" ? (
-                <div className="form-group sm:col-span-2">
-                  <label className="form-label form-label-required">رقم كارت فيزا المرتبات (16 رقماً)</label>
-                  <input
-                    type="text"
-                    maxLength={19}
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(e.target.value)}
-                    placeholder="XXXX XXXX XXXX XXXX"
-                    className="form-input text-xs font-mono"
-                    dir="ltr"
-                  />
-                  <span className="text-[10px] text-purple-900 font-medium">
-                    رقم كارت ميزة للمرتبات الحكومية المسلم للطبيب من جهة عمله الحكومية
-                  </span>
-                </div>
-              ) : financialType === "BANK_ACCOUNT" ? (
+              {financialType === "BANK_ACCOUNT" ? (
                 <>
                   <div className="form-group">
                     <label className="form-label">رقم الحساب البنكي</label>
-                    <input
-                      type="text"
-                      value={accountNumber}
-                      onChange={(e) => setAccountNumber(e.target.value)}
-                      placeholder="رقم الحساب لدى البنك..."
-                      className="form-input text-xs font-mono"
-                      dir="ltr"
-                    />
+                    <input className="form-input text-xs font-mono" dir="ltr" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">رقم الآيبان (IBAN) اختياري</label>
-                    <input
-                      type="text"
-                      value={iban}
-                      onChange={(e) => setIban(e.target.value)}
-                      placeholder="EGXXXXXXXXXXXXXXXXXXXXXXXXXX"
-                      className="form-input text-xs font-mono"
-                      dir="ltr"
-                    />
+                    <label className="form-label">IBAN</label>
+                    <input className="form-input text-xs font-mono" dir="ltr" value={iban} onChange={(e) => setIban(e.target.value)} />
                   </div>
                 </>
               ) : (
                 <div className="form-group sm:col-span-2">
-                  <label className="form-label">رقم كارت الفيزا / ميزة</label>
-                  <input
-                    type="text"
-                    maxLength={19}
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(e.target.value)}
-                    placeholder="XXXX XXXX XXXX XXXX"
-                    className="form-input text-xs font-mono"
-                    dir="ltr"
-                  />
+                  <label className="form-label">رقم الكارت</label>
+                  <input className="form-input text-xs font-mono" dir="ltr" maxLength={19} value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} placeholder="XXXX XXXX XXXX XXXX" />
                 </div>
               )}
             </div>
-          </div>
+          </section>
 
-          {/* 3. ملاحظات إدارية */}
           <div className="form-group">
             <label className="form-label">ملاحظات إدارية</label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="أي ملاحظات تخص الطبيب أو جدول مواعيده..."
-              className="form-input text-xs"
-            />
+            <input className="form-input text-xs" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="أي ملاحظات تخص العضو..." />
           </div>
 
-          {/* أزرار الحفظ والإلغاء */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-            <Link href="/dashboard/subcommittee/doctors">
-              <Button type="button" variant="secondary">
-                إلغاء
-              </Button>
-            </Link>
-            <Button
-              type="submit"
-              variant="primary"
-              loading={isPending}
-              icon={<Save className="w-4 h-4" />}
-            >
-              حفظ وقيد الطبيب باللجنة
-            </Button>
+            <Link href="/dashboard/subcommittee/doctors"><Button type="button" variant="secondary">إلغاء</Button></Link>
+            <Button type="submit" variant="primary" loading={isPending} icon={<Save className="w-4 h-4" />}>حفظ العضو</Button>
           </div>
         </form>
       </Card>

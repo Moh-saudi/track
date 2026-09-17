@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit";
+import { verifyRiskSessionToken } from "@/lib/risk-session";
 
 const schema = z.object({
   targetStatus: z.enum([
@@ -33,9 +34,8 @@ export async function POST(
     );
   }
 
-  // التحقق من تفعيل وضع المخاطر عبر تأكيد كلمة المرور حديثاً (Step-Up Authentication)
   const riskSessionCookie = req.cookies.get("risk_mode_session")?.value;
-  if (!riskSessionCookie || riskSessionCookie !== `active_${user.id}`) {
+  if (!verifyRiskSessionToken(riskSessionCookie, user.id)) {
     return NextResponse.json(
       {
         error: "جلسة وضع إدارة المخاطر غير مفعلة أو منتهية الصلاحية. يرجى تأكيد كلمة المرور وتفعيل وضع إدارة المخاطر أولاً لتنفيذ هذا الإجراء الاستثنائي.",
@@ -45,9 +45,7 @@ export async function POST(
   }
 
   const parsed = schema.safeParse(await req.json());
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  }
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   const { targetStatus, riskOverrideReason, riskOverrideDocument } = parsed.data;
 
@@ -59,41 +57,44 @@ export async function POST(
     },
   });
 
-  if (!existingCase) {
-    return NextResponse.json({ error: "السجل غير موجود" }, { status: 404 });
-  }
+  if (!existingCase) return NextResponse.json({ error: "السجل غير موجود" }, { status: 404 });
 
-  const updatedCase = await prisma.case.update({
-    where: { id: params.id },
-    data: {
-      status: targetStatus as any,
-      isRiskOverridden: true,
-      riskOverrideReason: riskOverrideReason.trim(),
-      riskOverrideDocument: riskOverrideDocument.trim(),
-      riskOverriddenAt: new Date(),
-      riskOverriddenById: user.id,
-    },
-  });
+  const updatedCase = await prisma.$transaction(async (tx) => {
+    const updated = await tx.case.update({
+      where: { id: params.id },
+      data: {
+        status: targetStatus as any,
+        isRiskOverridden: true,
+        riskOverrideReason: riskOverrideReason.trim(),
+        riskOverrideDocument: riskOverrideDocument.trim(),
+        riskOverriddenAt: new Date(),
+        riskOverriddenById: user.id,
+      },
+    });
 
-  // Write high-priority audit log
-  await writeAuditLog({
-    entityType: "Case",
-    entityId: params.id,
-    action: "ADMIN_RISK_OVERRIDE",
-    userId: user.id,
-    beforeData: {
-      caseNumber: existingCase.caseNumber,
-      caseYear: existingCase.caseYear,
-      previousStatus: existingCase.status,
-    },
-    afterData: {
-      caseNumber: updatedCase.caseNumber,
-      caseYear: updatedCase.caseYear,
-      newStatus: updatedCase.status,
-      riskOverrideReason: updatedCase.riskOverrideReason,
-      riskOverrideDocument: updatedCase.riskOverrideDocument,
-      overriddenAt: updatedCase.riskOverriddenAt,
-    },
+    await tx.auditLog.create({
+      data: {
+        entityType: "Case",
+        entityId: params.id,
+        action: "ADMIN_RISK_OVERRIDE",
+        userId: user.id,
+        beforeData: {
+          caseNumber: existingCase.caseNumber,
+          caseYear: existingCase.caseYear,
+          previousStatus: existingCase.status,
+        },
+        afterData: {
+          caseNumber: updated.caseNumber,
+          caseYear: updated.caseYear,
+          newStatus: updated.status,
+          riskOverrideReason: updated.riskOverrideReason,
+          riskOverrideDocument: updated.riskOverrideDocument,
+          overriddenAt: updated.riskOverriddenAt,
+        },
+      },
+    });
+
+    return updated;
   });
 
   return NextResponse.json(updatedCase);

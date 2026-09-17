@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit";
+import { createRiskSessionToken, RISK_SESSION_MAX_AGE } from "@/lib/risk-session";
 
 const schema = z.object({
   password: z.string().min(1, "كلمة المرور مطلوبة"),
@@ -27,8 +28,8 @@ export async function POST(req: NextRequest) {
     where: { id: user.id },
   });
 
-  if (!dbUser) {
-    return NextResponse.json({ error: "المستخدم غير موجود" }, { status: 404 });
+  if (!dbUser || !dbUser.active) {
+    return NextResponse.json({ error: "المستخدم غير موجود أو غير نشط" }, { status: 404 });
   }
 
   const isValid = await bcrypt.compare(parsed.data.password, dbUser.passwordHash);
@@ -36,7 +37,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "كلمة المرور غير صحيحة" }, { status: 401 });
   }
 
-  // Write audit log for risk mode activation
   await writeAuditLog({
     entityType: "SystemSecurity",
     entityId: dbUser.id,
@@ -51,16 +51,17 @@ export async function POST(req: NextRequest) {
   const response = NextResponse.json({
     success: true,
     message: "تم التحقق وتفعيل وضع إدارة المخاطر بنجاح",
+    expiresInSeconds: RISK_SESSION_MAX_AGE,
   });
 
-  // Set secure cookie valid for 4 hours
   response.cookies.set({
     name: "risk_mode_session",
-    value: "active_" + dbUser.id,
-    httpOnly: false, // accessible to client for banner detection
+    value: createRiskSessionToken(dbUser.id),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 4 * 60 * 60, // 4 hours
-    sameSite: "lax",
+    maxAge: RISK_SESSION_MAX_AGE,
+    sameSite: "strict",
   });
 
   return response;

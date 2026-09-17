@@ -8,6 +8,7 @@ const SENSITIVE_KEYS = new Set([
   "accountNumber",
   "cardNumber",
   "iban",
+  "nationalId",
   "nationalIdCipher",
 ]);
 

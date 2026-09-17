@@ -23,7 +23,7 @@ const createCaseSchema = z.object({
   specialtyIds: z.array(z.string()).optional(),
 });
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
@@ -33,11 +33,12 @@ export async function GET(req: NextRequest) {
 
   let where: any = {};
   if (role === "REGISTRATION_CLERK") {
-    // موظف التسجيل يرى فقط السجلات التي قام بقيدها
     where = { createdById: currentUserId };
   } else if (role === "SUBCOMMITTEE_MEMBER") {
-    // يرى القضايا الموجهة للجنته الفرعية
+    if (!subCommitteeId) return NextResponse.json({ error: "المستخدم غير مرتبط بلجنة فرعية" }, { status: 403 });
     where = { subCommitteeId };
+  } else if (!can(role, "VIEW_ALL_CASES")) {
+    return NextResponse.json({ error: "غير مصرح بالاطلاع على قائمة القضايا" }, { status: 403 });
   }
 
   const cases = await prisma.case.findMany({
@@ -46,19 +47,13 @@ export async function GET(req: NextRequest) {
     include: {
       subCommittee: true,
       prosecutionRel: true,
-      specialties: {
-        include: { specialty: true },
-      },
+      specialties: { include: { specialty: true } },
       reviewers: {
         include: {
-          user: {
-            select: { id: true, fullName: true, employer: true, role: true },
-          },
+          user: { select: { id: true, fullName: true, employer: true, role: true } },
         },
       },
-      followUpOfficer: {
-        select: { id: true, fullName: true },
-      },
+      followUpOfficer: { select: { id: true, fullName: true } },
     },
   });
   return NextResponse.json(cases);
@@ -70,37 +65,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
 
-  const body = await req.json();
-  const parsed = createCaseSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  }
+  const parsed = createCaseSchema.safeParse(await req.json());
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const data = parsed.data;
 
-  // التحقق الإلزامي: إذا كان نوع القيد قضية أو محضر، يكون رقم القضية / المحضر إلزامياً
-  if (
-    (data.registrationType === "CASE" || data.registrationType === "REPORT") &&
-    (!data.prosecutionCaseNumber || !data.prosecutionCaseNumber.trim())
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          data.registrationType === "CASE"
-            ? "رقم القضية حقل إلزامي عند اختيار نوع القيد (قضية)"
-            : "رقم محضر النيابة حقل إلزامي عند اختيار نوع القيد (محضر نيابة عامة)",
-      },
-      { status: 400 }
-    );
+  if ((data.registrationType === "CASE" || data.registrationType === "REPORT") && !data.prosecutionCaseNumber?.trim()) {
+    return NextResponse.json({
+      error: data.registrationType === "CASE"
+        ? "رقم القضية حقل إلزامي عند اختيار نوع القيد (قضية)"
+        : "رقم محضر النيابة حقل إلزامي عند اختيار نوع القيد (محضر نيابة عامة)",
+    }, { status: 400 });
   }
 
-  // في حال اختيار prosecutionId ولم يحدد نص prosecution، نجلبه تلقائياً
-  let prosecutionName = data.prosecution || null;
+  let prosecutionName = data.prosecution?.trim() || null;
   if (data.prosecutionId && !prosecutionName) {
     const p = await prisma.prosecution.findUnique({ where: { id: data.prosecutionId } });
-    if (p) prosecutionName = p.name;
+    if (!p || !p.active) return NextResponse.json({ error: "النيابة/الجهة المحددة غير صالحة أو غير نشطة" }, { status: 400 });
+    prosecutionName = p.name;
   }
 
-  // التحقق من عدم تكرار قيد نفس السجل مسبقاً بنفس الرقم والسنة والنيابة ونوع القيد
   const existingCase = await prisma.case.findFirst({
     where: {
       registrationType: data.registrationType,
@@ -109,45 +92,35 @@ export async function POST(req: NextRequest) {
       ...(data.prosecutionId ? { prosecutionId: data.prosecutionId } : {}),
     },
   });
-
   if (existingCase) {
-    return NextResponse.json(
-      {
-        error: `يوجد سجل مسجل مسبقاً بنفس رقم السجل (${data.caseNumber}) لسنة (${data.caseYear}) لذات النيابة/الجهة. يرجى مراجعة السجلات لتفادي التكرار.`,
-      },
-      { status: 409 }
-    );
+    return NextResponse.json({
+      error: `يوجد سجل مسجل مسبقاً بنفس رقم السجل (${data.caseNumber}) لسنة (${data.caseYear}) لذات النيابة/الجهة. يرجى مراجعة السجلات لتفادي التكرار.`,
+    }, { status: 409 });
   }
 
   const created = await prisma.case.create({
     data: {
       registrationType: data.registrationType,
-      caseNumber: data.caseNumber,
+      caseNumber: data.caseNumber.trim(),
       caseYear: data.caseYear,
       prosecutionCaseNumber: data.prosecutionCaseNumber?.trim() || null,
       incomingDate: data.incomingDate ? new Date(data.incomingDate) : new Date(),
       attachmentsCount: data.attachmentsCount || 0,
-      hospitalName: data.respondentName || data.hospitalName || null,
-      respondentName: data.respondentName || data.hospitalName || null,
+      hospitalName: data.hospitalName?.trim() || null,
+      respondentName: data.respondentName?.trim() || null,
       prosecution: prosecutionName,
       prosecutionId: data.prosecutionId || null,
-      governorate: data.governorate || null,
-      complainantName: data.complainantName || null,
-      description: data.description,
+      governorate: data.governorate?.trim() || null,
+      complainantName: data.complainantName.trim(),
+      description: data.description.trim(),
       createdById: (session.user as any).id,
-      specialties: data.specialtyIds && data.specialtyIds.length > 0
-        ? {
-            create: data.specialtyIds.map((specId) => ({
-              specialtyId: specId,
-            })),
-          }
+      specialties: data.specialtyIds?.length
+        ? { create: data.specialtyIds.map((specialtyId) => ({ specialtyId })) }
         : undefined,
     },
     include: {
       prosecutionRel: true,
-      specialties: {
-        include: { specialty: true },
-      },
+      specialties: { include: { specialty: true } },
     },
   });
 

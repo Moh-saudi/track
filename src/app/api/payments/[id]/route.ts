@@ -9,9 +9,9 @@ import { writeAuditLog } from "@/lib/audit";
 const schema = z.object({
   status: z.enum(["NOT_PAID", "UNDER_SETTLEMENT", "PAID"]).optional(),
   entitled: z.boolean().optional(),
-  amount: z.number().optional(),
-  paidAt: z.string().nullable().optional(),
-  notes: z.string().nullable().optional(),
+  amount: z.number().finite().min(0, "قيمة المستحق لا يمكن أن تكون سالبة").max(1_000_000, "قيمة المستحق تتجاوز الحد المسموح").optional(),
+  paidAt: z.string().datetime().nullable().optional(),
+  notes: z.string().max(5000).nullable().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -35,10 +35,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     updateData.paidAt = null;
   }
 
-  const updated = await prisma.payment.update({
-    where: { id: params.id },
-    data: updateData,
-  });
+  const updated = await prisma.payment.update({ where: { id: params.id }, data: updateData });
 
   await writeAuditLog({
     entityType: "Payment",
