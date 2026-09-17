@@ -40,7 +40,7 @@ function safeOriginalName(name: string): string {
   return path.basename(name).replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 240) || "attachment";
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const userId = (session.user as any).id;
   const subCommitteeId = (session.user as any).subCommitteeId;
   const caseRecord = await prisma.case.findUnique({
-    where: { id: params.id },
+    where: { id: (await params).id },
     select: { id: true, createdById: true, subCommitteeId: true },
   });
   if (!caseRecord) return NextResponse.json({ error: "القضية غير موجودة" }, { status: 404 });
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "محتوى الملف لا يطابق نوعه أو امتداده" }, { status: 400 });
   }
 
-  const finalDir = caseAttachmentDir(params.id);
+  const finalDir = caseAttachmentDir((await params).id);
   const tempDir = quarantineDir();
   await ensureSecureDirectory(finalDir);
   await ensureSecureDirectory(tempDir);
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   try {
     const attachment = await prisma.attachment.create({
       data: {
-        caseId: params.id,
+        caseId: (await params).id,
         fileName: originalName,
         fileType: canonicalMimeForExtension(ext),
         filePath: toStoredUploadPath(finalPath),
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       userId,
       afterData: {
         fileName: attachment.fileName,
-        caseId: params.id,
+        caseId: (await params).id,
         fileSize: attachment.fileSize,
         fileType: attachment.fileType,
       },
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
@@ -151,7 +151,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const userId = (session.user as any).id;
   const subCommitteeId = (session.user as any).subCommitteeId;
   const caseRecord = await prisma.case.findUnique({
-    where: { id: params.id },
+    where: { id: (await params).id },
     select: { id: true, createdById: true, subCommitteeId: true },
   });
   if (!caseRecord) return NextResponse.json({ error: "القضية غير موجودة" }, { status: 404 });
@@ -160,7 +160,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   const attachments = await prisma.attachment.findMany({
-    where: { caseId: params.id },
+    where: { caseId: (await params).id },
     select: {
       id: true,
       caseId: true,
