@@ -21,12 +21,9 @@ export const metadata = {
   description: "نظام إلكتروني لتتبع قضايا المسئولية الطبية — اللجنة العليا للمسئولية الطبية",
   robots: "noindex, nofollow",
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icon.svg", type: "image/svg+xml" },
-    ],
-    shortcut: "/favicon.ico",
-    apple: "/icon.svg",
+    icon: [{ url: "/logo.svg?v=eagle-20260918", type: "image/svg+xml" }],
+    shortcut: "/logo.svg?v=eagle-20260918",
+    apple: "/logo.svg?v=eagle-20260918",
   },
 };
 
