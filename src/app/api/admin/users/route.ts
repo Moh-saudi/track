@@ -6,18 +6,18 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/rbac";
 import { writeAuditLog } from "@/lib/audit";
+import { getPasswordPolicyError } from "@/lib/password-policy";
 
 const createUserSchema = z.object({
   email:          z.string().email("بريد إلكتروني غير صحيح"),
   fullName:       z.string().min(2, "الاسم مطلوب"),
-  password:       z.string().min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل"),
+  password:       z.string().min(1, "كلمة المرور مطلوبة"),
   role:           z.enum(["REGISTRATION_CLERK", "FOLLOW_UP_OFFICER", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "FINANCE", "ADMIN", "RISK_OFFICER"]),
   employer:       z.string().optional().nullable(),
   subCommitteeId: z.string().optional().nullable(),
   specialtyId:    z.string().optional().nullable(),
 });
 
-// GET — قائمة المستخدمين
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user || !can((session.user as any).role, "MANAGE_USERS_AND_ROLES")) {
@@ -26,7 +26,6 @@ export async function GET() {
 
   const users = await prisma.user.findMany({
     orderBy: { fullName: "asc" },
-    // لا نُعيد passwordHash أبداً
     select: {
       id: true, email: true, fullName: true, role: true,
       employer: true, active: true, createdAt: true, subCommitteeId: true,
@@ -38,7 +37,6 @@ export async function GET() {
   return NextResponse.json(users);
 }
 
-// POST — إنشاء مستخدم جديد
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user || !can((session.user as any).role, "MANAGE_USERS_AND_ROLES")) {
@@ -48,15 +46,19 @@ export async function POST(req: NextRequest) {
   const parsed = createUserSchema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const data = parsed.data;
+  const normalizedEmail = data.email.toLowerCase().trim();
 
-  const existing = await prisma.user.findUnique({ where: { email: data.email.toLowerCase().trim() } });
+  const passwordError = getPasswordPolicyError(data.password, normalizedEmail);
+  if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 });
+
+  const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) return NextResponse.json({ error: "البريد الإلكتروني مستخدم بالفعل" }, { status: 409 });
 
   const passwordHash = await bcrypt.hash(data.password, 12);
 
   const user = await prisma.user.create({
     data: {
-      email:          data.email.toLowerCase().trim(),
+      email:          normalizedEmail,
       fullName:       data.fullName.trim(),
       passwordHash,
       role:           data.role as any,
