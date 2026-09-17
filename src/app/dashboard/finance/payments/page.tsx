@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PaymentsTableView } from "./payments-table-view";
 import { StatCard } from "@/components/ui/StatCard";
 import { formatCurrency } from "@/lib/formatters";
+import { decryptDoctorSensitiveFields } from "@/lib/doctor-sensitive";
 import Link from "next/link";
 import {
   Coins,
@@ -17,7 +18,7 @@ import {
 export const revalidate = 0;
 
 export default async function FinancePaymentsPage() {
-  const payments = await prisma.payment.findMany({
+  const rawPayments = await prisma.payment.findMany({
     include: {
       case: { select: { caseNumber: true, reportYear: true } },
       member: { select: { fullName: true } },
@@ -35,12 +36,21 @@ export default async function FinancePaymentsPage() {
     orderBy: { createdAt: "desc" },
   });
 
+  const payments = rawPayments.map((payment) => ({
+    ...payment,
+    amount: payment.amount === null ? null : Number(payment.amount),
+    paidAt: payment.paidAt ? payment.paidAt.toISOString() : null,
+    createdAt: payment.createdAt.toISOString(),
+    updatedAt: payment.updatedAt.toISOString(),
+    doctor: payment.doctor ? decryptDoctorSensitiveFields(payment.doctor) : null,
+  }));
+
   const notPaid = payments.filter((p) => p.status === "NOT_PAID");
   const settling = payments.filter((p) => p.status === "UNDER_SETTLEMENT");
   const paid = payments.filter((p) => p.status === "PAID");
 
-  const totalPaidAmount = paid.reduce((sum, p) => sum + (p.amount ?? 0), 0);
-  const totalSettlingAmount = settling.reduce((sum, p) => sum + (p.amount ?? 0), 0);
+  const totalPaidAmount = paid.reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+  const totalSettlingAmount = settling.reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
 
   return (
     <div className="space-y-6">
