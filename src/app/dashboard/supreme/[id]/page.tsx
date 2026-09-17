@@ -17,10 +17,11 @@ const DECISION_LABELS: Record<string, string> = {
   DIFFERENT:  "قرار مغاير",
 };
 
-export default async function SupremeCaseDetail({ params }: { params: { id: string } }) {
+export default async function SupremeCaseDetail({ const { id } = await params;
+  params }: { params: Promise<{ id: string }> }) {
   const [caseRecord, subCommittees] = await Promise.all([
     prisma.case.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         subCommittee:     true,
         actions:          { orderBy: { createdAt: "desc" }, include: { recordedBy: { select: { fullName: true } } } },
