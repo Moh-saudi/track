@@ -272,10 +272,11 @@ export function ActiveUsersClient({ initialUsers }: Props) {
                       {/* حالة الاتصال الحية */}
                       <td className="p-3.5">
                         <span
+                          suppressHydrationWarning
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${presence.badgeColor}`}
                         >
                           <span className={`w-2 h-2 rounded-full ${presence.dotColor}`} />
-                          <span>{presence.label}</span>
+                          <span suppressHydrationWarning>{presence.label}</span>
                         </span>
                       </td>
 

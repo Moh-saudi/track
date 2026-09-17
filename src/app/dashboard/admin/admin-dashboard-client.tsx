@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -121,6 +121,23 @@ function formatRelativeTimeArabic(dateStr: string): string {
   } catch {
     return dateStr;
   }
+}
+
+function TimeAgo({ date }: { date: string }) {
+  const [text, setText] = useState<string>("");
+
+  useEffect(() => {
+    setText(formatRelativeTimeArabic(date));
+  }, [date]);
+
+  return (
+    <span
+      className="inline-block px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[11px] font-medium font-body"
+      suppressHydrationWarning
+    >
+      {text || "مؤخراً"}
+    </span>
+  );
 }
 
 // تحويل الحركات الإجرائية لعنوان عربي واضح وموجز
@@ -511,9 +528,7 @@ export function AdminDashboardClient({
                       </div>
 
                       <div className="shrink-0 text-left">
-                        <span className="inline-block px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[11px] font-medium font-body" suppressHydrationWarning>
-                          {formatRelativeTimeArabic(log.createdAt)}
-                        </span>
+                        <TimeAgo date={log.createdAt} />
                       </div>
                     </div>
                   ))

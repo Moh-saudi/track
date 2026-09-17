@@ -376,11 +376,11 @@ export function FollowUpDashboardClient({
                     <TableRow key={c.id} delayed={isDelayed}>
                       <TableCell>
                         {isDelayed ? (
-                          <Badge variant="delayed" size="sm" icon={<AlertTriangle className="w-3 h-3 text-red-700" />}>
+                          <Badge variant="delayed" size="sm" icon={<AlertTriangle className="w-3 h-3 text-red-700" />} suppressHydrationWarning>
                             متأخر (+{daysSinceReg} أيام)
                           </Badge>
                         ) : (
-                          <Badge variant="slate" size="sm">
+                          <Badge variant="slate" size="sm" suppressHydrationWarning>
                             منذ {daysSinceReg === 0 ? "اليوم" : `${daysSinceReg} يوم`}
                           </Badge>
                         )}
