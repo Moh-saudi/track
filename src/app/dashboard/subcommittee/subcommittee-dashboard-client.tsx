@@ -10,16 +10,12 @@ import {
   AlertTriangle,
   FileText,
   Users,
-  Coins,
   Calendar,
   Eye,
   RotateCcw,
   ArrowRight,
   ChevronLeft,
-  Building,
-  UserCheck,
   Search,
-  Filter,
   BarChart3,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -77,13 +73,6 @@ export interface Props {
     deactivationReason?: string | null;
   } | null;
   doctorsCount: number;
-  paymentsStats: {
-    totalCount: number;
-    paidCount: number;
-    pendingCount: number;
-    totalAmount: number;
-    paidAmount: number;
-  };
   currentUser?: {
     name?: string | null;
     fullName?: string | null;
@@ -101,15 +90,10 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "slate" | "amber" 
   REFERRED_FOR_REVIEW: { label: "محال لإعادة الدراسة", variant: "rose" },
 };
 
-function formatMoney(amount: number): string {
-  return new Intl.NumberFormat("en-US").format(amount || 0);
-}
-
 export function SubCommitteeDashboardClient({
   cases,
   subCommittee,
   doctorsCount,
-  paymentsStats,
   currentUser,
   initialTab = "overview",
 }: Props) {
@@ -120,7 +104,6 @@ export function SubCommitteeDashboardClient({
   const nowMs = Date.now();
   const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
 
-  // الحسابات الإحصائية
   const pending = cases.filter(
     (c) => c.status === "UNDER_SUBCOMMITTEE_REVIEW" || c.status === "REFERRED_FOR_REVIEW"
   ).length;
@@ -137,8 +120,8 @@ export function SubCommitteeDashboardClient({
   }).length;
 
   const casesWithReviewers = cases.filter((c) => c.reviewers.length > 0).length;
+  const withoutReviewers = Math.max(0, pending - casesWithReviewers);
 
-  // الجلسات المجدولة القادمة
   const upcomingMeetings = cases
     .filter((c) => {
       const mDate = c.actions[0]?.meetingDate;
@@ -152,7 +135,6 @@ export function SubCommitteeDashboardClient({
     })
     .slice(0, 4);
 
-  // تصفية السجلات لجدول القضايا
   const filteredCases = cases.filter((c) => {
     if (statusFilter !== "ALL" && c.status !== statusFilter) return false;
     if (searchTerm.trim()) {
@@ -167,7 +149,6 @@ export function SubCommitteeDashboardClient({
 
   return (
     <div className="space-y-5 font-body">
-      {/* ─── كارت الترحيب الجمالي الهادئ للجنة الفرعية ─── */}
       <UserWelcomeCard
         user={{
           ...currentUser,
@@ -176,7 +157,6 @@ export function SubCommitteeDashboardClient({
         }}
       />
 
-      {/* ─── شريط التبويب الأنيق والهادئ ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
         <div className="flex items-center gap-2">
           <button
@@ -225,10 +205,8 @@ export function SubCommitteeDashboardClient({
         </div>
       </div>
 
-      {/* ─── محتوى تبويب: لوحة قيادة ومؤشرات اللجنة ─── */}
       {activeTab === "overview" && (
         <div className="space-y-6">
-          {/* ١. بطاقات المؤشرات الأربعة للجنة الفرعية */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               title="إجمالي السجلات المحالة"
@@ -260,17 +238,16 @@ export function SubCommitteeDashboardClient({
             />
 
             <StatCard
-              title="استحقاق بدلات حضور الجلسات"
-              value={`${formatMoney(paymentsStats.totalAmount)} ج.م`}
-              icon={<Coins className="w-6 h-6" />}
-              variant="emerald"
-              description={`تم تسديد ${paymentsStats.paidCount} بدل • متبقي ${paymentsStats.pendingCount} قيد الصرف`}
+              title="سجلات بانتظار تشكيل فريق الفحص"
+              value={`${withoutReviewers} ملف`}
+              icon={<Users className="w-6 h-6" />}
+              variant="slate"
+              isZeroNeutral={true}
+              description="مؤشر تشغيلي لتجهيز فرق الفحص الطبي"
             />
           </div>
 
-          {/* ٢. أجندة الجلسات القادمة + فريق العمل والاستشاريين */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* الجانب الأيمن (7 أعمدة): أجندة جلسات الفحص القادمة */}
             <div className="lg:col-span-7 space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold font-heading text-slate-800 flex items-center gap-2">
@@ -357,7 +334,6 @@ export function SubCommitteeDashboardClient({
               </Card>
             </div>
 
-            {/* الجانب الأيسر (5 أعمدة): جاهزية الفريق الطبي والاستشاريين */}
             <div className="lg:col-span-5 space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold font-heading text-slate-800 flex items-center gap-2">
@@ -396,9 +372,9 @@ export function SubCommitteeDashboardClient({
                 <div className="space-y-2">
                   <div className="text-xs font-bold text-slate-700 font-heading">قواعد العمل المعتمدة:</div>
                   <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside font-body">
-                    <li>بدل حضور الجلسة: <strong className="text-emerald-700">5,000 ج.م</strong> لكل عضو فاحص.</li>
                     <li>مهلة إعداد وإصدار التقرير الطبي: <strong className="text-amber-700">30 يوماً</strong> كحد أقصى.</li>
                     <li>إلزامية التحقق من عدم وجود تعارض مصالح للأطباء قبل مباشرة الفحص.</li>
+                    <li>تشكيل فريق الفحص وفق التخصصات الطبية المرتبطة بكل سجل.</li>
                   </ul>
                 </div>
 
@@ -407,14 +383,13 @@ export function SubCommitteeDashboardClient({
                     href="/dashboard/subcommittee/doctors"
                     className="w-full text-center py-2 px-3 rounded-lg bg-teal-50 text-teal-800 hover:bg-teal-100 text-xs font-bold font-heading transition-colors"
                   >
-                    إدارة أسماء وحسابات أطباء اللجنة
+                    إدارة أسماء وبيانات أطباء اللجنة
                   </Link>
                 </div>
               </Card>
             </div>
           </div>
 
-          {/* ٣. جدول أحدث السجلات المحالة للجنة */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold font-heading text-slate-800 flex items-center gap-2">
@@ -470,15 +445,11 @@ export function SubCommitteeDashboardClient({
                               {c.reviewers.length} أطباء
                             </span>
                           ) : (
-                            <Badge variant="amber" size="sm">
-                              بانتظار التشكيل
-                            </Badge>
+                            <Badge variant="amber" size="sm">بانتظار التشكيل</Badge>
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={statusInfo.variant} size="sm">
-                            {statusInfo.label}
-                          </Badge>
+                          <Badge variant={statusInfo.variant} size="sm">{statusInfo.label}</Badge>
                         </TableCell>
                         <TableCell className="text-center whitespace-nowrap">
                           <Link
@@ -499,10 +470,8 @@ export function SubCommitteeDashboardClient({
         </div>
       )}
 
-      {/* ─── محتوى تبويب: السجلات والقضايا المحالة للفحص ─── */}
       {activeTab === "cases" && (
         <div className="space-y-4">
-          {/* شريط البحث وفلاتر الحالة */}
           <Card className="p-4 border-slate-200">
             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
               <div className="relative flex-1">
@@ -517,53 +486,14 @@ export function SubCommitteeDashboardClient({
               </div>
 
               <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("ALL")}
-                  className={`h-9 px-3 text-xs font-semibold rounded-lg shrink-0 transition-colors font-heading ${
-                    statusFilter === "ALL" ? "bg-amber-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  }`}
-                >
-                  الكل ({cases.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("UNDER_SUBCOMMITTEE_REVIEW")}
-                  className={`h-9 px-3 text-xs font-semibold rounded-lg shrink-0 transition-colors font-heading ${
-                    statusFilter === "UNDER_SUBCOMMITTEE_REVIEW"
-                      ? "bg-amber-600 text-white"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  }`}
-                >
-                  قيد الدراسة
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("PENDING_SUPREME_REVIEW")}
-                  className={`h-9 px-3 text-xs font-semibold rounded-lg shrink-0 transition-colors font-heading ${
-                    statusFilter === "PENDING_SUPREME_REVIEW"
-                      ? "bg-amber-600 text-white"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  }`}
-                >
-                  بانتظار العليا
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("APPROVED")}
-                  className={`h-9 px-3 text-xs font-semibold rounded-lg shrink-0 transition-colors font-heading ${
-                    statusFilter === "APPROVED"
-                      ? "bg-amber-600 text-white"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  }`}
-                >
-                  معتمدة نهائياً
-                </button>
+                <button type="button" onClick={() => setStatusFilter("ALL")} className={`h-9 px-3 text-xs font-semibold rounded-lg shrink-0 transition-colors font-heading ${statusFilter === "ALL" ? "bg-amber-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>الكل ({cases.length})</button>
+                <button type="button" onClick={() => setStatusFilter("UNDER_SUBCOMMITTEE_REVIEW")} className={`h-9 px-3 text-xs font-semibold rounded-lg shrink-0 transition-colors font-heading ${statusFilter === "UNDER_SUBCOMMITTEE_REVIEW" ? "bg-amber-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>قيد الدراسة</button>
+                <button type="button" onClick={() => setStatusFilter("PENDING_SUPREME_REVIEW")} className={`h-9 px-3 text-xs font-semibold rounded-lg shrink-0 transition-colors font-heading ${statusFilter === "PENDING_SUPREME_REVIEW" ? "bg-amber-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>بانتظار العليا</button>
+                <button type="button" onClick={() => setStatusFilter("APPROVED")} className={`h-9 px-3 text-xs font-semibold rounded-lg shrink-0 transition-colors font-heading ${statusFilter === "APPROVED" ? "bg-amber-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>معتمدة نهائياً</button>
               </div>
             </div>
           </Card>
 
-          {/* جدول القضايا المحالة الشامل */}
           <Card className="p-0 overflow-hidden shadow-xs border-slate-200">
             <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
               <h2 className="text-sm font-bold text-slate-900 font-heading">السجلات المسندة للجنة</h2>
@@ -595,50 +525,22 @@ export function SubCommitteeDashboardClient({
                     const respondent = c.respondentName || c.hospitalName;
                     return (
                       <TableRow key={c.id}>
-                        <TableCell className="font-bold text-slate-900 font-mono whitespace-nowrap font-heading">
-                          {c.caseNumber} / {c.caseYear}
-                        </TableCell>
-
+                        <TableCell className="font-bold text-slate-900 font-mono whitespace-nowrap font-heading">{c.caseNumber} / {c.caseYear}</TableCell>
                         <TableCell>
-                          <Badge variant="slate" size="sm">
-                            {c.registrationType === "COMPLAINT" ? "شكوى" : c.registrationType === "CASE" ? "قضية" : "محضر"}
-                          </Badge>
+                          <Badge variant="slate" size="sm">{c.registrationType === "COMPLAINT" ? "شكوى" : c.registrationType === "CASE" ? "قضية" : "محضر"}</Badge>
                         </TableCell>
-
                         <TableCell className="font-medium text-slate-800 text-xs">
-                          {respondent ? (
-                            <span className="font-semibold text-slate-900 truncate block max-w-[180px]" title={respondent}>
-                              {respondent}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">—</span>
-                          )}
+                          {respondent ? <span className="font-semibold text-slate-900 truncate block max-w-[180px]" title={respondent}>{respondent}</span> : <span className="text-slate-400">—</span>}
                         </TableCell>
-
                         <TableCell>
                           <div className="flex flex-wrap gap-1 max-w-[160px]">
-                            {c.specialties.map((s) => (
-                              <Badge key={s.id} variant="slate" size="sm">
-                                {s.specialty?.name || "غير محدد"}
-                              </Badge>
-                            ))}
+                            {c.specialties.map((s) => <Badge key={s.id} variant="slate" size="sm">{s.specialty?.name || "غير محدد"}</Badge>)}
                           </div>
                         </TableCell>
-
-                        <TableCell className="text-xs font-mono text-slate-600 whitespace-nowrap">
-                          {c.assignedAt ? formatDate(c.assignedAt) : "—"}
-                        </TableCell>
-
+                        <TableCell className="text-xs font-mono text-slate-600 whitespace-nowrap">{c.assignedAt ? formatDate(c.assignedAt) : "—"}</TableCell>
                         <TableCell className="text-xs font-mono font-semibold whitespace-nowrap">
-                          {c.expectedDueDate ? (
-                            <span className="text-teal-700 font-bold">
-                              {formatDate(c.expectedDueDate)}
-                            </span>
-                          ) : (
-                            "30 يوماً"
-                          )}
+                          {c.expectedDueDate ? <span className="text-teal-700 font-bold">{formatDate(c.expectedDueDate)}</span> : "30 يوماً"}
                         </TableCell>
-
                         <TableCell className="min-w-[200px]">
                           {c.reviewers.length > 0 ? (
                             <div className="flex flex-col gap-1.5 py-1">
@@ -648,53 +550,28 @@ export function SubCommitteeDashboardClient({
                               </div>
                               <div className="flex flex-col gap-1">
                                 {c.reviewers.map((r) => (
-                                  <div
-                                    key={r.id}
-                                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200/70 px-2 py-0.5 rounded-md w-fit whitespace-nowrap font-body"
-                                  >
+                                  <div key={r.id} className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200/70 px-2 py-0.5 rounded-md w-fit whitespace-nowrap font-body">
                                     <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0" />
                                     <span>{r.doctor?.name || r.user?.fullName || "طبيب فاحص"}</span>
                                   </div>
                                 ))}
                               </div>
                             </div>
-                          ) : (
-                            <Badge variant="amber" size="sm">
-                              بانتظار التشكيل
-                            </Badge>
-                          )}
+                          ) : <Badge variant="amber" size="sm">بانتظار التشكيل</Badge>}
                         </TableCell>
-
-                        <TableCell>
-                          <Badge variant={statusInfo.variant} size="sm">
-                            {statusInfo.label}
-                          </Badge>
-                        </TableCell>
-
+                        <TableCell><Badge variant={statusInfo.variant} size="sm">{statusInfo.label}</Badge></TableCell>
                         <TableCell className="text-center whitespace-nowrap">
                           {c.status === "PENDING_SUPREME_REVIEW" || c.status === "APPROVED" ? (
-                            <Link
-                              href={`/dashboard/subcommittee/${c.id}`}
-                              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition-colors font-body"
-                            >
-                              <Eye className="w-3.5 h-3.5 text-slate-500" />
-                              <span>الاطلاع فقط</span>
+                            <Link href={`/dashboard/subcommittee/${c.id}`} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition-colors font-body">
+                              <Eye className="w-3.5 h-3.5 text-slate-500" /><span>الاطلاع فقط</span>
                             </Link>
                           ) : c.status === "REFERRED_FOR_REVIEW" ? (
-                            <Link
-                              href={`/dashboard/subcommittee/${c.id}`}
-                              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 shadow-xs transition-colors font-body animate-pulse"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                              <span>فتح وإعادة الدراسة</span>
+                            <Link href={`/dashboard/subcommittee/${c.id}`} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 shadow-xs transition-colors font-body animate-pulse">
+                              <RotateCcw className="w-3.5 h-3.5" /><span>فتح وإعادة الدراسة</span>
                             </Link>
                           ) : (
-                            <Link
-                              href={`/dashboard/subcommittee/${c.id}`}
-                              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-teal-600 text-white text-xs font-semibold hover:bg-teal-700 shadow-xs transition-colors font-body"
-                            >
-                              <span>فتح ودراسة السجل</span>
-                              <ArrowRight className="w-3.5 h-3.5" />
+                            <Link href={`/dashboard/subcommittee/${c.id}`} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-teal-600 text-white text-xs font-semibold hover:bg-teal-700 shadow-xs transition-colors font-body">
+                              <span>فتح ودراسة السجل</span><ArrowRight className="w-3.5 h-3.5" />
                             </Link>
                           )}
                         </TableCell>
