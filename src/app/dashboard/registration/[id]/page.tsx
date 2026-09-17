@@ -38,27 +38,35 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
     redirect("/login");
   }
 
-  const [caseRecord, caseAuditLogs] = await Promise.all([
-    prisma.case.findUnique({
-      where: { id: params.id },
-      include: {
-        subCommittee: true,
-        specialties: { include: { specialty: true } },
-        createdBy: { select: { id: true, fullName: true, email: true, role: true } },
-        followUpOfficer: { select: { id: true, fullName: true } },
-        attachments: {
-          include: { uploadedBy: { select: { fullName: true } } },
-          orderBy: { uploadedAt: "desc" },
+  let caseRecord: any = null;
+  let caseAuditLogs: any[] = [];
+  try {
+    const res = await Promise.all([
+      prisma.case.findUnique({
+        where: { id: params.id },
+        include: {
+          subCommittee: true,
+          specialties: { include: { specialty: true } },
+          createdBy: { select: { id: true, fullName: true, email: true, role: true } },
+          followUpOfficer: { select: { id: true, fullName: true } },
+          attachments: {
+            include: { uploadedBy: { select: { fullName: true } } },
+            orderBy: { uploadedAt: "desc" },
+          },
         },
-      },
-    }),
-    prisma.auditLog.findMany({
-      where: { entityType: "Case", entityId: params.id },
-      include: { user: { select: { fullName: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-    }),
-  ]);
+      }),
+      prisma.auditLog.findMany({
+        where: { entityType: "Case", entityId: params.id },
+        include: { user: { select: { fullName: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      }),
+    ]);
+    caseRecord = res[0];
+    caseAuditLogs = res[1] || [];
+  } catch (err) {
+    console.error("Error fetching case details:", err);
+  }
 
   if (!caseRecord) {
     notFound();
@@ -333,7 +341,7 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
                   <div className="space-y-1.5 pt-2">
                     <span className="text-slate-500 font-medium block">التخصصات الطبية المعنية:</span>
                     <div className="flex flex-wrap gap-1.5">
-                      {caseRecord.specialties.map((s) => (
+                      {caseRecord.specialties.map((s: any) => (
                         <Badge key={s.id} variant="teal" size="sm">
                           {s.specialty?.name || "تخصص غير محدد"}
                         </Badge>
@@ -374,7 +382,7 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
               </div>
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                {caseRecord.attachments.map((att) => (
+                {caseRecord.attachments.map((att: any) => (
                   <div
                     key={att.id}
                     className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between gap-3 hover:bg-slate-100/70 transition-colors"

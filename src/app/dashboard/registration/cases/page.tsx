@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RegistrationDashboardClient } from "../registration-dashboard-client";
@@ -6,9 +7,19 @@ import { SerializedCase } from "../cases-table";
 
 export const revalidate = 0;
 
+function safeIsoDate(d: any): string | null {
+  if (!d) return null;
+  const date = new Date(d);
+  return isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 export default async function RegistrationCasesPage() {
   const session = await getServerSession(authOptions);
-  const currentUserId = (session?.user as any)?.id;
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const currentUserId = (session.user as any)?.id;
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -25,8 +36,10 @@ export default async function RegistrationCasesPage() {
     myReportsCount,
     subCommittees,
   ] = await Promise.all([
-    currentUserId
-      ? prisma.case.findMany({
+    (async () => {
+      try {
+        if (!currentUserId) return [];
+        return await prisma.case.findMany({
           where: { createdById: currentUserId },
           orderBy: { createdAt: "desc" },
           include: {
@@ -35,90 +48,87 @@ export default async function RegistrationCasesPage() {
             createdBy: { select: { id: true, fullName: true } },
           },
           take: 300,
-        })
-      : Promise.resolve([]),
-    prisma.case.count(),
-    prisma.case.count({
-      where: { createdAt: { gte: todayStart } },
-    }),
-    currentUserId
-      ? prisma.case.count({ where: { createdById: currentUserId } })
-      : 0,
-    currentUserId
-      ? prisma.case.count({
-          where: {
-            createdById: currentUserId,
-            createdAt: { gte: todayStart },
-          },
-        })
-      : 0,
-    currentUserId
-      ? prisma.case.count({
-          where: {
-            createdById: currentUserId,
-            status: "REGISTERED",
-          },
-        })
-      : 0,
-    currentUserId
-      ? prisma.case.count({
-          where: {
-            createdById: currentUserId,
-            registrationType: "COMPLAINT",
-          },
-        })
-      : 0,
-    currentUserId
-      ? prisma.case.count({
-          where: {
-            createdById: currentUserId,
-            registrationType: "CASE",
-          },
-        })
-      : 0,
-    currentUserId
-      ? prisma.case.count({
-          where: {
-            createdById: currentUserId,
-            registrationType: "REPORT",
-          },
-        })
-      : 0,
-    prisma.subCommittee.findMany({
-      where: { active: true },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
+        });
+      } catch {
+        try {
+          return await prisma.case.findMany({
+            where: { createdById: currentUserId },
+            orderBy: { createdAt: "desc" },
+            take: 300,
+          });
+        } catch {
+          return [];
+        }
+      }
+    })(),
+    (async () => {
+      try { return await prisma.case.count(); } catch { return 0; }
+    })(),
+    (async () => {
+      try { return await prisma.case.count({ where: { createdAt: { gte: todayStart } } }); } catch { return 0; }
+    })(),
+    (async () => {
+      try { return currentUserId ? await prisma.case.count({ where: { createdById: currentUserId } }) : 0; } catch { return 0; }
+    })(),
+    (async () => {
+      try { return currentUserId ? await prisma.case.count({ where: { createdById: currentUserId, createdAt: { gte: todayStart } } }) : 0; } catch { return 0; }
+    })(),
+    (async () => {
+      try { return currentUserId ? await prisma.case.count({ where: { createdById: currentUserId, status: "REGISTERED" } }) : 0; } catch { return 0; }
+    })(),
+    (async () => {
+      try { return currentUserId ? await prisma.case.count({ where: { createdById: currentUserId, registrationType: "COMPLAINT" } }) : 0; } catch { return 0; }
+    })(),
+    (async () => {
+      try { return currentUserId ? await prisma.case.count({ where: { createdById: currentUserId, registrationType: "CASE" } }) : 0; } catch { return 0; }
+    })(),
+    (async () => {
+      try { return currentUserId ? await prisma.case.count({ where: { createdById: currentUserId, registrationType: "REPORT" } }) : 0; } catch { return 0; }
+    })(),
+    (async () => {
+      try {
+        return await prisma.subCommittee.findMany({
+          where: { active: true },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        });
+      } catch {
+        return [];
+      }
+    })(),
   ]);
 
-  const serializedCases: SerializedCase[] = cases.map((c) => {
+  const serializedCases: SerializedCase[] = (cases || []).map((c: any) => {
     const isCreatedByMe = c.createdById === currentUserId;
-    const isModified =
-      new Date(c.updatedAt).getTime() - new Date(c.createdAt).getTime() > 60000;
+    const createdAtTime = c.createdAt ? new Date(c.createdAt).getTime() : 0;
+    const updatedAtTime = c.updatedAt ? new Date(c.updatedAt).getTime() : 0;
+    const isModified = updatedAtTime - createdAtTime > 60000;
 
     return {
       id: c.id,
-      caseNumber: c.caseNumber,
-      caseYear: c.caseYear,
-      prosecutionCaseNumber: c.prosecutionCaseNumber,
-      registrationType: c.registrationType,
-      complainantName: c.complainantName,
-      prosecution: c.prosecution,
+      caseNumber: c.caseNumber || "—",
+      caseYear: c.caseYear || new Date().getFullYear(),
+      prosecutionCaseNumber: c.prosecutionCaseNumber || null,
+      registrationType: c.registrationType || "COMPLAINT",
+      complainantName: c.complainantName || null,
+      prosecution: c.prosecution || null,
       respondentName: c.respondentName || c.hospitalName || null,
-      incomingDate: c.incomingDate ? c.incomingDate.toISOString() : null,
-      attachmentsCount: c.attachmentsCount,
-      status: c.status,
-      createdAt: c.createdAt.toISOString(),
-      updatedAt: c.updatedAt.toISOString(),
+      incomingDate: safeIsoDate(c.incomingDate),
+      attachmentsCount: typeof c.attachmentsCount === "number" ? c.attachmentsCount : 0,
+      status: c.status || "REGISTERED",
+      createdAt: safeIsoDate(c.createdAt) || new Date().toISOString(),
+      updatedAt: safeIsoDate(c.updatedAt) || new Date().toISOString(),
       isModified,
-      createdById: c.createdById,
+      createdById: c.createdById || "",
       createdByName: c.createdBy?.fullName || "موظف تسجيل",
       isCreatedByMe,
-      subCommittee: c.subCommittee,
-      specialties: c.specialties.map((s) => ({
-        id: s.id,
-        specialty: { id: s.specialty?.id || s.id, name: s.specialty?.name || "تخصص غير محدد" },
-      })),
+      subCommittee: c.subCommittee || null,
+      specialties: Array.isArray(c.specialties)
+        ? c.specialties.map((s: any) => ({
+            id: s.id,
+            specialty: { id: s.specialty?.id || s.id, name: s.specialty?.name || "تخصص غير محدد" },
+          }))
+        : [],
     };
   });
 
@@ -134,7 +144,7 @@ export default async function RegistrationCasesPage() {
       myProsecutionCasesCount={myProsecutionCasesCount}
       myReportsCount={myReportsCount}
       subCommittees={subCommittees}
-      currentUser={session?.user}
+      currentUser={session.user}
       initialTab="cases"
     />
   );

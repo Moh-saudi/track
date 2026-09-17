@@ -10,45 +10,58 @@ import {
   SerializedFollowUpCase,
 } from "./follow-up-dashboard-client";
 
+import { redirect } from "next/navigation";
+
 export const revalidate = 0;
 
 export default async function FollowUpDashboard() {
   const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    redirect("/login");
+  }
 
-  const [cases, allSubCommittees] = await Promise.all([
-    prisma.case.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        subCommittee: true,
-        specialties: { include: { specialty: true } },
-        createdBy: { select: { fullName: true } },
-        actions: { select: { reportDate: true, receivedDate: true, createdAt: true } },
-        meetingReschedules: {
-          orderBy: { createdAt: "desc" },
-          include: {
-            createdBy: { select: { fullName: true } },
+  let cases: any[] = [];
+  let allSubCommittees: any[] = [];
+  try {
+    const res = await Promise.all([
+      prisma.case.findMany({
+        orderBy: { createdAt: "desc" },
+        include: {
+          subCommittee: true,
+          specialties: { include: { specialty: true } },
+          createdBy: { select: { fullName: true } },
+          actions: { select: { reportDate: true, receivedDate: true, createdAt: true } },
+          meetingReschedules: {
+            orderBy: { createdAt: "desc" },
+            include: {
+              createdBy: { select: { fullName: true } },
+            },
+          },
+          reviewers: {
+            include: {
+              user: { select: { fullName: true, employer: true } },
+              doctor: { select: { name: true, employer: true } },
+            },
           },
         },
-        reviewers: {
-          include: {
-            user: { select: { fullName: true, employer: true } },
-            doctor: { select: { name: true, employer: true } },
-          },
-        },
-      },
-    }),
-    prisma.subCommittee.findMany({
-      where: { active: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
+      }),
+      prisma.subCommittee.findMany({
+        where: { active: true },
+        orderBy: { name: "asc" },
+      }),
+    ]);
+    cases = res[0] || [];
+    allSubCommittees = res[1] || [];
+  } catch (err) {
+    console.error("Error fetching follow-up cases:", err);
+  }
 
   const now = new Date();
 
   // ─── إحصائيات التخصصات الطبية الأكثر طلباً على مستوى الجمهورية ───
   const specialtyCounts: Record<string, { name: string; count: number }> = {};
-  cases.forEach((c) => {
-    c.specialties.forEach((s) => {
+  cases.forEach((c: any) => {
+    (c.specialties || []).forEach((s: any) => {
       const specName = s.specialty?.name;
       if (!specName) return;
       if (!specialtyCounts[specName]) {
@@ -139,20 +152,20 @@ export default async function FollowUpDashboard() {
     prosecutionNotificationNotes: c.prosecutionNotificationNotes,
     subCommittee: c.subCommittee ? { id: c.subCommittee.id, name: c.subCommittee.name } : null,
     subCommitteeId: c.subCommitteeId,
-    specialties: c.specialties.map((s) => ({
+    specialties: (c.specialties || []).map((s: any) => ({
       id: s.id,
       specialty: { id: s.specialty?.id || s.id, name: s.specialty?.name || "تخصص غير محدد" },
     })),
     status: c.status,
-    meetingReschedules: c.meetingReschedules.map((r) => ({
+    meetingReschedules: (c.meetingReschedules || []).map((r: any) => ({
       id: r.id,
-      oldDate: r.oldDate ? r.oldDate.toISOString() : null,
-      newDate: r.newDate.toISOString(),
+      oldDate: r.oldDate ? new Date(r.oldDate).toISOString() : null,
+      newDate: r.newDate ? new Date(r.newDate).toISOString() : new Date().toISOString(),
       reason: r.reason,
-      createdAt: r.createdAt.toISOString(),
+      createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString(),
       createdBy: r.createdBy ? { fullName: r.createdBy.fullName } : null,
     })),
-    reviewers: c.reviewers.map((rev) => ({
+    reviewers: (c.reviewers || []).map((rev: any) => ({
       id: rev.id,
       status: rev.status,
       user: rev.user ? { fullName: rev.user.fullName, employer: rev.user.employer } : null,
