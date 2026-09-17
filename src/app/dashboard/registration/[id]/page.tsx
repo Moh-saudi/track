@@ -32,8 +32,8 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-export default async function RegistrationCaseDetailsPage({ const { id } = await params;
-  params }: Props) {
+export default async function RegistrationCaseDetailsPage({ params }: Props) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     redirect("/login");
