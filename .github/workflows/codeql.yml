@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, government-security-readiness]
+    branches: [main]
   schedule:
     - cron: "30 2 * * 1"
 
