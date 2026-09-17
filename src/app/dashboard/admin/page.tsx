@@ -26,7 +26,6 @@ export default async function AdminDashboardPage({
   const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
   const nowMs = Date.now();
 
-  // تنفيذ الاستعلامات بأمان ومرونة كاملة لتفادي أخطاء 500 في السيرفر
   const [
     cases,
     subCommittees,
@@ -36,9 +35,7 @@ export default async function AdminDashboardPage({
     todayLogsCount,
     todaySessionsCount,
     recentLogs,
-    payments,
   ] = await Promise.all([
-    // ١. قضايا وسجلات المنظومة
     (async () => {
       try {
         return await prisma.case.findMany({
@@ -63,8 +60,6 @@ export default async function AdminDashboardPage({
         }
       }
     })(),
-
-    // ٢. اللجان الفرعية
     (async () => {
       try {
         return await prisma.subCommittee.findMany({
@@ -76,8 +71,6 @@ export default async function AdminDashboardPage({
         return [];
       }
     })(),
-
-    // ٣. التخصصات الطبية
     (async () => {
       try {
         return await prisma.specialty.findMany({
@@ -89,8 +82,6 @@ export default async function AdminDashboardPage({
         return [];
       }
     })(),
-
-    // ٤. المستخدمين
     (async () => {
       try {
         return await prisma.user.findMany({
@@ -119,28 +110,19 @@ export default async function AdminDashboardPage({
         }
       }
     })(),
-
-    // ٥. إجمالي السجلات الرقابية
     prisma.auditLog.count().catch(() => 0),
-
-    // ٦. سجلات اليوم الرقابية
     prisma.auditLog.count({ where: { createdAt: { gte: todayStart } } }).catch(() => 0),
-
-    // ٧. جلسات اليوم
     (async () => {
       try {
-        return await prisma.userSession.count({
-          where: { createdAt: { gte: todayStart } },
-        });
+        return await prisma.userSession.count({ where: { createdAt: { gte: todayStart } } });
       } catch {
         return 0;
       }
     })(),
-
-    // ٨. آخر العمليات الرقابية
     (async () => {
       try {
         return await prisma.auditLog.findMany({
+          where: { entityType: { not: "Payment" } },
           take: 8,
           orderBy: { createdAt: "desc" },
           include: {
@@ -157,24 +139,8 @@ export default async function AdminDashboardPage({
         return [];
       }
     })(),
-
-    // ٩. المدفوعات والبدلات
-    (async () => {
-      try {
-        return await prisma.payment.findMany({
-          select: {
-            amount: true,
-            status: true,
-            entitled: true,
-          },
-        });
-      } catch {
-        return [];
-      }
-    })(),
   ]);
 
-  // حساب إحصائيات السجلات ومؤشرات المدد
   const totalCasesCount = cases.length;
   const overdueCasesCount = cases.filter((c: any) => {
     if (c.status === "APPROVED" || c.status === "CLOSED") return false;
@@ -191,7 +157,6 @@ export default async function AdminDashboardPage({
     referredBack: cases.filter((c: any) => c.status === "REFERRED_FOR_REVIEW").length,
   };
 
-  // حساب مؤشرات المستخدمين والجلسات
   const totalUsersCount = users.length;
   const liveUsers = users.filter((u: any) => {
     if (!u.lastSeenAt) return false;
@@ -208,24 +173,6 @@ export default async function AdminDashboardPage({
     return false;
   }).length;
 
-  // حساب المؤشرات المالية للبدلات
-  let paidAmount = 0;
-  let pendingAmount = 0;
-  let paidCount = 0;
-  let pendingCount = 0;
-
-  payments.forEach((p: any) => {
-    const amt = Number(p.amount) || 0;
-    if (p.status === "PAID") {
-      paidCount++;
-      paidAmount += amt;
-    } else {
-      pendingCount++;
-      pendingAmount += amt;
-    }
-  });
-
-  // تعقيم وسلسلة البيانات للعميل بدقة دون نقل كائنات حساسة أو تواريخ خام
   const serializedRecentLogs = (recentLogs || []).map((l: any) => ({
     id: String(l.id || ""),
     entityType: String(l.entityType || ""),
@@ -245,9 +192,7 @@ export default async function AdminDashboardPage({
       const st = u.sessions?.[0]?.screenTimes;
       if (st && typeof st === "object" && !Array.isArray(st)) {
         const entries = Object.entries(st);
-        if (entries.length > 0) {
-          currentScreen = entries[entries.length - 1][0];
-        }
+        if (entries.length > 0) currentScreen = entries[entries.length - 1][0];
       }
     } catch {
       currentScreen = null;
@@ -290,13 +235,7 @@ export default async function AdminDashboardPage({
       totalLogsCount={totalLogsCount}
       subCommitteesCount={subCommittees.length}
       specialtiesCount={specialties.length}
-      paymentsStats={{
-        totalCount: payments.length,
-        paidCount,
-        pendingCount,
-        paidAmount,
-        pendingAmount,
-      }}
+      paymentsStats={{ totalCount: 0, paidCount: 0, pendingCount: 0, paidAmount: 0, pendingAmount: 0 }}
       recentLogs={serializedRecentLogs as any}
       liveUsers={serializedLiveUsers}
       users={serializedUsers}
