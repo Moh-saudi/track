@@ -27,6 +27,7 @@ const EGYPTIAN_BANKS = [
 ];
 
 const MAX_NATIONAL_ID_PDF_BYTES = 12 * 1024 * 1024;
+const LOCAL_DOCUMENT_UPLOAD_ENABLED = process.env.NEXT_PUBLIC_ENABLE_LOCAL_DOCUMENT_UPLOAD === "true";
 
 export default function NewDoctorPage() {
   const router = useRouter();
@@ -64,10 +65,14 @@ export default function NewDoctorPage() {
     if (!name.trim()) return setError("يرجى إدخال اسم العضو كاملاً");
     if (!employer.trim()) return setError("يرجى إدخال جهة عمل العضو");
     if (nationalId && nationalId.length !== 14) return setError("الرقم القومي يجب أن يتكون من 14 رقماً");
-    if (!nationalIdDocument) return setError("يرجى رفع ملف بطاقة الرقم القومي بصيغة PDF");
-    if (nationalIdDocument.type !== "application/pdf") return setError("ملف بطاقة الرقم القومي يجب أن يكون PDF");
-    if (nationalIdDocument.size <= 0 || nationalIdDocument.size > MAX_NATIONAL_ID_PDF_BYTES) {
-      return setError("حجم ملف بطاقة الرقم القومي يجب ألا يتجاوز 12 ميجابايت");
+
+    if (nationalIdDocument) {
+      if (nationalIdDocument.type !== "application/pdf") {
+        return setError("ملف بطاقة الرقم القومي يجب أن يكون PDF");
+      }
+      if (nationalIdDocument.size <= 0 || nationalIdDocument.size > MAX_NATIONAL_ID_PDF_BYTES) {
+        return setError("حجم ملف بطاقة الرقم القومي يجب ألا يتجاوز 12 ميجابايت");
+      }
     }
 
     const resolvedBankName = bankName === "أخرى / بنك آخر" ? customBankName.trim() : bankName;
@@ -99,26 +104,28 @@ export default function NewDoctorPage() {
         if (!createResponse.ok) throw new Error(doctor.error || "تعذر إضافة العضو");
         createdDoctorId = doctor.id;
 
-        const formData = new FormData();
-        formData.append("file", nationalIdDocument);
+        if (LOCAL_DOCUMENT_UPLOAD_ENABLED && nationalIdDocument) {
+          const formData = new FormData();
+          formData.append("file", nationalIdDocument);
 
-        const documentResponse = await fetch(`/api/subcommittee/doctors/${doctor.id}/national-id-document`, {
-          method: "POST",
-          body: formData,
-        });
+          const documentResponse = await fetch(`/api/subcommittee/doctors/${doctor.id}/national-id-document`, {
+            method: "POST",
+            body: formData,
+          });
 
-        const documentResult = await documentResponse.json();
-        if (!documentResponse.ok) {
-          await fetch(`/api/subcommittee/doctors/${doctor.id}`, { method: "DELETE" }).catch(() => undefined);
-          createdDoctorId = null;
-          throw new Error(documentResult.error || "تعذر رفع ملف بطاقة الرقم القومي");
+          const documentResult = await documentResponse.json();
+          if (!documentResponse.ok) {
+            await fetch(`/api/subcommittee/doctors/${doctor.id}`, { method: "DELETE" }).catch(() => undefined);
+            createdDoctorId = null;
+            throw new Error(documentResult.error || "تعذر رفع ملف بطاقة الرقم القومي");
+          }
         }
 
         router.push("/dashboard/subcommittee/doctors");
         router.refresh();
       } catch (err: any) {
         if (createdDoctorId) {
-          console.error("Doctor was created but national ID PDF upload failed for:", createdDoctorId);
+          console.error("Doctor creation or document upload failed for:", createdDoctorId);
         }
         setError(err?.message || "تعذر حفظ بيانات العضو");
       }
@@ -135,7 +142,7 @@ export default function NewDoctorPage() {
           { label: "إضافة عضو جديد" },
         ]}
         title="إضافة عضو لجنة وبياناته المالية"
-        description="تسجيل بيانات العضو وملف بطاقة الرقم القومي ضمن بياناته الأساسية."
+        description="تسجيل بيانات العضو وتجهيز مستند بطاقة الرقم القومي للحفظ على السيرفر الحكومي عند تفعيل التخزين المحلي."
         actions={
           <Link
             href="/dashboard/subcommittee/doctors"
@@ -158,13 +165,7 @@ export default function NewDoctorPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="form-group">
                 <label className="form-label form-label-required">اسم العضو كاملاً</label>
-                <input
-                  required
-                  className="form-input text-xs"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="مثال: أ.د. شريف كمال الدين"
-                />
+                <input required className="form-input text-xs" value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: أ.د. شريف كمال الدين" />
               </div>
 
               <div className="form-group">
@@ -180,63 +181,43 @@ export default function NewDoctorPage() {
 
               <div className="form-group">
                 <label className="form-label form-label-required">جهة العمل / المستشفى</label>
-                <input
-                  required
-                  className="form-input text-xs"
-                  value={employer}
-                  onChange={(e) => setEmployer(e.target.value)}
-                  placeholder="جهة عمل العضو"
-                />
+                <input required className="form-input text-xs" value={employer} onChange={(e) => setEmployer(e.target.value)} placeholder="جهة عمل العضو" />
               </div>
 
               <div className="form-group">
                 <label className="form-label">التخصص الطبي</label>
                 <select className="form-select text-xs" value={specialtyId} onChange={(e) => setSpecialtyId(e.target.value)}>
                   <option value="">— اختر التخصص —</option>
-                  {specialties.map((item) => (
-                    <option key={item.id} value={item.id}>{item.name}</option>
-                  ))}
+                  {specialties.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
               </div>
 
               <div className="form-group">
                 <label className="form-label">الرقم القومي (14 رقماً)</label>
-                <input
-                  className="form-input text-xs font-mono"
-                  dir="ltr"
-                  maxLength={14}
-                  value={nationalId}
-                  onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ""))}
-                  placeholder="2XXXXXXXXXXXXX"
-                />
+                <input className="form-input text-xs font-mono" dir="ltr" maxLength={14} value={nationalId} onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ""))} placeholder="2XXXXXXXXXXXXX" />
               </div>
 
               <div className="form-group">
-                <label className="form-label form-label-required">ملف بطاقة الرقم القومي (PDF)</label>
+                <label className="form-label">ملف بطاقة الرقم القومي (PDF)</label>
                 <input
-                  required
                   type="file"
                   accept="application/pdf,.pdf"
-                  className="form-input text-xs"
+                  disabled={!LOCAL_DOCUMENT_UPLOAD_ENABLED}
+                  className="form-input text-xs disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                   onChange={(e) => setNationalIdDocument(e.target.files?.[0] || null)}
                 />
                 <span className="text-[10px] text-slate-500 flex items-center gap-1 mt-1">
-                  <FileText className="w-3 h-3" /> ملف PDF واحد — بحد أقصى 12MB
+                  <FileText className="w-3 h-3" />
+                  {LOCAL_DOCUMENT_UPLOAD_ENABLED
+                    ? "اختياري — ملف PDF واحد بحد أقصى 12MB"
+                    : "الحقل جاهز وسيتم تفعيل رفع الملف عند تشغيل النظام على السيرفر الحكومي"}
                 </span>
-                {nationalIdDocument && (
-                  <span className="text-[10px] text-emerald-700 mt-1 block">✓ {nationalIdDocument.name}</span>
-                )}
+                {nationalIdDocument && <span className="text-[10px] text-emerald-700 mt-1 block">✓ {nationalIdDocument.name}</span>}
               </div>
 
               <div className="form-group">
                 <label className="form-label">رقم الهاتف</label>
-                <input
-                  className="form-input text-xs font-mono"
-                  dir="ltr"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="01XXXXXXXXX"
-                />
+                <input className="form-input text-xs font-mono" dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="01XXXXXXXXX" />
               </div>
             </div>
           </section>
@@ -247,22 +228,18 @@ export default function NewDoctorPage() {
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              {([
-                ["PAYROLL_CARD", "فيزا مرتبات حكومية"],
-                ["BANK_ACCOUNT", "حساب بنكي شخصي"],
-                ["BANK_CARD", "فيزا / كارت بنكي خاص"],
-              ] as const).map(([value, label]) => (
-                <label
-                  key={value}
-                  className={`p-3 rounded-xl border cursor-pointer ${financialType === value ? "bg-purple-100 border-purple-400" : "bg-white border-slate-200"}`}
-                >
-                  <input
-                    type="radio"
-                    name="financialType"
-                    checked={financialType === value}
-                    onChange={() => setFinancialType(value)}
-                    className="ml-2"
-                  />
+              {([[
+                "PAYROLL_CARD",
+                "فيزا مرتبات حكومية",
+              ], [
+                "BANK_ACCOUNT",
+                "حساب بنكي شخصي",
+              ], [
+                "BANK_CARD",
+                "فيزا / كارت بنكي خاص",
+              ]] as const).map(([value, label]) => (
+                <label key={value} className={`p-3 rounded-xl border cursor-pointer ${financialType === value ? "bg-purple-100 border-purple-400" : "bg-white border-slate-200"}`}>
+                  <input type="radio" name="financialType" checked={financialType === value} onChange={() => setFinancialType(value)} className="ml-2" />
                   {label}
                 </label>
               ))}
@@ -297,14 +274,7 @@ export default function NewDoctorPage() {
               ) : (
                 <div className="form-group sm:col-span-2">
                   <label className="form-label">رقم الكارت</label>
-                  <input
-                    className="form-input text-xs font-mono"
-                    dir="ltr"
-                    maxLength={19}
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(e.target.value)}
-                    placeholder="XXXX XXXX XXXX XXXX"
-                  />
+                  <input className="form-input text-xs font-mono" dir="ltr" maxLength={19} value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} placeholder="XXXX XXXX XXXX XXXX" />
                 </div>
               )}
             </div>
@@ -312,21 +282,12 @@ export default function NewDoctorPage() {
 
           <div className="form-group">
             <label className="form-label">ملاحظات إدارية</label>
-            <input
-              className="form-input text-xs"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="أي ملاحظات تخص العضو..."
-            />
+            <input className="form-input text-xs" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="أي ملاحظات تخص العضو..." />
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-            <Link href="/dashboard/subcommittee/doctors">
-              <Button type="button" variant="secondary">إلغاء</Button>
-            </Link>
-            <Button type="submit" variant="primary" loading={isPending} icon={<Save className="w-4 h-4" />}>
-              حفظ العضو
-            </Button>
+            <Link href="/dashboard/subcommittee/doctors"><Button type="button" variant="secondary">إلغاء</Button></Link>
+            <Button type="submit" variant="primary" loading={isPending} icon={<Save className="w-4 h-4" />}>حفظ العضو</Button>
           </div>
         </form>
       </Card>
