@@ -409,7 +409,7 @@ model Payment {
 
   recipientRole String?                      // صفة المستحق: عضو لجنة فرعية / عضو اللجنة العليا
   entitled  Boolean       @default(true)     // يستحق البدل
-  amount    Float?                           // مبلغ بدل الجلسة (بالجنيه: 5000 للفرعية / 8000 للعليا)
+  amount    Decimal?        @db.Decimal(12, 2) // قيمة الاستحقاق المالية المعتمدة
   status    PaymentStatus @default(NOT_PAID)
   paidAt    DateTime?                        // تاريخ السداد الفعلي
   notes     String?       @db.Text
