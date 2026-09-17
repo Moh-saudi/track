@@ -139,7 +139,11 @@ function buildPdf(images: PdfImage[]): Blob {
   append(`trailer\n<< /Size ${totalObjects + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`);
 
   const pdfBytes = concatBytes(parts);
-  return new Blob([pdfBytes.buffer], { type: "application/pdf" });
+  const pdfBuffer = pdfBytes.buffer.slice(
+    pdfBytes.byteOffset,
+    pdfBytes.byteOffset + pdfBytes.byteLength
+  ) as ArrayBuffer;
+  return new Blob([pdfBuffer], { type: "application/pdf" });
 }
 
 export async function createNationalIdPdf(front: File, back: File): Promise<Blob> {
