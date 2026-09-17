@@ -16,7 +16,7 @@ const updateSchema = z.object({
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
@@ -30,7 +30,7 @@ export async function PATCH(
   }
 
   const existing = await prisma.supremeSession.findUnique({
-    where: { id: params.id },
+    where: { id: (await params).id },
     include: { cases: { select: { id: true } } },
   });
   if (!existing) {
@@ -53,7 +53,7 @@ export async function PATCH(
   }
 
   const updated = await prisma.supremeSession.update({
-    where: { id: params.id },
+    where: { id: (await params).id },
     data: updateData,
     include: { cases: true },
   });
@@ -72,7 +72,7 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
@@ -81,7 +81,7 @@ export async function DELETE(
   }
 
   const existing = await prisma.supremeSession.findUnique({
-    where: { id: params.id },
+    where: { id: (await params).id },
   });
   if (!existing) {
     return NextResponse.json({ error: "الجلسة غير موجودة" }, { status: 404 });
@@ -89,17 +89,17 @@ export async function DELETE(
 
   // Unlink any cases connected to this session
   await prisma.case.updateMany({
-    where: { supremeSessionId: params.id },
+    where: { supremeSessionId: (await params).id },
     data: { supremeSessionId: null },
   });
 
   await prisma.supremeSession.delete({
-    where: { id: params.id },
+    where: { id: (await params).id },
   });
 
   await writeAuditLog({
     entityType: "SupremeSession",
-    entityId: params.id,
+    entityId: (await params).id,
     action: "DELETE",
     userId: (session.user as any).id,
     beforeData: existing,
