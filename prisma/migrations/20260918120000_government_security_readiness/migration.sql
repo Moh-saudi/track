@@ -64,3 +64,30 @@ CREATE INDEX IF NOT EXISTS "Payment_caseId_idx" ON "Payment"("caseId");
 CREATE INDEX IF NOT EXISTS "Payment_doctorId_idx" ON "Payment"("doctorId");
 CREATE INDEX IF NOT EXISTS "Payment_memberId_idx" ON "Payment"("memberId");
 CREATE INDEX IF NOT EXISTS "Payment_status_idx" ON "Payment"("status");
+
+
+-- Every reviewer assignment must reference exactly one reviewer identity.
+ALTER TABLE "CaseReviewer"
+  DROP CONSTRAINT IF EXISTS "CaseReviewer_exactly_one_reviewer_check";
+
+ALTER TABLE "CaseReviewer"
+  ADD CONSTRAINT "CaseReviewer_exactly_one_reviewer_check"
+  CHECK (
+    (CASE WHEN "doctorId" IS NOT NULL THEN 1 ELSE 0 END) +
+    (CASE WHEN "userId" IS NOT NULL THEN 1 ELSE 0 END) = 1
+  );
+
+-- Audit records are append-only for the application database role.
+CREATE OR REPLACE FUNCTION prevent_audit_log_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE EXCEPTION 'AuditLog is append-only; UPDATE/DELETE is prohibited';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS "AuditLog_immutable_trigger" ON "AuditLog";
+CREATE TRIGGER "AuditLog_immutable_trigger"
+BEFORE UPDATE OR DELETE ON "AuditLog"
+FOR EACH ROW EXECUTE FUNCTION prevent_audit_log_mutation();
