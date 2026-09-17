@@ -259,7 +259,7 @@ export function CasesTable({ initialCases, subCommittees = [] }: CasesTableProps
                           </Badge>
                           {c.incomingDate && (
                             <span className="text-[10px] text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded font-mono border border-teal-100" title="تاريخ الوارد">
-                              وارد: {new Date(c.incomingDate).toLocaleDateString("ar-EG")}
+                              وارد: {formatDate(c.incomingDate)}
                             </span>
                           )}
                         </div>

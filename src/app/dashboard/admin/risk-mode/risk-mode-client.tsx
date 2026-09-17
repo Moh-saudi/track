@@ -363,7 +363,7 @@ export function RiskModeClient({ cases }: Props) {
                         {c.caseNumber} / {c.caseYear}
                         {c.incomingDate && (
                           <span className="text-[10px] text-teal-800 bg-teal-50 px-1 py-0.2 rounded mr-1 block">
-                            وارد: {new Date(c.incomingDate).toLocaleDateString("ar-EG")}
+                            وارد: {formatDate(c.incomingDate)}
                           </span>
                         )}
                       </td>

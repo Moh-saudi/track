@@ -241,7 +241,7 @@ export default function RegistrationReportsPage() {
           </div>
           <div className="text-center">
             <h2 className="text-base font-black text-slate-900">تقرير حصر ومعدلات تسجيل القضايا والشكاوى</h2>
-            <p className="text-xs text-slate-600 font-mono mt-1">تاريخ الاستخراج: {formatDateTime(new Date())}</p>
+            <p className="text-xs text-slate-600 font-mono mt-1" suppressHydrationWarning>تاريخ الاستخراج: {formatDateTime(new Date())}</p>
           </div>
           <div className="text-left text-xs font-bold text-slate-700">
             <p>الموظف المستخرج: {data?.currentUser?.name}</p>

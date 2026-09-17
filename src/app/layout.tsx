@@ -32,8 +32,8 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="ar" dir="rtl" className={`${cairo.variable} ${tajawal.variable}`}>
-      <body className="font-body text-[15px] bg-slate-50 text-slate-900 antialiased">
+    <html lang="ar" dir="rtl" className={`${cairo.variable} ${tajawal.variable}`} suppressHydrationWarning>
+      <body className="font-body text-[15px] bg-slate-50 text-slate-900 antialiased" suppressHydrationWarning>
         {children}
       </body>
     </html>

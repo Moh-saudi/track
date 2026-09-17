@@ -350,7 +350,7 @@ export function ReviewTeamManager({
                   {/* إمكانية تسجيل اعتذار / تنحي (متاح فقط قبل الاعتماد) */}
                   {!isRecused && (
                     <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                      <span className="text-[11px] text-slate-400 font-mono">
+                      <span className="text-[11px] text-slate-400 font-mono" suppressHydrationWarning>
                         تاريخ التكليف: {new Date().toLocaleDateString("en-GB")}
                       </span>
                       {!readOnly && (

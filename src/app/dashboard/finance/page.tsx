@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { UserWelcomeCard } from "@/components/ui/UserWelcomeCard";
-import { formatCurrency, formatNumber } from "@/lib/formatters";
+import { formatCurrency, formatNumber, formatDate } from "@/lib/formatters";
 import { StatCard } from "@/components/ui/StatCard";
 import Link from "next/link";
 import {
@@ -557,7 +557,7 @@ export default async function FinanceDashboard() {
                       </TableCell>
                       <TableCell className="text-xs font-mono">
                         {p.status === "PAID" && p.paidAt ? (
-                          <span className="text-emerald-700 font-semibold">{new Date(p.paidAt).toLocaleDateString("ar-EG")}</span>
+                          <span className="text-emerald-700 font-semibold">{formatDate(p.paidAt)}</span>
                         ) : (
                           <span className="text-slate-400 italic font-body">—</span>
                         )}

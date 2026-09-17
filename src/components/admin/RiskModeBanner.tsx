@@ -8,8 +8,14 @@ export function RiskModeBanner() {
   const router = useRouter();
   const pathname = usePathname();
   const [isActive, setIsActive] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     function checkCookie() {
       const match = document.cookie
         .split("; ")
@@ -17,7 +23,7 @@ export function RiskModeBanner() {
       setIsActive(!!match);
     }
     checkCookie();
-  }, [pathname]);
+  }, [pathname, mounted]);
 
   function exitRiskMode() {
     document.cookie =
@@ -26,7 +32,7 @@ export function RiskModeBanner() {
     router.refresh();
   }
 
-  if (!isActive) return null;
+  if (!mounted || !isActive) return null;
 
   return (
     <div className="bg-rose-700 text-white px-4 py-2.5 shadow-md font-body text-xs flex flex-col sm:flex-row items-center justify-between gap-2 z-40 relative animate-in slide-in-from-top duration-200">

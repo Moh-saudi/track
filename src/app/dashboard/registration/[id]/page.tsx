@@ -159,7 +159,7 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
               <Calendar className="w-3.5 h-3.5 text-teal-600" />
               <span>
                 {caseRecord.incomingDate
-                  ? new Date(caseRecord.incomingDate).toLocaleDateString("ar-EG")
+                  ? formatDate(caseRecord.incomingDate)
                   : "غير مسجل"}
               </span>
             </div>

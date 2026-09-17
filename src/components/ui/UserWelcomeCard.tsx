@@ -106,6 +106,23 @@ export function UserWelcomeCard({ user, className = "" }: UserWelcomeCardProps) 
   const displayName = user?.fullName || user?.name || "مستخدم المنظومة";
   const initialLetter = displayName.trim().charAt(0) || "م";
 
+  const [dateDisplay, setDateDisplay] = React.useState<string>("");
+
+  React.useEffect(() => {
+    try {
+      setDateDisplay(
+        new Date().toLocaleDateString("ar-EG", {
+          weekday: "long",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      );
+    } catch {
+      setDateDisplay("");
+    }
+  }, []);
+
   const subDetail = user?.employer
     ? `جهة العمل: ${user.employer}`
     : user?.subCommitteeName
@@ -154,12 +171,7 @@ export function UserWelcomeCard({ user, className = "" }: UserWelcomeCardProps) 
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/70 text-slate-600 text-[11px] font-medium border border-slate-200/50">
             <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span suppressHydrationWarning>
-              {new Date().toLocaleDateString("ar-EG", {
-                weekday: "long",
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
+              {dateDisplay || "اليوم"}
             </span>
           </div>
 
