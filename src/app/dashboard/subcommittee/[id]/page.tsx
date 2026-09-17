@@ -45,12 +45,13 @@ const SUPREME_DECISION_CONFIG: Record<string, { label: string; badgeClass: strin
   REJECTED:   { label: "رفض التقرير", badgeClass: "bg-rose-50 text-rose-800 border-rose-300" },
 };
 
-export default async function SubCommitteeCaseDetail({ params }: { params: { id: string } }) {
+export default async function SubCommitteeCaseDetail({ const { id } = await params;
+  params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   const currentUserId = (session?.user as any)?.id;
 
   const caseRecord = await prisma.case.findUnique({
-    where: { id: params.id },
+    where: { id: id },
     include: {
       subCommittee: true,
       specialties: { include: { specialty: true } },
