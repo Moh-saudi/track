@@ -45,10 +45,36 @@ for (const prefix of ["/api/admin/:path*", "/api/subcommittee/:path*", "/api/cas
 
 const auditRoute = read("src/app/api/admin/audit-logs/route.ts");
 assert.ok(auditRoute.includes("Math.min(Math.max(requestedLimit, 1), 200)"));
+assert.ok(auditRoute.includes('entityType: { not: "Payment" }'));
+
+const genericCaseRoute = read("src/app/api/cases/[id]/route.ts");
+assert.ok(!genericCaseRoute.includes("payments:"), "Generic case API must not expose payment data");
+
+const adminAuditClient = read("src/app/dashboard/admin/audit-logs/audit-logs-client.tsx");
+assert.ok(!adminAuditClient.includes('value="Payment"'), "Admin audit UI must not expose Payment events");
+assert.ok(!adminAuditClient.includes('entityType === "Payment"'), "Admin audit UI must not humanize financial events");
 
 const attachmentRoute = read("src/app/api/cases/[id]/attachments/route.ts");
 for (const required of ["validateFileSignature", "scanFileForMalware", "quarantineDir", "toStoredUploadPath"]) {
   assert.ok(attachmentRoute.includes(required), `Attachment hardening missing: ${required}`);
+}
+
+function walk(dir: string): string[] {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    return entry.isDirectory() ? walk(full) : [full];
+  });
+}
+
+const dashboardRoot = path.join(root, "src/app/dashboard");
+const nonFinanceUiFiles = walk(dashboardRoot).filter(
+  (file) => /\.(tsx|ts)$/.test(file) && !file.includes(path.join("dashboard", "finance"))
+);
+for (const file of nonFinanceUiFiles) {
+  const source = fs.readFileSync(file, "utf8");
+  for (const forbidden of ["استحقاقات وبدلات حضور الجلسات", "5000", "8000"]) {
+    assert.ok(!source.includes(forbidden), `Financial hint "${forbidden}" found outside finance: ${file}`);
+  }
 }
 
 console.log("Security self-test: PASS");
