@@ -38,6 +38,18 @@ export function assertPathInsideUploadRoot(targetPath: string): string {
   return resolved;
 }
 
+export function toStoredUploadPath(absolutePath: string): string {
+  const resolved = assertPathInsideUploadRoot(absolutePath);
+  return path.relative(getUploadRoot(), resolved);
+}
+
+export function resolveStoredUploadPath(storedPath: string): string {
+  if (path.isAbsolute(storedPath)) {
+    return assertPathInsideUploadRoot(storedPath);
+  }
+  return assertPathInsideUploadRoot(path.join(getUploadRoot(), storedPath));
+}
+
 function startsWith(buffer: Buffer, signature: number[]): boolean {
   if (buffer.length < signature.length) return false;
   return signature.every((byte, index) => buffer[index] === byte);
@@ -56,6 +68,18 @@ export function validateFileSignature(buffer: Buffer, extension: string): boolea
     return sample.includes("[Content_Types].xml") && sample.includes("word/");
   }
   return false;
+}
+
+export function canonicalMimeForExtension(extension: string): string {
+  switch (extension.toLowerCase()) {
+    case ".pdf": return "application/pdf";
+    case ".png": return "image/png";
+    case ".jpg":
+    case ".jpeg": return "image/jpeg";
+    case ".doc": return "application/msword";
+    case ".docx": return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    default: return "application/octet-stream";
+  }
 }
 
 export async function ensureSecureDirectory(dir: string): Promise<void> {
