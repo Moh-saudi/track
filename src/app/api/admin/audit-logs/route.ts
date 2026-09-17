@@ -20,8 +20,13 @@ export async function GET(req: NextRequest) {
     ? Math.min(Math.max(requestedLimit, 1), 200)
     : 100;
 
-  const where: any = {};
-  if (entityType && entityType !== "ALL") where.entityType = entityType;
+  const where: any = {
+    // Financial entitlements and payment values are restricted to Finance screens.
+    entityType: { not: "Payment" },
+  };
+  if (entityType && entityType !== "ALL" && entityType !== "Payment") {
+    where.entityType = entityType;
+  }
   if (action && action !== "ALL") where.action = action;
   if (userId && userId !== "ALL") where.userId = userId;
 
