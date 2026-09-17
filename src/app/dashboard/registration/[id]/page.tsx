@@ -29,10 +29,11 @@ import {
 export const revalidate = 0;
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default async function RegistrationCaseDetailsPage({ params }: Props) {
+export default async function RegistrationCaseDetailsPage({ const { id } = await params;
+  params }: Props) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     redirect("/login");
@@ -43,7 +44,7 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
   try {
     const res = await Promise.all([
       prisma.case.findUnique({
-        where: { id: params.id },
+        where: { id: id },
         include: {
           subCommittee: true,
           specialties: { include: { specialty: true } },
@@ -56,7 +57,7 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
         },
       }),
       prisma.auditLog.findMany({
-        where: { entityType: "Case", entityId: params.id },
+        where: { entityType: "Case", entityId: id },
         include: { user: { select: { fullName: true } } },
         orderBy: { createdAt: "desc" },
         take: 10,
