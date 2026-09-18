@@ -36,7 +36,7 @@ import { SupremeDateFilter } from "./date-filter";
 export const revalidate = 0;
 
 interface SupremeDashboardProps {
-  resolvedSearchParams?: Promise<{
+  searchParams?: Promise<{
     startDate?: string;
     endDate?: string;
   }>;
