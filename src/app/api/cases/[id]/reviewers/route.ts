@@ -13,12 +13,13 @@ const addReviewerSchema = z.object({
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   const user = session.user as any;
   const targetCase = await prisma.case.findUnique({
-    where: { id: (await params).id },
+    where: { id: id },
     select: { id: true, createdById: true, subCommitteeId: true },
   });
   if (!targetCase) return NextResponse.json({ error: "السجل غير موجود" }, { status: 404 });
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const reviewers = await prisma.caseReviewer.findMany({
-    where: { caseId: (await params).id },
+    where: { caseId: id },
     include: {
       doctor: {
         select: {
@@ -63,6 +64,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user || !can((session.user as any).role, "MANAGE_REVIEW_TEAM")) {
     return NextResponse.json({ error: "غير مصرح لك بتشكيل فريق الفحص" }, { status: 403 });
@@ -74,7 +76,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const targetCase = await prisma.case.findUnique({
-    where: { id: (await params).id },
+    where: { id: id },
     select: { id: true, caseNumber: true, hospitalName: true, respondentName: true, subCommitteeId: true, status: true },
   });
   if (!targetCase) {
@@ -155,7 +157,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // التحقق إن كان معيناً مسبقاً في القضية
   const existing = await prisma.caseReviewer.findFirst({
     where: {
-      caseId: (await params).id,
+      caseId: id,
       ...(targetDoctorId ? { doctorId: targetDoctorId } : { userId: targetUserId }),
     },
   });
@@ -199,7 +201,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       })
     : await prisma.caseReviewer.create({
         data: {
-          caseId: (await params).id,
+          caseId: id,
           doctorId: targetDoctorId,
           userId: targetUserId,
           roleInTeam: parsed.data.roleInTeam,
