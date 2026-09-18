@@ -10,8 +10,9 @@ export const revalidate = 0;
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams?: { tab?: string };
+  searchParams?: Promise<{ tab?: string }> ;
 }) {
+  const resolvedSearchParams = await searchParams;
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
 
@@ -246,7 +247,7 @@ export default async function AdminDashboardPage({
         role: (session.user as any).role || "ADMIN",
         employer: (session.user as any).employer || null,
       }}
-      initialTab={searchParams?.tab === "users" ? "users" : "overview"}
+      initialTab={resolvedSearchParams?.tab === "users" ? "users" : "overview"}
     />
   );
 }
