@@ -15,6 +15,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
@@ -38,7 +39,7 @@ export async function POST(
   const reason = body.reason?.trim() || "إلغاء توجيه خاطئ وتصحيح المسار بواسطة مدير المنظومة";
 
   const caseRecord = await prisma.case.findUnique({
-    where: { id: (await params).id },
+    where: { id: id },
     include: {
       subCommittee: { select: { id: true, name: true } },
       actions: {
@@ -96,7 +97,7 @@ export async function POST(
   // إعادة ضبط السجل: سحب من اللجنة الفرعية، مسح فريق الفحص السابق، وإرجاع الحالة إلى REGISTERED
   const [updated] = await prisma.$transaction([
     prisma.case.update({
-      where: { id: (await params).id },
+      where: { id: id },
       data: {
         subCommitteeId: null,
         assignedAt: null,
@@ -109,11 +110,11 @@ export async function POST(
     }),
     // حذف أي تشكيل مراجعين طبيين مرتبط باللجنة السابقة لتفادي التعارض
     prisma.caseReviewer.deleteMany({
-      where: { caseId: (await params).id },
+      where: { caseId: id },
     }),
     // حذف أي سجلات جدول انعقاد مسبقة
     prisma.meetingReschedule.deleteMany({
-      where: { caseId: (await params).id },
+      where: { caseId: id },
     }),
   ]);
 
