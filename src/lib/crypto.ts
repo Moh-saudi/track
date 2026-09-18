@@ -45,7 +45,14 @@ export function encryptOptionalField(value: string | null | undefined): string |
 
 export function decryptOptionalField(value: string | null | undefined): string | null {
   if (!value) return null;
-  // Backward compatibility for legacy plaintext values; these should be migrated later.
-  if (!isEncryptedField(value)) return value;
+  if (!isEncryptedField(value)) {
+    if (
+      process.env.NODE_ENV === "production" &&
+      process.env.REQUIRE_ENCRYPTED_SENSITIVE_FIELDS === "true"
+    ) {
+      throw new Error("تم اكتشاف بيانات حساسة غير مشفرة في بيئة الإنتاج");
+    }
+    return value;
+  }
   return decryptField(value);
 }

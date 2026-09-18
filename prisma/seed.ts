@@ -6,11 +6,10 @@
  * تعبئة البيانات الأولية المعتمدة:
  *   - اللجان والجهات الفرعية الـ 16 الرسمية
  *   - التخصصات الطبية المتعددة
- *   - المستخدمون القياسيون لمختلف الأدوار مع جهات العمل لفحص تعارض المصالح
+ *   - بيانات مرجعية فقط؛ لا يتم إنشاء أي حسابات أو بيانات شخصية تجريبية
  */
 
-import { PrismaClient, UserRole } from "@prisma/client";
-import bcrypt from "bcryptjs";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -127,286 +126,74 @@ const OFFICIAL_PROSECUTIONS = [
   "وسط القاهرة الكلية"
 ];
 
-async function main() {
-  console.log("🌱 بدء تعبئة البيانات المعتمدة لرئاسة مجلس الوزراء — اللجنة العليا للمسؤولية الطبية...\n");
 
-  // 1. إنشاء اللجان الفرعية الـ 16
-  console.log("🏛️  تسجيل الجهات واللجان الفرعية الـ 16 المعتمدة:");
+function inferGovernorate(name: string): string | null {
+  if (name.includes("أسوان")) return "أسوان";
+  if (name.includes("أكتوبر") || name.includes("الجيزة")) return "الجيزة";
+  if (name.includes("الأقصر") || name.includes("إسنا")) return "الأقصر";
+  if (name.includes("الإسماعيلية")) return "الإسماعيلية";
+  if (name.includes("البحر الأحمر")) return "البحر الأحمر";
+  if (name.includes("الإسكندرية") || name.includes("الدخيلة")) return "الإسكندرية";
+  if (name.includes("دمياط") || name.includes("الزرقا")) return "دمياط";
+  if (name.includes("الزقازيق")) return "الشرقية";
+  if (name.includes("السويس")) return "السويس";
+  if (name.includes("القاهرة") || name.includes("السيدة زينب") || name.includes("حلوان") || name.includes("روض الفرج") || name.includes("الوايلي") || name.includes("المحكمة التأديبية للصحة")) return "القاهرة";
+  if (name.includes("الفيوم")) return "الفيوم";
+  if (name.includes("بني سويف")) return "بني سويف";
+  if (name.includes("بورسعيد")) return "بورسعيد";
+  if (name.includes("أسيوط")) return "أسيوط";
+  if (name.includes("المنصورة")) return "الدقهلية";
+  if (name.includes("المنيا")) return "المنيا";
+  if (name.includes("بنها")) return "القليوبية";
+  if (name.includes("دمنهور")) return "البحيرة";
+  if (name.includes("سوهاج")) return "سوهاج";
+  if (name.includes("شبين الكوم") || name.includes("تلا")) return "المنوفية";
+  if (name.includes("طنطا")) return "الغربية";
+  if (name.includes("قنا")) return "قنا";
+  return null;
+}
+
+async function main() {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_REFERENCE_SEED !== "true") {
+    throw new Error("Reference seed is disabled in production. Set ALLOW_REFERENCE_SEED=true for the controlled initialization window only.");
+  }
+
+  console.log("🌱 تعبئة البيانات المرجعية الرسمية فقط — بدون حسابات أو بيانات شخصية تجريبية");
+
   for (const sc of OFFICIAL_SUBCOMMITTEES) {
     await prisma.subCommittee.upsert({
       where: { code: sc.code },
       update: { name: sc.name, scope: sc.scope },
       create: { code: sc.code, name: sc.name, scope: sc.scope },
     });
-    console.log(`  ✅ [${sc.code}] ${sc.name} — (${sc.scope})`);
   }
 
-  // 2. إنشاء التخصصات الطبية
-  console.log("\n🩺 تسجيل التخصصات الطبية المعيارية:");
   for (const spec of MEDICAL_SPECIALTIES) {
     await prisma.specialty.upsert({
       where: { name: spec.name },
       update: { code: spec.code },
       create: { name: spec.name, code: spec.code },
     });
-    console.log(`  ✅ [${spec.code}] ${spec.name}`);
-  }
-
-  // 3. تسجيل النيابات الرسمية
-  console.log("\n⚖️ تسجيل النيابات الرسمية المعتمدة مع ربط المحافظات:");
-  function inferGovernorate(name: string): string | null {
-    if (name.includes("أسوان")) return "أسوان";
-    if (name.includes("أكتوبر") || name.includes("الجيزة")) return "الجيزة";
-    if (name.includes("الأقصر") || name.includes("إسنا")) return "الأقصر";
-    if (name.includes("الإسماعيلية")) return "الإسماعيلية";
-    if (name.includes("البحر الأحمر")) return "البحر الأحمر";
-    if (name.includes("الإسكندرية") || name.includes("الدخيلة")) return "الإسكندرية";
-    if (name.includes("دمياط") || name.includes("الزرقا")) return "دمياط";
-    if (name.includes("الشرقية") || name.includes("الزقازيق")) return "الشرقية";
-    if (name.includes("السويس")) return "السويس";
-    if (name.includes("القاهرة") || name.includes("السيدة زينب") || name.includes("حلوان") || name.includes("روض الفرج") || name.includes("الوايلي") || name.includes("المحكمة التأديبية للصحة")) return "القاهرة";
-    if (name.includes("الفيوم")) return "الفيوم";
-    if (name.includes("بني سويف")) return "بني سويف";
-    if (name.includes("بورسعيد")) return "بورسعيد";
-    if (name.includes("أسيوط")) return "أسيوط";
-    if (name.includes("المنصورة") || name.includes("الدقهلية")) return "الدقهلية";
-    if (name.includes("المنيا")) return "المنيا";
-    if (name.includes("بنها") || name.includes("القليوبية")) return "القليوبية";
-    if (name.includes("دمنهور") || name.includes("البحيرة")) return "البحيرة";
-    if (name.includes("سوهاج")) return "سوهاج";
-    if (name.includes("شبين الكوم") || name.includes("تلا") || name.includes("المنوفية")) return "المنوفية";
-    if (name.includes("طنطا") || name.includes("الغربية")) return "الغربية";
-    if (name.includes("قنا")) return "قنا";
-    if (name.includes("كفر الشيخ")) return "كفر الشيخ";
-    if (name.includes("مطروح")) return "مطروح";
-    if (name.includes("شمال سيناء")) return "شمال سيناء";
-    if (name.includes("جنوب سيناء")) return "جنوب سيناء";
-    if (name.includes("الوادي الجديد")) return "الوادي الجديد";
-    return null;
   }
 
   let procIdx = 1;
   for (const procName of OFFICIAL_PROSECUTIONS) {
     const code = `PROC-${String(procIdx).padStart(2, "0")}`;
-    const gov = inferGovernorate(procName);
+    const governorate = inferGovernorate(procName);
     await prisma.prosecution.upsert({
       where: { name: procName },
-      update: { governorate: gov },
-      create: {
-        name: procName,
-        code,
-        governorate: gov,
-        active: true,
-      },
+      update: { governorate },
+      create: { name: procName, code, governorate, active: true },
     });
-    console.log(`  ✅ [${code}] ${procName} ${gov ? `(${gov})` : ""}`);
     procIdx++;
   }
 
-  const defaultPassword = "ChangeMe123!";
-  const passwordHash = await bcrypt.hash(defaultPassword, 12);
-
-  // 3. مستخدم مدير النظام
-  console.log("\n👤 إنشاء حساب مدير النظام (ADMIN)...");
-  await prisma.user.upsert({
-    where: { email: "admin@example.local" },
-    update: { fullName: "مدير النظام — رئاسة مجلس الوزراء", employer: "رئاسة مجلس الوزراء" },
-    create: {
-      email: "admin@example.local",
-      fullName: "مدير النظام — رئاسة مجلس الوزراء",
-      passwordHash,
-      role: UserRole.ADMIN,
-      employer: "رئاسة مجلس الوزراء",
-      active: true,
-    },
-  });
-
-  // 4. مستخدم موظف التسجيل (قيد السجلات فقط)
-  console.log("👤 إنشاء حساب موظف التسجيل (REGISTRATION_CLERK)...");
-  await prisma.user.upsert({
-    where: { email: "clerk@example.local" },
-    update: { fullName: "موظف قيد السجلات والشكاوى", employer: "الأمانة الفنية للجنة العليا" },
-    create: {
-      email: "clerk@example.local",
-      fullName: "موظف قيد السجلات والشكاوى",
-      passwordHash,
-      role: UserRole.REGISTRATION_CLERK,
-      employer: "الأمانة الفنية للجنة العليا",
-      active: true,
-    },
-  });
-
-  // 5. مستخدم موظف المتابعة والتوجيه (توزيع ومتابعة مدد اللجان)
-  console.log("👤 إنشاء حساب موظف المتابعة والتوجيه (FOLLOW_UP_OFFICER)...");
-  await prisma.user.upsert({
-    where: { email: "followup@example.local" },
-    update: { fullName: "أ. محمود شاكر — موظف المتابعة وتوجيه السجلات", employer: "إدارة المتابعة وتقييم الأداء" },
-    create: {
-      email: "followup@example.local",
-      fullName: "أ. محمود شاكر — موظف المتابعة وتوجيه السجلات",
-      passwordHash,
-      role: UserRole.FOLLOW_UP_OFFICER,
-      employer: "إدارة المتابعة وتقييم الأداء",
-      active: true,
-    },
-  });
-
-  // 6. مقرر اللجنة الفرعية (حساب واحد فقط لكل لجنة فرعية)
-  const qasrElAiny = await prisma.subCommittee.findFirst({ where: { code: "SC-03" } });
-  const genSurgery = await prisma.specialty.findFirst({ where: { name: "جراحة عامة" } });
-  const anesthesia = await prisma.specialty.findFirst({ where: { name: "التخدير وعلاج الألم" } });
-  const orthopedics = await prisma.specialty.findFirst({ where: { name: "جراحة عظام وكسور" } });
-  const obgyn = await prisma.specialty.findFirst({ where: { name: "أمراض النساء والتوليد" } });
-
-  console.log("👤 إنشاء حساب مقرر اللجنة الفرعية (حساب مستخدم واحد فقط للجنة)...");
-  if (qasrElAiny) {
-    await prisma.user.upsert({
-      where: { email: "dr.ahmed@example.local" },
-      update: {
-        fullName: "أ.د. أحمد فؤاد — مقرر لجنة قصر العيني",
-        employer: "كلية طب قصر العيني",
-        subCommitteeId: qasrElAiny.id,
-      },
-      create: {
-        email: "dr.ahmed@example.local",
-        fullName: "أ.د. أحمد فؤاد — مقرر لجنة قصر العيني",
-        passwordHash,
-        role: UserRole.SUBCOMMITTEE_MEMBER,
-        employer: "كلية طب قصر العيني",
-        subCommitteeId: qasrElAiny.id,
-        active: true,
-      },
-    });
-
-    // 7. سجل الأطباء والاستشاريين التابعين للجنة الفرعية (بدون حسابات دخول للمنظومة)
-    console.log("👨‍⚕️  تسجيل الأطباء والاستشاريين في سجل اللجنة الفرعية (لا يملكون حسابات دخول)...");
-    const sampleDoctors = [
-      {
-        name: "أ.د. حازم القاضي",
-        title: "أستاذ دكتور",
-        employer: "مستشفيات جامعة القاهرة (قصر العيني)",
-        specialtyId: genSurgery?.id,
-        phone: "01001234567",
-        nationalId: "26804150102345",
-        financialType: "PAYROLL_CARD",
-        bankName: "البنك الأهلي المصري (ميزة مرتبات حكومية)",
-        cardNumber: "5078 1122 3344 5566",
-        active: true,
-      },
-      {
-        name: "د. سارة المنشاوي",
-        title: "استشاري",
-        employer: "معهد ناصر للبحوث والعلاج",
-        specialtyId: anesthesia?.id,
-        phone: "01119876543",
-        nationalId: "27508200103456",
-        financialType: "PAYROLL_CARD",
-        bankName: "بنك مصر (فيزا مرتبات)",
-        cardNumber: "5078 1234 5678 9012",
-        active: true,
-      },
-      {
-        name: "أ.د. طارق السعيد",
-        title: "أستاذ دكتور",
-        employer: "مستشفى الهلال الأحمر التخصصي",
-        specialtyId: orthopedics?.id,
-        phone: "01223456789",
-        nationalId: "26203100104567",
-        financialType: "BANK_ACCOUNT",
-        bankName: "بنك القاهرة",
-        accountNumber: "22004466880011",
-        iban: "EG550004022004466880011000",
-        active: true,
-      },
-      {
-        name: "د. منى عبد الرحمن",
-        title: "استشاري",
-        employer: "مستشفى الجلاء للولادة",
-        specialtyId: obgyn?.id,
-        phone: "01098765432",
-        nationalId: "27811050105678",
-        financialType: "BANK_CARD",
-        bankName: "البنك الأهلي المصري",
-        cardNumber: "5078 9876 5432 1098",
-        active: false, // موقوفة مؤقتاً لاختبار الإيقاف المؤقت
-        notes: "موقوفة مؤقتاً لوجودها في إجازة علمية خارج البلاد",
-      },
-    ];
-
-    for (const doc of sampleDoctors) {
-      const existing = await prisma.subCommitteeDoctor.findFirst({
-        where: { subCommitteeId: qasrElAiny.id, name: doc.name },
-      });
-      if (!existing) {
-        await prisma.subCommitteeDoctor.create({
-          data: {
-            subCommitteeId: qasrElAiny.id,
-            ...doc,
-          },
-        });
-        console.log(`  ✅ إضافة الطبيب لسجل اللجنة: ${doc.name} (${doc.employer}) — ${doc.active ? "نشط" : "موقوف مؤقتاً"}`);
-      } else {
-        await prisma.subCommitteeDoctor.update({
-          where: { id: existing.id },
-          data: {
-            nationalId: doc.nationalId,
-            financialType: doc.financialType,
-            bankName: doc.bankName,
-            accountNumber: (doc as any).accountNumber || null,
-            iban: (doc as any).iban || null,
-            cardNumber: (doc as any).cardNumber || null,
-          },
-        });
-        console.log(`  ✅ تحديث البيانات المالية للطبيب: ${doc.name}`);
-      }
-    }
-  }
-
-  // 7. عضو اللجنة العليا
-  console.log("👤 إنشاء حساب عضو اللجنة العليا (SUPREME_COMMITTEE)...");
-  await prisma.user.upsert({
-    where: { email: "supreme@example.local" },
-    update: { fullName: "المستشار / رئيس الدائرة العليا", employer: "اللجنة العليا للمسؤولية الطبية" },
-    create: {
-      email: "supreme@example.local",
-      fullName: "المستشار / رئيس الدائرة العليا",
-      passwordHash,
-      role: UserRole.SUPREME_COMMITTEE,
-      employer: "اللجنة العليا للمسؤولية الطبية",
-      active: true,
-    },
-  });
-
-  // 8. موظف المالية
-  console.log("👤 إنشاء حساب موظف المالية (FINANCE)...");
-  await prisma.user.upsert({
-    where: { email: "finance@example.local" },
-    update: { fullName: "مسؤول الشؤون المالية والبدلات", employer: "صندوق التأمين الحكومي" },
-    create: {
-      email: "finance@example.local",
-      fullName: "مسؤول الشؤون المالية والبدلات",
-      passwordHash,
-      role: UserRole.FINANCE,
-      employer: "صندوق التأمين الحكومي",
-      active: true,
-    },
-  });
-
-  console.log("\n✨ اكتملت تعبئة البيانات بنجاح!");
-  console.log("═════════════════════════════════════════════════════════");
-  console.log("🔑 حسابات تسجيل الدخول (كلمة المرور الموحدة: ChangeMe123!):");
-  console.log("   • admin@example.local     → مدير النظام (ADMIN)");
-  console.log("   • clerk@example.local     → موظف قيد السجلات (REGISTRATION_CLERK)");
-  console.log("   • followup@example.local  → موظف المتابعة والتوجيه (FOLLOW_UP_OFFICER)");
-  console.log("   • dr.ahmed@example.local  → مقرر اللجنة الفاحصة (SUBCOMMITTEE_MEMBER)");
-  console.log("   • supreme@example.local   → عضو اللجنة العليا (SUPREME_COMMITTEE)");
-  console.log("   • finance@example.local   → موظف المالية (FINANCE)");
-  console.log("═════════════════════════════════════════════════════════\n");
+  console.log("✅ اكتملت البيانات المرجعية. لم يتم إنشاء أي مستخدم أو بيانات مالية/شخصية.");
 }
 
 main()
-  .catch((e) => {
-    console.error("❌ خطأ أثناء تعبئة البيانات:", e);
+  .catch((error) => {
+    console.error("❌ فشل seed المرجعي:", error);
     process.exit(1);
   })
   .finally(async () => {

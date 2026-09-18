@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { DoctorsFinanceTable } from "../doctors-finance-table";
 import { StatCard } from "@/components/ui/StatCard";
+import { decryptDoctorSensitiveFields } from "@/lib/doctor-sensitive";
 import Link from "next/link";
 import {
   CreditCard,
@@ -16,7 +17,7 @@ import {
 export const revalidate = 0;
 
 export default async function DoctorsFinancePage() {
-  const [doctors, subCommittees] = await Promise.all([
+  const [rawDoctors, subCommittees] = await Promise.all([
     prisma.subCommitteeDoctor.findMany({
       include: {
         subCommittee: { select: { id: true, name: true, code: true } },
@@ -33,6 +34,8 @@ export default async function DoctorsFinancePage() {
       orderBy: { code: "asc" },
     }),
   ]);
+
+  const doctors = rawDoctors.map((doctor) => decryptDoctorSensitiveFields(doctor));
 
   const bankAccountCount = doctors.filter(
     (d) => d.financialType === "BANK_ACCOUNT" && d.accountNumber

@@ -7,8 +7,9 @@ import { writeAuditLog } from "@/lib/audit";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
@@ -32,7 +33,7 @@ export async function PATCH(
   if (body.deactivationReason !== undefined) updateData.deactivationReason = body.deactivationReason?.trim() || null;
 
   const existing = await prisma.subCommittee.findUnique({
-    where: { id: params.id },
+    where: { id: id },
   });
 
   if (!existing) {
@@ -40,7 +41,7 @@ export async function PATCH(
   }
 
   const updated = await prisma.subCommittee.update({
-    where: { id: params.id },
+    where: { id: id },
     data: updateData,
   });
 
@@ -58,8 +59,9 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
@@ -74,7 +76,7 @@ export async function DELETE(
   }
 
   const existing = await prisma.subCommittee.findUnique({
-    where: { id: params.id },
+    where: { id: id },
   });
 
   if (!existing) {
@@ -83,10 +85,10 @@ export async function DELETE(
 
   // فحص الارتباطات بالقضايا والأطباء والمستخدمين
   const [casesCount, doctorsCount, membersCount, referredCount] = await Promise.all([
-    prisma.case.count({ where: { subCommitteeId: params.id } }),
-    prisma.subCommitteeDoctor.count({ where: { subCommitteeId: params.id } }),
-    prisma.user.count({ where: { subCommitteeId: params.id } }),
-    prisma.supremeDecision.count({ where: { referredSubCommitteeId: params.id } }),
+    prisma.case.count({ where: { subCommitteeId: id } }),
+    prisma.subCommitteeDoctor.count({ where: { subCommitteeId: id } }),
+    prisma.user.count({ where: { subCommitteeId: id } }),
+    prisma.supremeDecision.count({ where: { referredSubCommitteeId: id } }),
   ]);
 
   const totalDependencies = casesCount + doctorsCount + membersCount + referredCount;
@@ -109,12 +111,12 @@ export async function DELETE(
   }
 
   await prisma.subCommittee.delete({
-    where: { id: params.id },
+    where: { id: id },
   });
 
   await writeAuditLog({
     entityType: "SubCommittee",
-    entityId: params.id,
+    entityId: id,
     action: "DELETE",
     userId: (session.user as any).id,
     beforeData: existing,

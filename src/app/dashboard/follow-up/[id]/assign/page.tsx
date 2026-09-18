@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { use, useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatDate } from "@/lib/formatters";
@@ -31,7 +31,8 @@ interface CaseDetails {
   specialties: { specialty: Specialty }[];
 }
 
-export default function FollowUpAssignPage({ params }: { params: { id: string } }) {
+export default function FollowUpAssignPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -52,7 +53,7 @@ export default function FollowUpAssignPage({ params }: { params: { id: string } 
     async function loadData() {
       try {
         const [caseRes, scRes, specRes] = await Promise.all([
-          fetch(`/api/cases/${params.id}`),
+          fetch(`/api/cases/${id}`),
           fetch("/api/subcommittees"),
           fetch("/api/specialties"),
         ]);
@@ -75,7 +76,7 @@ export default function FollowUpAssignPage({ params }: { params: { id: string } 
     }
 
     loadData();
-  }, [params.id]);
+  }, [id]);
 
   function toggleSpecialty(id: string) {
     setSelectedSpecialtyIds((prev) =>
@@ -108,7 +109,7 @@ export default function FollowUpAssignPage({ params }: { params: { id: string } 
         followUpNotes,
       };
 
-      const res = await fetch(`/api/cases/${params.id}/assign`, {
+      const res = await fetch(`/api/cases/${id}/assign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

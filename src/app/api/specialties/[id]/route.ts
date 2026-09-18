@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit";
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
@@ -14,7 +15,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const existing = await prisma.specialty.findUnique({
-    where: { id: params.id },
+    where: { id: id },
   });
   if (!existing) {
     return NextResponse.json({ error: "التخصص الطبي غير موجود" }, { status: 404 });
@@ -27,7 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (typeof body.active === "boolean") updateData.active = body.active;
 
   const updated = await prisma.specialty.update({
-    where: { id: params.id },
+    where: { id: id },
     data: updateData,
   });
 
@@ -43,7 +44,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   return NextResponse.json(updated);
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
@@ -53,7 +55,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 
   const existing = await prisma.specialty.findUnique({
-    where: { id: params.id },
+    where: { id: id },
   });
   if (!existing) {
     return NextResponse.json({ error: "التخصص الطبي غير موجود" }, { status: 404 });
@@ -61,10 +63,10 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   const [caseCount, doctorCount] = await Promise.all([
     prisma.caseSpecialty.count({
-      where: { specialtyId: params.id },
+      where: { specialtyId: id },
     }),
     prisma.subCommitteeDoctor.count({
-      where: { specialtyId: params.id },
+      where: { specialtyId: id },
     }),
   ]);
 
@@ -84,12 +86,12 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 
   await prisma.specialty.delete({
-    where: { id: params.id },
+    where: { id: id },
   });
 
   await writeAuditLog({
     entityType: "Specialty",
-    entityId: params.id,
+    entityId: id,
     action: "DELETE",
     userId: (session.user as any).id,
     beforeData: existing,

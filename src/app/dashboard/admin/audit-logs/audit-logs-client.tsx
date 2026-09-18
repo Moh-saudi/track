@@ -120,12 +120,6 @@ export const ROLE_NAMES: Record<string, string> = {
   RISK_OFFICER: "مسؤول إدارة المخاطر",
 };
 
-// تنسيق المبالغ النقدية بشكل ثابت بين السيرفر والعميل
-function formatMoney(amount: number | string | undefined | null): string {
-  const num = Number(amount) || 0;
-  return new Intl.NumberFormat("en-US").format(num);
-}
-
 // تحويل الدقائق إلى صيغة عربية (ساعات ودقائق)
 function formatMinutesArabic(totalMin: number): string {
   if (!totalMin || totalMin <= 0) return "أقل من دقيقة";
@@ -155,9 +149,6 @@ function humanizeAuditLog(log: AuditLogItem) {
   const changesList: Array<{ label: string; before: string; after: string }> = [];
 
   const statusMap: Record<string, string> = {
-    NOT_PAID: "لم يُسدَّد",
-    PAID: "تم التسديد",
-    UNDER_SETTLEMENT: "تحت التسوية",
     REGISTERED: "مسجل — بانتظار التوجيه",
     UNDER_SUBCOMMITTEE_REVIEW: "تحت دراسة اللجنة الفرعية",
     PENDING_SUPREME_REVIEW: "بانتظار اعتماد اللجنة العليا",
@@ -166,32 +157,7 @@ function humanizeAuditLog(log: AuditLogItem) {
     CLOSED: "مغلق",
   };
 
-  if (entityType === "Payment") {
-    title = action === "CREATE" ? "استحقاق بدل جلسة جديد" : "تسديد وتحديث بدل حضور جلسة";
-    const amount = afterData?.amount || beforeData?.amount || 5000;
-    const recipient = afterData?.recipientRole || beforeData?.recipientRole || "عضو لجنة";
-    summary = `بدل حضور جلسة (${recipient}) بقيمة ${formatMoney(amount)} جنيه مصري`;
-
-    if (beforeData?.status || afterData?.status) {
-      changesList.push({
-        label: "حالة السداد المالي",
-        before: statusMap[beforeData?.status] || beforeData?.status || "لم يُسدَّد",
-        after: statusMap[afterData?.status] || afterData?.status || "تم التسديد",
-      });
-    }
-    if (afterData?.paidAt) {
-      changesList.push({
-        label: "تاريخ السداد الفعلي",
-        before: "غير مسدد",
-        after: formatDateOnlyArabic(afterData.paidAt),
-      });
-    }
-    changesList.push({
-      label: "قيمة البدل المقرر",
-      before: `${formatMoney(amount)} ج.م`,
-      after: `${formatMoney(amount)} ج.م`,
-    });
-  } else if (entityType === "Case") {
+  if (entityType === "Case") {
     if (action === "CREATE") {
       title = "قيد سجل طبي جديد";
       summary = `قيد سجل برقم (${afterData?.caseNumber || "جديد"}) — مقدم الشكوى: (${afterData?.complainantName || "غير محدد"})`;
@@ -651,7 +617,6 @@ export function AuditLogsClient({ initialSessions, initialLogs, users, initialTa
                 >
                   <option value="ALL">كافة السجلات والكيانات</option>
                   <option value="Case">القضايا والشكاوى (Case)</option>
-                  <option value="Payment">البدلات والمستحقات (Payment)</option>
                   <option value="SubCommittee">اللجان الفرعية (SubCommittee)</option>
                   <option value="User">المستخدمون (User)</option>
                   <option value="SystemSecurity">أمان المنظومة (SystemSecurity)</option>
@@ -664,7 +629,7 @@ export function AuditLogsClient({ initialSessions, initialLogs, users, initialTa
                 >
                   <option value="ALL">كافة أنواع الإجراءات</option>
                   <option value="CREATE">إنشاء وقيد جديد</option>
-                  <option value="UPDATE">تعديل وتسديد</option>
+                  <option value="UPDATE">تعديل</option>
                   <option value="ROUTING">توجيه وإحالة</option>
                   <option value="ADMIN_RISK_OVERRIDE">تصحيح مسار (وضع المخاطر)</option>
                   <option value="DELETE">حذف</option>

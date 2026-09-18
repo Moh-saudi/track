@@ -2,9 +2,25 @@ import { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import {
+  assertLoginAllowed,
+  clearLoginFailures,
+  recordLoginFailure,
+} from "@/lib/auth-rate-limit";
+
+const SESSION_MAX_AGE_SECONDS = Math.max(
+  15 * 60,
+  Number(process.env.SESSION_MAX_AGE_SECONDS || 8 * 60 * 60)
+);
 
 export const authOptions: NextAuthOptions = {
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  },
+  jwt: {
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  },
   pages: { signIn: "/login" },
   providers: [
     CredentialsProvider({
@@ -17,23 +33,11 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         const inputEmail = credentials.email.trim().toLowerCase();
-        // دعم الدخول بكلا النطاقين سواء كان @example.local أو @medical-committee.gov.eg
-        const emailsToTry = [inputEmail];
-        if (inputEmail.endsWith("@medical-committee.gov.eg")) {
-          const prefix = inputEmail.split("@")[0];
-          if (prefix === "router") emailsToTry.push("followup@example.local");
-          else if (prefix === "member") emailsToTry.push("dr.ahmed@example.local");
-          else emailsToTry.push(`${prefix}@example.local`);
-        } else if (inputEmail.endsWith("@example.local")) {
-          const prefix = inputEmail.split("@")[0];
-          if (prefix === "followup") emailsToTry.push("router@medical-committee.gov.eg");
-          else if (prefix === "dr.ahmed") emailsToTry.push("member@medical-committee.gov.eg");
-          else emailsToTry.push(`${prefix}@medical-committee.gov.eg`);
-        }
+        await assertLoginAllowed(inputEmail);
 
         const user = await prisma.user.findFirst({
           where: {
-            email: { in: emailsToTry, mode: "insensitive" },
+            email: { equals: inputEmail, mode: "insensitive" },
           },
           select: {
             id: true,
@@ -43,6 +47,7 @@ export const authOptions: NextAuthOptions = {
             role: true,
             employer: true,
             active: true,
+            sessionVersion: true,
             subCommitteeId: true,
             specialtyId: true,
             subCommittee: {
@@ -56,19 +61,28 @@ export const authOptions: NextAuthOptions = {
             },
           },
         });
-        if (!user || !user.active) return null;
+
+        if (!user || !user.active) {
+          await recordLoginFailure(inputEmail);
+          return null;
+        }
 
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
-        if (!valid) return null;
+        if (!valid) {
+          await recordLoginFailure(inputEmail);
+          return null;
+        }
 
-        // إذا كانت اللجنة التابع لها الحساب موقوفة بنظام القفل التام
         if (
           user.subCommittee &&
           !user.subCommittee.active &&
           user.subCommittee.deactivationMode === "LOCK_OUT"
         ) {
+          await recordLoginFailure(inputEmail);
           throw new Error("LOCKED_SUBCOMMITTEE");
         }
+
+        await clearLoginFailures(inputEmail);
 
         return {
           id: user.id,
@@ -76,6 +90,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           role: user.role,
           employer: user.employer,
+          sessionVersion: user.sessionVersion,
           subCommitteeId: user.subCommitteeId,
           subCommitteeName: user.subCommittee?.name,
           subCommitteeActive: user.subCommittee ? user.subCommittee.active : true,
@@ -98,10 +113,67 @@ export const authOptions: NextAuthOptions = {
         token.id = (user as any).id;
         token.employer = (user as any).employer;
         token.specialtyId = (user as any).specialtyId;
+        token.sessionVersion = (user as any).sessionVersion;
+        token.authInvalid = false;
+        return token;
       }
+
+      if (token.id) {
+        const current = await prisma.user.findUnique({
+          where: { id: String(token.id) },
+          select: {
+            active: true,
+            role: true,
+            employer: true,
+            subCommitteeId: true,
+            specialtyId: true,
+            sessionVersion: true,
+            subCommittee: {
+              select: {
+                name: true,
+                active: true,
+                deactivationMode: true,
+                deactivationReason: true,
+              },
+            },
+          },
+        });
+
+        const lockedCommittee =
+          !!current?.subCommittee &&
+          !current.subCommittee.active &&
+          current.subCommittee.deactivationMode === "LOCK_OUT";
+
+        if (
+          !current ||
+          !current.active ||
+          lockedCommittee ||
+          current.sessionVersion !== Number(token.sessionVersion)
+        ) {
+          token.authInvalid = true;
+          return token;
+        }
+
+        token.authInvalid = false;
+        token.role = current.role;
+        token.employer = current.employer;
+        token.subCommitteeId = current.subCommitteeId;
+        token.specialtyId = current.specialtyId;
+        token.subCommitteeName = current.subCommittee?.name;
+        token.subCommitteeActive = current.subCommittee ? current.subCommittee.active : true;
+        token.subCommitteeDeactivationMode = current.subCommittee?.deactivationMode || null;
+        token.subCommitteeDeactivationReason = current.subCommittee?.deactivationReason || null;
+      }
+
       return token;
     },
     async session({ session, token }) {
+      if ((token as any).authInvalid) {
+        (session as any).authInvalid = true;
+        (session as any).user = null;
+        return session;
+      }
+
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;

@@ -20,13 +20,14 @@ function safeDoctorResponse(doctor: any) {
   };
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   const role = (session.user as any).role;
   const userSubCommitteeId = (session.user as any).subCommitteeId;
-  const doctor = await prisma.subCommitteeDoctor.findUnique({ where: { id: params.id } });
+  const doctor = await prisma.subCommitteeDoctor.findUnique({ where: { id: id } });
   if (!doctor) return NextResponse.json({ error: "الطبيب غير مسجل" }, { status: 404 });
 
   if (!canManageDoctor(role, doctor.subCommitteeId, userSubCommitteeId)) {
@@ -61,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (body.cardNumber !== undefined) updateData.cardNumber = encryptOptionalField(body.cardNumber || null);
 
   const updated = await prisma.subCommitteeDoctor.update({
-    where: { id: params.id },
+    where: { id: id },
     data: updateData,
     include: { specialty: true },
   });
@@ -78,14 +79,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   return NextResponse.json(safeDoctorResponse(updated));
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   const role = (session.user as any).role;
   const userSubCommitteeId = (session.user as any).subCommitteeId;
   const doctor = await prisma.subCommitteeDoctor.findUnique({
-    where: { id: params.id },
+    where: { id: id },
     include: { reviewAssignments: true },
   });
   if (!doctor) return NextResponse.json({ error: "الطبيب غير موجود" }, { status: 404 });
@@ -100,10 +102,10 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     }, { status: 400 });
   }
 
-  await prisma.subCommitteeDoctor.delete({ where: { id: params.id } });
+  await prisma.subCommitteeDoctor.delete({ where: { id: id } });
   await writeAuditLog({
     entityType: "SubCommitteeDoctor",
-    entityId: params.id,
+    entityId: id,
     action: "DELETE",
     userId: (session.user as any).id,
     beforeData: doctor,

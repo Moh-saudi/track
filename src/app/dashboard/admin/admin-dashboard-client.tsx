@@ -6,7 +6,6 @@ import {
   Users,
   History,
   Scale,
-  Coins,
   ShieldAlert,
   Activity,
   Clock,
@@ -50,13 +49,6 @@ export interface Props {
   totalLogsCount: number;
   subCommitteesCount: number;
   specialtiesCount: number;
-  paymentsStats: {
-    totalCount: number;
-    paidCount: number;
-    pendingCount: number;
-    paidAmount: number;
-    pendingAmount: number;
-  };
 
   // الأنشطة الحية
   recentLogs: Array<{
@@ -97,11 +89,6 @@ export interface Props {
 
   // التبويب المبدئي
   initialTab?: "overview" | "users";
-}
-
-// دالة تنسيق الأرقام النقدية بشكل متطابق بين السيرفر والمتصفح لمنع مشاكل الـ Hydration
-function formatMoney(amount: number): string {
-  return new Intl.NumberFormat("en-US").format(amount || 0);
 }
 
 // دالة حساب الوقت المنقضي بصياغة عربية
@@ -148,7 +135,6 @@ function humanizeActionShort(action: string, entityType: string) {
   if (action === "ADMIN_RISK_OVERRIDE") return "تصحيح مسار استثنائي لقرار";
   if (action === "ADMIN_RISK_MODE_ENTER") return "دخول مصادق لوضع المخاطر";
   if (action === "CREATE" && entityType === "SupremeDecision") return "اعتماد قرار اللجنة العليا";
-  if (action === "UPDATE" && entityType === "Payment") return "تسديد بدل حضور جلسة";
   if (action === "UPDATE" && entityType === "CaseAction") return "تحديث تقرير الجلسة الفرعية";
   if (action === "SCHEDULE_UPDATE") return "تعديل جدول انعقاد الجلسة";
   if (action === "CREATE" && entityType === "User") return "إنشاء حساب مستخدم جديد";
@@ -169,7 +155,6 @@ export function AdminDashboardClient({
   totalLogsCount,
   subCommitteesCount,
   specialtiesCount,
-  paymentsStats,
   recentLogs,
   liveUsers,
   users,
@@ -225,7 +210,7 @@ export function AdminDashboardClient({
       {activeTab === "overview" && (
         <div className="space-y-6">
           {/* ١. بطاقات المؤشرات السيادية الأربعة */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <StatCard
               title="المستخدمون المتصلون الآن"
               value={`${liveUsersCount} متصل`}
@@ -252,14 +237,6 @@ export function AdminDashboardClient({
                   ? `${overdueCasesCount} قضية متأخرة تجاوزت المدة أو معادة للدراسة`
                   : "كافة السجلات الطبية ضمن الإطار الزمني المحدد"
               }
-            />
-
-            <StatCard
-              title="استحقاقات وبدلات حضور الجلسات"
-              value={`${formatMoney(paymentsStats.paidAmount)} ج.م`}
-              icon={<Coins className="w-6 h-6" />}
-              variant="teal"
-              description={`تم تسديد ${paymentsStats.paidCount} بدل • متبقي ${paymentsStats.pendingCount} تحت الصرف`}
             />
           </div>
 
@@ -450,30 +427,6 @@ export function AdminDashboardClient({
                 </div>
               </Link>
 
-              {/* بوابة المنظومة المالية وصرف البدلات */}
-              <Link
-                href="/dashboard/finance/payments"
-                className="group p-5 rounded-2xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-md transition-all duration-200 relative overflow-hidden"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                    <Coins className="w-5 h-5" />
-                  </div>
-                  <Badge variant="emerald" className="text-[11px]">
-                    {paymentsStats.totalCount} استحقاق
-                  </Badge>
-                </div>
-                <h3 className="text-sm font-bold font-heading text-slate-800 group-hover:text-emerald-700 transition-colors">
-                  منظومة صرف البدلات والمستحقات
-                </h3>
-                <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed font-body">
-                  متابعة بدلات حضور الجلسات (5,000 ج.م للفرعية / 8,000 ج.م للعليا) وتوثيق التواريخ.
-                </p>
-                <div className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-emerald-700 group-hover:text-emerald-800 font-heading">
-                  <span>فتح جدول صرف البدلات</span>
-                  <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-                </div>
-              </Link>
             </div>
           </div>
 

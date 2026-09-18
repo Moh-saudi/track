@@ -54,16 +54,40 @@ export async function POST(req: NextRequest) {
   }
 
   const { sessionNumber, sessionDate, location, notes, caseIds } = parsed.data;
+  const parsedDate = new Date(sessionDate);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return NextResponse.json({ error: "تاريخ ووقت الجلسة غير صالح" }, { status: 400 });
+  }
+
+  const uniqueCaseIds = [...new Set(caseIds || [])];
+  if (uniqueCaseIds.length !== (caseIds || []).length) {
+    return NextResponse.json({ error: "قائمة القضايا تحتوي تكراراً" }, { status: 400 });
+  }
+
+  if (uniqueCaseIds.length > 0) {
+    const eligibleCases = await prisma.case.count({
+      where: {
+        id: { in: uniqueCaseIds },
+        status: "PENDING_SUPREME_REVIEW",
+      },
+    });
+    if (eligibleCases !== uniqueCaseIds.length) {
+      return NextResponse.json(
+        { error: "لا يمكن إدراج قضية في جلسة اللجنة العليا إلا إذا كانت بانتظار مراجعة اللجنة العليا" },
+        { status: 400 }
+      );
+    }
+  }
 
   const newSession = await prisma.supremeSession.create({
     data: {
       sessionNumber: sessionNumber.trim(),
-      sessionDate: new Date(sessionDate),
+      sessionDate: parsedDate,
       location: location?.trim() || "قاعة الاجتماعات الكبرى - الأمانة الفنية للجنة العليا",
       notes: notes?.trim() || null,
       createdById: (session.user as any).id,
-      cases: caseIds && caseIds.length > 0 ? {
-        connect: caseIds.map((id) => ({ id })),
+      cases: uniqueCaseIds.length > 0 ? {
+        connect: uniqueCaseIds.map((id) => ({ id })),
       } : undefined,
     },
     include: {
@@ -79,7 +103,7 @@ export async function POST(req: NextRequest) {
     afterData: {
       sessionNumber: newSession.sessionNumber,
       sessionDate: newSession.sessionDate,
-      casesCount: caseIds?.length || 0,
+      casesCount: uniqueCaseIds.length,
     },
   });
 

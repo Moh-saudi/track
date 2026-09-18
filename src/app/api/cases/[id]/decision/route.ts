@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/rbac";
+import { getApprovedAllowanceRates } from "@/lib/finance-config";
 
 const schema = z.object({
   meetingDate: z.string().min(1),
@@ -15,7 +16,8 @@ const schema = z.object({
   path: ["referredSubCommitteeId"],
 });
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!session?.user || !can(user.role, "ISSUE_FINAL_DECISION")) {
@@ -32,9 +34,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   try {
+    const allowanceRates = getApprovedAllowanceRates();
     const result = await prisma.$transaction(async (tx) => {
       const caseRecord = await tx.case.findUnique({
-        where: { id: params.id },
+        where: { id: id },
         select: { id: true, status: true, subCommitteeId: true, caseNumber: true, caseYear: true },
       });
       if (!caseRecord) throw new Error("CASE_NOT_FOUND");
@@ -47,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
       const decision = await tx.supremeDecision.create({
         data: {
-          caseId: params.id,
+          caseId: id,
           meetingDate,
           decisionType: data.decisionType,
           decisionDetails: data.decisionDetails.trim(),
@@ -58,7 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
       const nextStatus = data.decisionType === "REFER_BACK" ? "REFERRED_FOR_REVIEW" : "APPROVED";
       const updated = await tx.case.update({
-        where: { id: params.id },
+        where: { id: id },
         data: {
           status: nextStatus,
           subCommitteeId: data.decisionType === "REFER_BACK" ? data.referredSubCommitteeId : undefined,
@@ -72,7 +75,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           action: "CREATE",
           userId: user.id,
           afterData: {
-            caseId: params.id,
+            caseId: id,
             decisionType: decision.decisionType,
             meetingDate: decision.meetingDate,
           },
@@ -81,7 +84,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
       if (nextStatus === "APPROVED") {
         const caseDetails = await tx.case.findUnique({
-          where: { id: params.id },
+          where: { id: id },
           include: {
             reviewers: {
               where: { status: { not: "RECUSED" } },
@@ -95,7 +98,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           for (const rev of caseDetails.reviewers) {
             const existing = await tx.payment.findFirst({
               where: {
-                caseId: params.id,
+                caseId: id,
                 ...(rev.doctorId ? { doctorId: rev.doctorId } : {}),
                 ...(rev.userId ? { memberId: rev.userId } : {}),
                 recipientRole: "عضو لجنة فرعية",
@@ -104,11 +107,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             if (!existing) {
               await tx.payment.create({
                 data: {
-                  caseId: params.id,
+                  caseId: id,
                   doctorId: rev.doctorId || null,
                   memberId: rev.userId || null,
                   recipientRole: "عضو لجنة فرعية",
-                  amount: 5000,
+                  amount: allowanceRates.subcommittee,
                   entitled: true,
                   status: "NOT_PAID",
                 },
@@ -118,15 +121,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         } else if (caseDetails?.subCommittee?.members?.length) {
           for (const member of caseDetails.subCommittee.members) {
             const existing = await tx.payment.findFirst({
-              where: { caseId: params.id, memberId: member.id, recipientRole: "مقرر اللجنة الفرعية" },
+              where: { caseId: id, memberId: member.id, recipientRole: "مقرر اللجنة الفرعية" },
             });
             if (!existing) {
               await tx.payment.create({
                 data: {
-                  caseId: params.id,
+                  caseId: id,
                   memberId: member.id,
                   recipientRole: "مقرر اللجنة الفرعية",
-                  amount: 5000,
+                  amount: allowanceRates.subcommittee,
                   entitled: true,
                   status: "NOT_PAID",
                 },
@@ -136,15 +139,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         }
 
         const existingSupremePayment = await tx.payment.findFirst({
-          where: { caseId: params.id, memberId: user.id, recipientRole: "عضو اللجنة العليا" },
+          where: { caseId: id, memberId: user.id, recipientRole: "عضو اللجنة العليا" },
         });
         if (!existingSupremePayment) {
           await tx.payment.create({
             data: {
-              caseId: params.id,
+              caseId: id,
               memberId: user.id,
               recipientRole: "عضو اللجنة العليا",
-              amount: 8000,
+              amount: allowanceRates.supreme,
               entitled: true,
               status: "NOT_PAID",
             },
@@ -154,12 +157,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         await tx.auditLog.create({
           data: {
             entityType: "Payment",
-            entityId: params.id,
+            entityId: id,
             action: "CREATE",
             userId: user.id,
             afterData: {
-              caseId: params.id,
-              message: "تم توليد مستحقات بدلات الجلسات تلقائياً (5000 للفرعية / 8000 للعليا)",
+              caseId: id,
+              message: "تم توليد مستحقات بدلات الجلسات تلقائياً وفق القيم المعتمدة في إعدادات الخادم",
             },
           },
         });

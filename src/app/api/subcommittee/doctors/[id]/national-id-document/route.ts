@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import fs from "fs/promises";
 import path from "path";
+import crypto from "crypto";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit";
+import {
+  ensureSecureDirectory,
+  nationalIdDocumentDir,
+  quarantineDir,
+  scanFileForMalware,
+  validateFileSignature,
+} from "@/lib/storage";
 
-const DOCUMENT_DIR = path.resolve(process.cwd(), "uploads", "doctor-national-id");
 const MAX_PDF_BYTES = 12 * 1024 * 1024;
 const LOCAL_DOCUMENT_UPLOAD_ENABLED = process.env.ENABLE_LOCAL_DOCUMENT_UPLOAD === "true";
 
@@ -34,7 +41,7 @@ async function authorizeDoctorAccess(doctorId: string, user: any, write = false)
 }
 
 function documentPath(doctorId: string) {
-  return path.join(DOCUMENT_DIR, `${doctorId}.pdf`);
+  return path.join(nationalIdDocumentDir(), `${doctorId}.pdf`);
 }
 
 function storageDisabledResponse() {
@@ -44,38 +51,60 @@ function storageDisabledResponse() {
   );
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!LOCAL_DOCUMENT_UPLOAD_ENABLED) return storageDisabledResponse();
 
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
-  const access = await authorizeDoctorAccess(params.id, user, true);
+  const access = await authorizeDoctorAccess(id, user, true);
   if ("error" in access) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "ملف بطاقة الرقم القومي مطلوب" }, { status: 400 });
-  if (file.type !== "application/pdf") {
-    return NextResponse.json({ error: "يجب إرسال مستند البطاقة بصيغة PDF" }, { status: 400 });
-  }
   if (file.size <= 0 || file.size > MAX_PDF_BYTES) {
     return NextResponse.json({ error: "حجم ملف PDF غير صالح أو يتجاوز 12 ميجابايت" }, { status: 400 });
   }
 
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const signature = new TextDecoder("ascii").decode(bytes.slice(0, 5));
-  if (signature !== "%PDF-") {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  if (!validateFileSignature(buffer, ".pdf")) {
     return NextResponse.json({ error: "محتوى الملف لا يطابق صيغة PDF" }, { status: 400 });
   }
 
-  await fs.mkdir(DOCUMENT_DIR, { recursive: true });
-  await fs.writeFile(documentPath(params.id), bytes);
+  const docDir = nationalIdDocumentDir();
+  const tempDir = quarantineDir();
+  await ensureSecureDirectory(docDir);
+  await ensureSecureDirectory(tempDir);
+
+  const tempPath = path.join(tempDir, `national-id-${crypto.randomUUID()}.pdf`);
+  const targetPath = documentPath(id);
+  const replacementPath = path.join(docDir, `.${id}.${crypto.randomUUID()}.pdf`);
+
+  try {
+    await fs.writeFile(tempPath, buffer, { flag: "wx", mode: 0o640 });
+    await scanFileForMalware(tempPath);
+    await fs.rename(tempPath, replacementPath);
+    await fs.chmod(replacementPath, 0o640).catch(() => undefined);
+    await fs.rename(replacementPath, targetPath);
+  } catch (error: any) {
+    await fs.unlink(tempPath).catch(() => undefined);
+    await fs.unlink(replacementPath).catch(() => undefined);
+    if (error?.message === "MALWARE_DETECTED") {
+      return NextResponse.json({ error: "تم رفض الملف بعد اكتشاف محتوى ضار" }, { status: 422 });
+    }
+    if (error?.message === "MALWARE_SCANNER_UNAVAILABLE") {
+      return NextResponse.json({ error: "خدمة فحص الملفات غير متاحة حاليًا، تم إيقاف الرفع حفاظًا على الأمان" }, { status: 503 });
+    }
+    console.error("National ID storage error:", error);
+    return NextResponse.json({ error: "تعذر حفظ مستند بطاقة الرقم القومي" }, { status: 500 });
+  }
 
   await writeAuditLog({
     entityType: "SubCommitteeDoctor",
-    entityId: params.id,
+    entityId: id,
     action: "UPLOAD_NATIONAL_ID_DOCUMENT",
     userId: user.id,
     afterData: { fileType: "application/pdf", fileSize: file.size },
@@ -84,21 +113,22 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json({
     success: true,
     hasNationalIdDocument: true,
-    downloadUrl: `/api/subcommittee/doctors/${params.id}/national-id-document`,
+    downloadUrl: `/api/subcommittee/doctors/${id}/national-id-document`,
   });
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!LOCAL_DOCUMENT_UPLOAD_ENABLED) return storageDisabledResponse();
 
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
-  const access = await authorizeDoctorAccess(params.id, user, false);
+  const access = await authorizeDoctorAccess(id, user, false);
   if ("error" in access) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  const targetPath = documentPath(params.id);
+  const targetPath = documentPath(id);
   try {
     const stat = await fs.stat(targetPath);
     if (!stat.isFile()) throw new Error("not-file");
@@ -111,6 +141,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         "Content-Length": stat.size.toString(),
         "Cache-Control": "private, no-store, max-age=0, must-revalidate",
         "X-Content-Type-Options": "nosniff",
+        "X-Download-Options": "noopen",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
       },
     });
   } catch {

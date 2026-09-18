@@ -14,8 +14,9 @@ const schema = z.object({
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
   if (!session?.user || (!can(role, "ROUTE_CASE") && role !== "ADMIN")) {
@@ -28,7 +29,7 @@ export async function PATCH(
   }
 
   const existingCase = await prisma.case.findUnique({
-    where: { id: params.id },
+    where: { id: id },
   });
   if (!existingCase) {
     return NextResponse.json({ error: "السجل غير موجود" }, { status: 404 });
@@ -39,7 +40,7 @@ export async function PATCH(
     : null;
 
   const updatedCase = await prisma.case.update({
-    where: { id: params.id },
+    where: { id: id },
     data: {
       prosecutionNotifiedAt: notifiedAtDate,
       prosecutionLetterNumber: parsed.data.prosecutionLetterNumber?.trim() || null,
@@ -49,7 +50,7 @@ export async function PATCH(
 
   await writeAuditLog({
     entityType: "Case",
-    entityId: params.id,
+    entityId: id,
     action: "UPDATE",
     userId: (session.user as any).id,
     beforeData: {

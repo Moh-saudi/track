@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/rbac";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const subCommitteeId = (session.user as any).subCommitteeId;
 
   const item = await prisma.case.findUnique({
-    where: { id: params.id },
+    where: { id: id },
     include: {
       subCommittee: true,
       specialties: { include: { specialty: true } },
@@ -47,16 +48,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         },
         orderBy: { uploadedAt: "desc" },
       },
-      ...(role === "ADMIN"
-        ? {
-            payments: {
-              include: {
-                member: { select: { id: true, fullName: true, role: true, email: true } },
-                doctor: { select: { id: true, name: true, employer: true, bankName: true, financialType: true } },
-              },
-            },
-          }
-        : {}),
     },
   });
 

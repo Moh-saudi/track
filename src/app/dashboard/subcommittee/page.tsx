@@ -9,8 +9,9 @@ export const revalidate = 0;
 export default async function SubCommitteeDashboard({
   searchParams,
 }: {
-  searchParams?: { tab?: string };
+  searchParams?: Promise<{ tab?: string }> ;
 }) {
+  const resolvedSearchParams = await searchParams;
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
@@ -99,7 +100,7 @@ export default async function SubCommitteeDashboard({
         employer: user.employer,
         subCommitteeName: subCommittee?.name,
       }}
-      initialTab={searchParams?.tab === "cases" ? "cases" : "overview"}
+      initialTab={resolvedSearchParams?.tab === "cases" ? "cases" : "overview"}
     />
   );
 }

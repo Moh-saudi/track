@@ -1,0 +1,113 @@
+name: Government Security CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  security-verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: security_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d security_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/security_ci?schema=public
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ci-only-nextauth-secret-please-never-use-in-production-2026
+      FIELD_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      SESSION_MAX_AGE_SECONDS: "28800"
+      LOGIN_MAX_FAILURES: "5"
+      LOGIN_RATE_WINDOW_MINUTES: "15"
+      LOGIN_BLOCK_MINUTES: "15"
+      UPLOAD_ROOT: /tmp/medical-liability-security-ci/uploads
+      MAX_UPLOAD_MB: "25"
+      ENABLE_LOCAL_DOCUMENT_UPLOAD: "true"
+      NEXT_PUBLIC_ENABLE_LOCAL_DOCUMENT_UPLOAD: "true"
+      MALWARE_SCAN_MODE: "off"
+      ALLOW_REFERENCE_SEED: "true"
+      REQUIRE_ENCRYPTED_SENSITIVE_FIELDS: "false"
+      SUBCOMMITTEE_SESSION_ALLOWANCE: "5000"
+      SUPREME_SESSION_ALLOWANCE: "8000"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Create ephemeral CI schema
+        run: npx prisma db push --skip-generate
+
+      - name: Apply custom database security constraints
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/security_ci"             -v ON_ERROR_STOP=1             -f prisma/migrations/20260918120000_government_security_readiness/migration.sql
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Static security regression tests
+        run: npm run test:security
+
+      - name: Reference-data seed test
+        run: npm run prisma:seed
+
+      - name: Database security tests
+        run: npm run test:security-db
+
+      - name: Production preflight against CI database
+        run: npm run preflight:production
+
+      - name: Dependency vulnerability audit
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Production build
+        env:
+          NODE_ENV: production
+        run: npm run build
+
+      - name: Generate CycloneDX SBOM
+        run: npm sbom --sbom-format=cyclonedx > sbom.cdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30

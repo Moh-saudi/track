@@ -18,8 +18,9 @@ export const revalidate = 0;
 export default async function AdminAuditLogsPage({
   searchParams,
 }: {
-  searchParams?: { tab?: string };
+  searchParams?: Promise<{ tab?: string }> ;
 }) {
+  const resolvedSearchParams = await searchParams;
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
 
@@ -45,6 +46,7 @@ export default async function AdminAuditLogsPage({
       },
     }),
     prisma.auditLog.findMany({
+      where: { entityType: { not: "Payment" } },
       orderBy: { createdAt: "desc" },
       take: 300,
       include: {
@@ -181,7 +183,7 @@ export default async function AdminAuditLogsPage({
         initialSessions={serializedSessions as any}
         initialLogs={serializedLogs as any}
         users={users}
-        initialTab={searchParams?.tab === "actions" ? "actions" : "sessions"}
+        initialTab={resolvedSearchParams?.tab === "actions" ? "actions" : "sessions"}
       />
     </div>
   );

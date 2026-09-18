@@ -101,8 +101,7 @@ export function PaymentRow({ payment }: { payment: PaymentProps }) {
   const currentOption = STATUS_OPTIONS.find((o) => o.value === status);
   const isSupreme =
     payment.recipientRole?.includes("عليا") ||
-    payment.member?.role === "SUPREME_COMMITTEE" ||
-    payment.amount === 8000;
+    payment.member?.role === "SUPREME_COMMITTEE";
 
   return (
     <TableRow className="hover:bg-slate-50/80 transition-colors">
@@ -190,7 +189,7 @@ export function PaymentRow({ payment }: { payment: PaymentProps }) {
       {/* المبلغ المقرر */}
       <TableCell className="text-xs font-bold font-mono">
         <span className={isSupreme ? "text-teal-700 font-bold" : "text-slate-800 font-bold"}>
-          {formatCurrency(payment.amount ?? (isSupreme ? 8000 : 5000))}
+          {formatCurrency(payment.amount ?? 0)}
         </span>
       </TableCell>
 
