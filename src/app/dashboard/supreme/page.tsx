@@ -36,13 +36,14 @@ import { SupremeDateFilter } from "./date-filter";
 export const revalidate = 0;
 
 interface SupremeDashboardProps {
-  searchParams?: {
+  resolvedSearchParams?: Promise<{
     startDate?: string;
     endDate?: string;
-  };
+  }>;
 }
 
 export default async function SupremeDashboard({ searchParams }: SupremeDashboardProps) {
+  const resolvedSearchParams = await searchParams;
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
@@ -58,15 +59,15 @@ export default async function SupremeDashboard({ searchParams }: SupremeDashboar
     },
   };
 
-  if (searchParams?.startDate || searchParams?.endDate) {
+  if (resolvedSearchParams?.startDate || resolvedSearchParams?.endDate) {
     whereClause.createdAt = {};
-    if (searchParams.startDate) {
-      const start = new Date(searchParams.startDate);
+    if (resolvedSearchParams.startDate) {
+      const start = new Date(resolvedSearchParams.startDate);
       start.setHours(0, 0, 0, 0);
       whereClause.createdAt.gte = start;
     }
-    if (searchParams.endDate) {
-      const end = new Date(searchParams.endDate);
+    if (resolvedSearchParams.endDate) {
+      const end = new Date(resolvedSearchParams.endDate);
       end.setHours(23, 59, 59, 999);
       whereClause.createdAt.lte = end;
     }
