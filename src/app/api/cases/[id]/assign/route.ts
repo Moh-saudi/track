@@ -15,6 +15,7 @@ const assignSchema = z.object({
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   // التحقق من صلاحية ROUTE_CASE حصراً لموظف المتابعة والتوجيه أو المشرف
   if (!session?.user || !can((session.user as any).role, "ROUTE_CASE")) {
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const before = await prisma.case.findUnique({
-    where: { id: (await params).id },
+    where: { id: id },
     include: { specialties: true },
   });
   if (!before) {
@@ -73,17 +74,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // إذا تم إرسال تخصصات جديدة أثناء التوجيه، يتم تحديث التخصصات
   if (parsed.data.specialtyIds && parsed.data.specialtyIds.length > 0) {
-    await prisma.caseSpecialty.deleteMany({ where: { caseId: (await params).id } });
+    await prisma.caseSpecialty.deleteMany({ where: { caseId: id } });
     await prisma.caseSpecialty.createMany({
       data: parsed.data.specialtyIds.map((sId) => ({
-        caseId: (await params).id,
+        caseId: id,
         specialtyId: sId,
       })),
     });
   }
 
   const updated = await prisma.case.update({
-    where: { id: (await params).id },
+    where: { id: id },
     data: {
       subCommitteeId: parsed.data.subCommitteeId,
       assignedAt: new Date(),
