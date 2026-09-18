@@ -3,5 +3,5 @@ import AdminDashboardPage from "../page";
 export const revalidate = 0;
 
 export default async function AdminUsersPage() {
-  return await AdminDashboardPage({ searchParams: { tab: "users" } });
+  return await AdminDashboardPage({ searchParams: Promise.resolve({ tab: "users" }) });
 }
