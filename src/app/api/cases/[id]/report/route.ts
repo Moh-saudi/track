@@ -17,13 +17,14 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
   if (!session?.user || !can(role, "RECORD_SUBCOMMITTEE_REPORT")) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
 
-  const caseRecord = await prisma.case.findUnique({ where: { id: (await params).id } });
+  const caseRecord = await prisma.case.findUnique({ where: { id: id } });
   if (!caseRecord) return NextResponse.json({ error: "القضية غير موجودة" }, { status: 404 });
   if (caseRecord.subCommitteeId !== (session.user as any).subCommitteeId) {
     return NextResponse.json({ error: "هذه القضية ليست موجهة للجنتك" }, { status: 403 });
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const action = await prisma.caseAction.create({
     data: {
-      caseId: (await params).id,
+      caseId: id,
       receivedDate: new Date(data.receivedDate),
       meetingDate: data.meetingDate ? new Date(data.meetingDate) : null,
       faultDescription: data.faultDescription,
@@ -102,7 +103,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   if (Object.keys(caseUpdateData).length > 0) {
     await prisma.case.update({
-      where: { id: (await params).id },
+      where: { id: id },
       data: caseUpdateData,
     });
   }
