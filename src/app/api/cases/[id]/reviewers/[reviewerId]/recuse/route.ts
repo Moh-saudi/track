@@ -14,6 +14,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; reviewerId: string }> }
 ) {
+  const { id, reviewerId } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
@@ -24,7 +25,7 @@ export async function POST(
   }
 
   const reviewer = await prisma.caseReviewer.findUnique({
-    where: { id: (await params).reviewerId },
+    where: { id: reviewerId },
     include: {
       user: {
         select: { id: true, fullName: true, role: true },
@@ -42,7 +43,7 @@ export async function POST(
   }
 
   const updated = await prisma.caseReviewer.update({
-    where: { id: (await params).reviewerId },
+    where: { id: reviewerId },
     data: {
       status: "RECUSED",
       recusalReason: parsed.data.reason,
