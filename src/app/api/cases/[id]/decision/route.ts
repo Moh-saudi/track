@@ -17,6 +17,7 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!session?.user || !can(user.role, "ISSUE_FINAL_DECISION")) {
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const allowanceRates = getApprovedAllowanceRates();
     const result = await prisma.$transaction(async (tx) => {
       const caseRecord = await tx.case.findUnique({
-        where: { id: (await params).id },
+        where: { id: id },
         select: { id: true, status: true, subCommitteeId: true, caseNumber: true, caseYear: true },
       });
       if (!caseRecord) throw new Error("CASE_NOT_FOUND");
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       const decision = await tx.supremeDecision.create({
         data: {
-          caseId: (await params).id,
+          caseId: id,
           meetingDate,
           decisionType: data.decisionType,
           decisionDetails: data.decisionDetails.trim(),
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       const nextStatus = data.decisionType === "REFER_BACK" ? "REFERRED_FOR_REVIEW" : "APPROVED";
       const updated = await tx.case.update({
-        where: { id: (await params).id },
+        where: { id: id },
         data: {
           status: nextStatus,
           subCommitteeId: data.decisionType === "REFER_BACK" ? data.referredSubCommitteeId : undefined,
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           action: "CREATE",
           userId: user.id,
           afterData: {
-            caseId: (await params).id,
+            caseId: id,
             decisionType: decision.decisionType,
             meetingDate: decision.meetingDate,
           },
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       if (nextStatus === "APPROVED") {
         const caseDetails = await tx.case.findUnique({
-          where: { id: (await params).id },
+          where: { id: id },
           include: {
             reviewers: {
               where: { status: { not: "RECUSED" } },
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           for (const rev of caseDetails.reviewers) {
             const existing = await tx.payment.findFirst({
               where: {
-                caseId: (await params).id,
+                caseId: id,
                 ...(rev.doctorId ? { doctorId: rev.doctorId } : {}),
                 ...(rev.userId ? { memberId: rev.userId } : {}),
                 recipientRole: "عضو لجنة فرعية",
@@ -106,7 +107,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             if (!existing) {
               await tx.payment.create({
                 data: {
-                  caseId: (await params).id,
+                  caseId: id,
                   doctorId: rev.doctorId || null,
                   memberId: rev.userId || null,
                   recipientRole: "عضو لجنة فرعية",
@@ -120,12 +121,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         } else if (caseDetails?.subCommittee?.members?.length) {
           for (const member of caseDetails.subCommittee.members) {
             const existing = await tx.payment.findFirst({
-              where: { caseId: (await params).id, memberId: member.id, recipientRole: "مقرر اللجنة الفرعية" },
+              where: { caseId: id, memberId: member.id, recipientRole: "مقرر اللجنة الفرعية" },
             });
             if (!existing) {
               await tx.payment.create({
                 data: {
-                  caseId: (await params).id,
+                  caseId: id,
                   memberId: member.id,
                   recipientRole: "مقرر اللجنة الفرعية",
                   amount: allowanceRates.subcommittee,
@@ -138,12 +139,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         const existingSupremePayment = await tx.payment.findFirst({
-          where: { caseId: (await params).id, memberId: user.id, recipientRole: "عضو اللجنة العليا" },
+          where: { caseId: id, memberId: user.id, recipientRole: "عضو اللجنة العليا" },
         });
         if (!existingSupremePayment) {
           await tx.payment.create({
             data: {
-              caseId: (await params).id,
+              caseId: id,
               memberId: user.id,
               recipientRole: "عضو اللجنة العليا",
               amount: allowanceRates.supreme,
@@ -156,11 +157,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         await tx.auditLog.create({
           data: {
             entityType: "Payment",
-            entityId: (await params).id,
+            entityId: id,
             action: "CREATE",
             userId: user.id,
             afterData: {
-              caseId: (await params).id,
+              caseId: id,
               message: "تم توليد مستحقات بدلات الجلسات تلقائياً وفق القيم المعتمدة في إعدادات الخادم",
             },
           },
