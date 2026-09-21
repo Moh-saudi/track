@@ -182,12 +182,17 @@ model Prosecution {
   name        String   @unique  // اسم النيابة (مثل: شبين الكوم الكلية - تلا الجزئية)
   code        String?  @unique  // رمز اختياري
   governorate String?  // المحافظة التابعة لها النيابة
+  type        String?  @default("PLENARY") // PLENARY (كلية) أو DISTRICT (جزئية)
+  parentId    String?  // النيابة الكلية التابعة لها في حال كانت جزئية
+  parent      Prosecution?  @relation("ProsecutionHierarchy", fields: [parentId], references: [id])
+  children    Prosecution[] @relation("ProsecutionHierarchy")
   active      Boolean  @default(true)
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  cases     Case[]
+  cases             Case[] @relation("CasePlenaryProsecution")
+  partialCases      Case[] @relation("CasePartialProsecution")
 }
 
 // ─── سجل أطباء واستشاريي اللجنة الفرعية (بدون حسابات دخول) ───
@@ -248,21 +253,32 @@ model Case {
   incomingDate          DateTime?                        // تاريخ الوارد (تاريخ استلام الشكوى / ورود كتاب النيابة)
   attachmentsCount      Int              @default(0)     // عدد المرفقات المسلمة
   hospitalName          String?                          // اسم المنشأة الطبية المشكو في حقها (المستشفى / المركز الطبي)
-  respondentName        String?                          // اسم المشكو في حقه (الطبيب / الكادر الطبي)
+  respondentName        String?                          // اسم المشكو في حقه الرئيسي (للتوافق الرجعي)
+  respondentPhone       String?                          // رقم هاتف المشكو في حقه الرئيسي
 
-  reportYear       Int?                             // سنة إضافية إن وجدت
-  prosecution      String?                          // النيابة
-  prosecutionId    String?
-  prosecutionRel   Prosecution?     @relation(fields: [prosecutionId], references: [id])
-  governorate      String?                          // المحافظة
-  complainantName  String?                          // اسم الشاكي / المريض
-  description      String           @db.Text        // ملخص الواقعة / موضوع الشكوى
-  status           CaseStatus       @default(REGISTERED)
+  reportYear            Int?                             // سنة إضافية إن وجدت
+  prosecution           String?                          // اسم النيابة الكلية
+  prosecutionId         String?                          // معرّف النيابة الكلية
+  prosecutionRel        Prosecution?     @relation("CasePlenaryProsecution", fields: [prosecutionId], references: [id])
+  partialProsecution    String?                          // اسم النيابة الجزئية
+  partialProsecutionId  String?                          // معرّف النيابة الجزئية
+  partialProsecutionRel Prosecution?    @relation("CasePartialProsecution", fields: [partialProsecutionId], references: [id])
+  governorate           String?                          // المحافظة
+  complainantName       String?                          // اسم الشاكي الرئيسي (للتوافق الرجعي)
+  complainantPhone      String?                          // رقم هاتف الشاكي الرئيسي
+
+  // تفاصيل الشاكين والمشكو في حقهم والمدعوين (JSONB مدمج عالي الأداء)
+  complainants          Json?                            // قائمة الشاكين [{ name, phone, nationalId, notes }]
+  respondents           Json?                            // قائمة المشكو في حقهم [{ name, phone, nationalId, medicalProfession, notes }]
+  sessionAttendees      Json?                            // مدعوون ومستدعون للجلسة لم يسجلوا بالقيد [{ name, role, phone, nationalId, medicalProfession, notes, isSummoned }]
+
+  description           String           @db.Text        // ملخص الواقعة / موضوع الشكوى
+  status                CaseStatus       @default(REGISTERED)
 
   // التوجيه للجنة الفرعية والمتابعة الزمنية
-  subCommitteeId   String?
-  subCommittee     SubCommittee?    @relation(fields: [subCommitteeId], references: [id])
-  assignedAt       DateTime?                        // تاريخ الإحالة / التوجيه الفعلي
+  subCommitteeId        String?
+  subCommittee          SubCommittee?    @relation(fields: [subCommitteeId], references: [id])
+  assignedAt            DateTime?                        // تاريخ الإحالة / التوجيه الفعلي
   expectedDueDate  DateTime?                        // الموعد النهائي المحدد لإنجاز التقرير
   meetingDate      DateTime?                        // تاريخ انعقاد جلسة اللجنة الفرعية الفعلي
   meetingDateReason String?         @db.Text        // سبب تعديل أو تأجيل موعد انعقاد الجلسة

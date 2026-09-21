@@ -19,6 +19,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body.name) updateData.name = body.name.trim();
     if (body.code !== undefined) updateData.code = body.code ? body.code.trim() : null;
     if (body.governorate !== undefined) updateData.governorate = body.governorate ? body.governorate.trim() : null;
+    if (body.type !== undefined) updateData.type = body.type;
+    if (body.parentId !== undefined) updateData.parentId = body.parentId || null;
     if (typeof body.active === "boolean") updateData.active = body.active;
 
     const updated = await prisma.prosecution.update({

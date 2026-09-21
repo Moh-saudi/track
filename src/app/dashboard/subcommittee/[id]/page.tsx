@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { AttachmentUploader } from "@/app/dashboard/_components/attachment-uploader";
 import { ReviewTeamManager } from "./review-team-manager";
 import { MeetingDateManager } from "./meeting-date-manager";
+import { CasePartiesManager } from "./case-parties-manager";
 import { formatDate } from "@/lib/formatters";
 import {
   Scale,
@@ -54,6 +55,8 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
     where: { id: id },
     include: {
       subCommittee: true,
+      prosecutionRel: true,
+      partialProsecutionRel: true,
       specialties: { include: { specialty: true } },
       attachments: { orderBy: { uploadedAt: "desc" } },
       actions: { orderBy: { createdAt: "desc" }, include: { recordedBy: { select: { fullName: true } } } },
@@ -78,6 +81,20 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
   const isPendingSupreme = caseRecord.status === "PENDING_SUPREME_REVIEW";
   // لا يمكن تعديل السجل إلا إذا كان قيد دراسة اللجنة أو محالاً لإعادة الدراسة من اللجنة العليا
   const canEdit = caseRecord.status === "UNDER_SUBCOMMITTEE_REVIEW" || caseRecord.status === "REFERRED_FOR_REVIEW";
+
+  const rawComplainants = (caseRecord.complainants as any) || [];
+  const initialComplainants = Array.isArray(rawComplainants) && rawComplainants.length > 0
+    ? rawComplainants
+    : [{ name: caseRecord.complainantName, phone: caseRecord.complainantPhone || "" }];
+
+  const rawRespondents = (caseRecord.respondents as any) || [];
+  const initialRespondents = Array.isArray(rawRespondents) && rawRespondents.length > 0
+    ? rawRespondents
+    : caseRecord.respondentName
+    ? [{ name: caseRecord.respondentName, phone: caseRecord.respondentPhone || "" }]
+    : [];
+
+  const initialAttendees = (caseRecord.sessionAttendees as any) || [];
 
   return (
     <div className="space-y-6 font-body">
@@ -277,7 +294,7 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
             </div>
           )}
 
-          {/* بطاقة تفاصيل الواقعة وبيانات المشكو في حقه */}
+          {/* بطاقة تفاصيل الواقعة والجهات القضائية */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
             <h2 className="text-sm font-bold font-heading text-slate-900 border-b border-slate-100 pb-2 flex items-center justify-between">
               <span>تفاصيل الواقعة وموضوع النزاع الطبي</span>
@@ -287,15 +304,35 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
               </span>
             </h2>
 
-            {(caseRecord.respondentName || caseRecord.hospitalName) && (
-              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2 text-xs font-body">
-                <User className="w-4 h-4 text-amber-700 flex-shrink-0" />
-                <div>
-                  <span className="font-bold text-amber-950">المشكو في حقه: </span>
-                  <span className="text-amber-900 font-semibold">{caseRecord.respondentName || caseRecord.hospitalName}</span>
-                </div>
-              </div>
-            )}
+            {/* تفاصيل النيابة الكلية والجزئية والمحافظة ورقم القضية */}
+            <div className="flex flex-wrap items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-body">
+              <span className="font-bold text-slate-700">الجهة القضائية:</span>
+              {(caseRecord.prosecutionRel || caseRecord.prosecution) && (
+                <Badge variant="teal" size="sm">
+                  النيابة الكلية: {caseRecord.prosecutionRel?.name || caseRecord.prosecution}
+                </Badge>
+              )}
+              {(caseRecord.partialProsecutionRel || caseRecord.partialProsecution) && (
+                <Badge variant="sky" size="sm">
+                  النيابة الجزئية: {caseRecord.partialProsecutionRel?.name || caseRecord.partialProsecution}
+                </Badge>
+              )}
+              {caseRecord.governorate && (
+                <Badge variant="slate" size="sm">
+                  محافظة {caseRecord.governorate}
+                </Badge>
+              )}
+              {caseRecord.prosecutionCaseNumber && (
+                <Badge variant="amber" size="sm">
+                  رقم القضية / المحضر: {caseRecord.prosecutionCaseNumber}
+                </Badge>
+              )}
+              {caseRecord.hospitalName && (
+                <Badge variant="slate" size="sm">
+                  المنشأة: {caseRecord.hospitalName}
+                </Badge>
+              )}
+            </div>
 
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs leading-relaxed text-slate-800 font-medium">
               {caseRecord.description}
@@ -316,6 +353,15 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
               </div>
             )}
           </div>
+
+          {/* إدارة بيانات الأطراف والشاكين والمشكو في حقهم والمستدعين للجلسة */}
+          <CasePartiesManager
+            caseId={caseRecord.id}
+            initialComplainants={initialComplainants}
+            initialRespondents={initialRespondents}
+            initialAttendees={initialAttendees}
+            readOnly={!canEdit}
+          />
 
           {/* ══════════════════════════════════════════════════════════════════════ */}
           {/* المرحلة الأولى: جدولة الجلسة وتوثيق أسباب التعديل                       */}

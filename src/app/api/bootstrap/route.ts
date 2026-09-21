@@ -23,7 +23,44 @@ export async function GET() {
       );
     `).catch((e) => console.error("Create LoginThrottle error:", e));
 
-    // 1. مسح أي حظر مؤقت ناتج عن محاولات تسجيل الدخول الخاطئة
+    // ترقية جدول القضايا لدعم تعدد الشاكين والمشكو في حقهم وأرقام الهواتف والنيابة الجزئية
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "complainants" JSONB;
+      ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "respondents" JSONB;
+      ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "sessionAttendees" JSONB;
+      ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "complainantPhone" TEXT;
+      ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "respondentPhone" TEXT;
+      ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "partialProsecution" TEXT;
+      ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "partialProsecutionId" TEXT;
+    `).catch((e) => console.error("Alter Case error:", e));
+
+    // ترقية جدول النيابات لدعم النوع (كلية / جزئية) والتبعية الهرمية
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Prosecution" ADD COLUMN IF NOT EXISTS "type" TEXT DEFAULT 'PLENARY';
+      ALTER TABLE "Prosecution" ADD COLUMN IF NOT EXISTS "parentId" TEXT;
+    `).catch((e) => console.error("Alter Prosecution error:", e));
+
+    // 1. تصنيف النيابات إلى كلية وجزئية وربط الجزئية بالكلية
+    await prisma.$executeRawUnsafe(`
+      UPDATE "Prosecution" SET "type" = 'DISTRICT' WHERE "name" LIKE '%الجزئية%' OR "name" LIKE '%جزئية%';
+      UPDATE "Prosecution" SET "type" = 'PLENARY' WHERE "type" IS NULL OR "name" LIKE '%الكلية%' OR "name" LIKE '%كلية%';
+    `).catch(() => {});
+
+    // ربط النيابات الجزئية بالنيابة الكلية لنفس المحافظة تلقائياً
+    await prisma.$executeRawUnsafe(`
+      UPDATE "Prosecution" d
+      SET "parentId" = (
+        SELECT p.id FROM "Prosecution" p
+        WHERE p."type" = 'PLENARY'
+          AND p.governorate = d.governorate
+          AND p.id <> d.id
+        ORDER BY p."createdAt" ASC
+        LIMIT 1
+      )
+      WHERE d."type" = 'DISTRICT' AND d."parentId" IS NULL AND d.governorate IS NOT NULL;
+    `).catch(() => {});
+
+    // مسح أي حظر مؤقت ناتج عن محاولات تسجيل الدخول الخاطئة
     await prisma.$executeRawUnsafe(`TRUNCATE TABLE "LoginThrottle";`).catch(() => {});
 
     // 2. كلمة المرور الموحدة المعتمدة

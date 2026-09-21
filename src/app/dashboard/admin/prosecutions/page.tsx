@@ -24,6 +24,8 @@ import {
   Edit2,
   MapPin,
   X,
+  Scale,
+  GitFork,
 } from "lucide-react";
 import { EGYPT_GOVERNORATES } from "@/lib/constants/governorates";
 
@@ -32,6 +34,9 @@ interface ProsecutionItem {
   name: string;
   code?: string | null;
   governorate?: string | null;
+  type?: string | null;
+  parentId?: string | null;
+  parent?: { id: string; name: string } | null;
   active: boolean;
   createdAt: string;
 }
@@ -48,15 +53,20 @@ export default function ProsecutionsManagementPage() {
   // حقول إضافة جهة جديدة
   const [name, setName] = useState("");
   const [governorate, setGovernorate] = useState("");
+  const [type, setType] = useState<"PLENARY" | "DISTRICT">("PLENARY");
+  const [parentId, setParentId] = useState("");
 
   // حالة التعديل
   const [editingItem, setEditingItem] = useState<ProsecutionItem | null>(null);
   const [editName, setEditName] = useState("");
   const [editGov, setEditGov] = useState("");
+  const [editType, setEditType] = useState<"PLENARY" | "DISTRICT">("PLENARY");
+  const [editParentId, setEditParentId] = useState("");
 
   // بحث وفلترة
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGovFilter, setSelectedGovFilter] = useState("");
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState("");
 
   async function loadData() {
     try {
@@ -75,6 +85,10 @@ export default function ProsecutionsManagementPage() {
     loadData();
   }, []);
 
+  const plenaryProsecutions = prosecutions.filter(
+    (p) => !p.type || p.type === "PLENARY" || !p.parentId
+  );
+
   async function handleAddProsecution(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
@@ -90,6 +104,8 @@ export default function ProsecutionsManagementPage() {
           body: JSON.stringify({
             name: name.trim(),
             governorate: governorate.trim() || null,
+            type,
+            parentId: type === "DISTRICT" && parentId ? parentId : null,
           }),
         });
 
@@ -99,6 +115,8 @@ export default function ProsecutionsManagementPage() {
         setSuccessMsg(`تمت إضافة النيابة (${data.name}) بنجاح`);
         setName("");
         setGovernorate("");
+        setType("PLENARY");
+        setParentId("");
         setShowAddForm(false);
         await loadData();
       } catch (err: any) {
@@ -111,6 +129,8 @@ export default function ProsecutionsManagementPage() {
     setEditingItem(item);
     setEditName(item.name);
     setEditGov(item.governorate || "");
+    setEditType(item.type === "DISTRICT" ? "DISTRICT" : "PLENARY");
+    setEditParentId(item.parentId || "");
     setError(null);
     setSuccessMsg(null);
   }
@@ -130,6 +150,8 @@ export default function ProsecutionsManagementPage() {
           body: JSON.stringify({
             name: editName.trim(),
             governorate: editGov.trim() || null,
+            type: editType,
+            parentId: editType === "DISTRICT" && editParentId ? editParentId : null,
           }),
         });
 
@@ -190,11 +212,17 @@ export default function ProsecutionsManagementPage() {
   }
 
   const filtered = prosecutions.filter((p) => {
+    const q = searchTerm.toLowerCase();
     const matchesSearch =
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.governorate && p.governorate.toLowerCase().includes(searchTerm.toLowerCase()));
+      p.name.toLowerCase().includes(q) ||
+      (p.governorate && p.governorate.toLowerCase().includes(q)) ||
+      (p.parent && p.parent.name.toLowerCase().includes(q));
     const matchesGov = !selectedGovFilter || p.governorate === selectedGovFilter;
-    return matchesSearch && matchesGov;
+    const matchesType =
+      !selectedTypeFilter ||
+      (selectedTypeFilter === "PLENARY" && (!p.type || p.type === "PLENARY")) ||
+      (selectedTypeFilter === "DISTRICT" && p.type === "DISTRICT");
+    return matchesSearch && matchesGov && matchesType;
   });
 
   return (
@@ -206,8 +234,8 @@ export default function ProsecutionsManagementPage() {
           { label: "إدارة المنظومة", href: "/dashboard/admin" },
           { label: "سجل جهات النيابة العامة" },
         ]}
-        title="سجل وإدارة جهات النيابة العامة والمحافظات"
-        description="إدارة وتحديث قائمة النيابات العامة المعتمدة رسمياً وربط كل نيابة بمحافظتها الجغرافية."
+        title="سجل وإدارة جهات النيابة العامة (الكلية والجزئية)"
+        description="إدارة وتصنيف النيابات العامة إلى نيابات كلية ونيابات جزئية وربط التبعية القضائية والمحافظات."
         actions={
           <Button
             type="button"
@@ -245,7 +273,7 @@ export default function ProsecutionsManagementPage() {
                 تعديل بيانات النيابة: {editingItem.name}
               </h2>
               <p className="text-xs text-teal-700 font-body">
-                تعديل الاسم أو تحديث المحافظة المرتبطة بها
+                تعديل الاسم، النوع (كلية / جزئية)، والنيابة الكلية التابعة لها والمحافظة
               </p>
             </div>
             <button
@@ -258,7 +286,7 @@ export default function ProsecutionsManagementPage() {
           </div>
 
           <form onSubmit={handleSaveEdit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="form-group">
                 <label className="form-label form-label-required">اسم النيابة العامة</label>
                 <input
@@ -269,6 +297,18 @@ export default function ProsecutionsManagementPage() {
                   placeholder="اسم النيابة..."
                   className="form-input text-xs"
                 />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label form-label-required">نوع النيابة</label>
+                <select
+                  value={editType}
+                  onChange={(e) => setEditType(e.target.value as any)}
+                  className="form-select text-xs font-bold"
+                >
+                  <option value="PLENARY">نيابة كلية</option>
+                  <option value="DISTRICT">نيابة جزئية</option>
+                </select>
               </div>
 
               <div className="form-group">
@@ -287,6 +327,28 @@ export default function ProsecutionsManagementPage() {
                 </select>
               </div>
             </div>
+
+            {editType === "DISTRICT" && (
+              <div className="p-3 bg-white border border-teal-300 rounded-xl space-y-1.5">
+                <label className="form-label font-bold text-teal-950">
+                  النيابة الكلية المشرفة (التبعية القضائية)
+                </label>
+                <select
+                  value={editParentId}
+                  onChange={(e) => setEditParentId(e.target.value)}
+                  className="form-select text-xs font-medium"
+                >
+                  <option value="">-- حدد النيابة الكلية التابعة لها --</option>
+                  {plenaryProsecutions
+                    .filter((p) => p.id !== editingItem.id)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.governorate ? `(${p.governorate})` : ""}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-teal-200">
               <Button
@@ -314,14 +376,16 @@ export default function ProsecutionsManagementPage() {
       {showAddForm && (
         <Card className="space-y-4 bg-slate-50/80 animate-in fade-in zoom-in-95">
           <div className="border-b border-slate-200 pb-2">
-            <h2 className="text-sm font-bold text-slate-900 font-heading">إضافة نيابة عامة معتمدة جديدة</h2>
+            <h2 className="text-sm font-bold text-slate-900 font-heading">
+              إضافة نيابة عامة معتمدة جديدة
+            </h2>
             <p className="text-xs text-slate-500 font-body">
               تظهر هذه النيابة تلقائياً في قائمة الاختيار لموظفي التسجيل عند قيد سجل جديد
             </p>
           </div>
 
           <form onSubmit={handleAddProsecution} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="form-group">
                 <label className="form-label form-label-required">اسم النيابة العامة</label>
                 <input
@@ -332,6 +396,18 @@ export default function ProsecutionsManagementPage() {
                   placeholder="مثال: نيابة العجوزة الجزئية"
                   className="form-input text-xs"
                 />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label form-label-required">نوع النيابة</label>
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value as any)}
+                  className="form-select text-xs font-bold"
+                >
+                  <option value="PLENARY">نيابة كلية</option>
+                  <option value="DISTRICT">نيابة جزئية</option>
+                </select>
               </div>
 
               <div className="form-group">
@@ -350,6 +426,26 @@ export default function ProsecutionsManagementPage() {
                 </select>
               </div>
             </div>
+
+            {type === "DISTRICT" && (
+              <div className="p-3 bg-white border border-teal-300 rounded-xl space-y-1.5">
+                <label className="form-label font-bold text-teal-950">
+                  النيابة الكلية المشرفة (التبعية القضائية)
+                </label>
+                <select
+                  value={parentId}
+                  onChange={(e) => setParentId(e.target.value)}
+                  className="form-select text-xs font-medium"
+                >
+                  <option value="">-- حدد النيابة الكلية التابعة لها --</option>
+                  {plenaryProsecutions.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.governorate ? `(${p.governorate})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
               <Button
@@ -374,7 +470,7 @@ export default function ProsecutionsManagementPage() {
       )}
 
       {/* بطاقات الإحصاءات */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <StatCard
           title="إجمالي النيابات المسجلة"
           value={prosecutions.length}
@@ -382,20 +478,26 @@ export default function ProsecutionsManagementPage() {
           variant="teal"
         />
         <StatCard
-          title="نيابات مفعلة للاختيار"
+          title="النيابات الكلية"
+          value={prosecutions.filter((p) => !p.type || p.type === "PLENARY").length}
+          icon={<Scale className="w-6 h-6" />}
+          variant="sky"
+        />
+        <StatCard
+          title="النيابات الجزئية"
+          value={prosecutions.filter((p) => p.type === "DISTRICT").length}
+          icon={<GitFork className="w-6 h-6" />}
+          variant="amber"
+        />
+        <StatCard
+          title="نيابات مفعلة للقيد"
           value={prosecutions.filter((p) => p.active).length}
           icon={<CheckCircle2 className="w-6 h-6" />}
           variant="emerald"
         />
-        <StatCard
-          title="نيابات موقوفة مؤقتاً"
-          value={prosecutions.filter((p) => !p.active).length}
-          icon={<PauseCircle className="w-6 h-6" />}
-          variant="amber"
-        />
       </div>
 
-      {/* شريط البحث وفلترة المحافظات وجدول النيابات */}
+      {/* شريط البحث وفلترة المحافظات والنوع وجدول النيابات */}
       <Card className="p-0 overflow-hidden">
         <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1">
@@ -410,7 +512,19 @@ export default function ProsecutionsManagementPage() {
               />
             </div>
 
-            <div className="w-full sm:w-56">
+            <div className="w-full sm:w-44">
+              <select
+                value={selectedTypeFilter}
+                onChange={(e) => setSelectedTypeFilter(e.target.value)}
+                className="form-select text-xs bg-white"
+              >
+                <option value="">جميع الأنواع (كلية وجزئية)</option>
+                <option value="PLENARY">نيابات كلية فقط</option>
+                <option value="DISTRICT">نيابات جزئية فقط</option>
+              </select>
+            </div>
+
+            <div className="w-full sm:w-48">
               <select
                 value={selectedGovFilter}
                 onChange={(e) => setSelectedGovFilter(e.target.value)}
@@ -441,7 +555,9 @@ export default function ProsecutionsManagementPage() {
               <TableRow>
                 <TableHead className="w-14">#</TableHead>
                 <TableHead>اسم النيابة العامة</TableHead>
-                <TableHead>المحافظة التابعة لها</TableHead>
+                <TableHead>النوع والتصنيف</TableHead>
+                <TableHead>التبعية القضائية</TableHead>
+                <TableHead>المحافظة</TableHead>
                 <TableHead>الحالة</TableHead>
                 <TableHead className="text-center">التحكم والإجراءات</TableHead>
               </TableRow>
@@ -452,6 +568,26 @@ export default function ProsecutionsManagementPage() {
                   <TableCell className="font-mono text-xs text-slate-400 font-semibold">{idx + 1}</TableCell>
                   <TableCell className="font-semibold text-slate-900 text-xs font-heading">
                     {item.name}
+                  </TableCell>
+                  <TableCell>
+                    {item.type === "DISTRICT" ? (
+                      <Badge variant="amber" size="sm">
+                        نيابة جزئية
+                      </Badge>
+                    ) : (
+                      <Badge variant="teal" size="sm">
+                        نيابة كلية
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {item.parent ? (
+                      <span className="text-xs font-medium text-slate-700">
+                        تابعة لـ: <strong className="text-teal-900">{item.parent.name}</strong>
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     {item.governorate ? (

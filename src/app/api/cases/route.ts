@@ -6,6 +6,14 @@ import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/rbac";
 import { writeAuditLog } from "@/lib/audit";
 
+const partySchema = z.object({
+  name: z.string().min(1, "الاسم مطلوب"),
+  phone: z.string().optional().nullable(),
+  nationalId: z.string().optional().nullable(),
+  medicalProfession: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
 const createCaseSchema = z.object({
   registrationType: z.enum(["COMPLAINT", "CASE", "REPORT"]),
   caseNumber: z.string().min(1, "رقم السجل مطلوب"),
@@ -15,10 +23,16 @@ const createCaseSchema = z.object({
   attachmentsCount: z.number().int().min(0).default(0),
   hospitalName: z.string().optional().nullable(),
   respondentName: z.string().optional().nullable(),
+  respondentPhone: z.string().optional().nullable(),
   prosecution: z.string().optional().nullable(),
   prosecutionId: z.string().optional().nullable(),
+  partialProsecution: z.string().optional().nullable(),
+  partialProsecutionId: z.string().optional().nullable(),
   governorate: z.string().optional().nullable(),
-  complainantName: z.string().min(2, "اسم الشاكي / المريض مطلوب وإلزامي"),
+  complainantName: z.string().optional().nullable(),
+  complainantPhone: z.string().optional().nullable(),
+  complainants: z.array(partySchema).optional(),
+  respondents: z.array(partySchema).optional(),
   description: z.string().min(1, "ملخص الواقعة / موضوع الشكوى مطلوب"),
   specialtyIds: z.array(z.string()).optional(),
 });
@@ -84,6 +98,21 @@ export async function POST(req: NextRequest) {
     prosecutionName = p.name;
   }
 
+  let partialProsecutionName = data.partialProsecution?.trim() || null;
+  if (data.partialProsecutionId && !partialProsecutionName) {
+    const pp = await prisma.prosecution.findUnique({ where: { id: data.partialProsecutionId } });
+    if (pp) partialProsecutionName = pp.name;
+  }
+
+  const primaryComplainant = data.complainants?.[0]?.name || data.complainantName || "";
+  if (!primaryComplainant.trim()) {
+    return NextResponse.json({ error: "اسم الشاكي حقل إلزامي (شاكي واحد على الأقل)" }, { status: 400 });
+  }
+  const primaryComplainantPhone = data.complainants?.[0]?.phone || data.complainantPhone || null;
+
+  const primaryRespondent = data.respondents?.[0]?.name || data.respondentName || null;
+  const primaryRespondentPhone = data.respondents?.[0]?.phone || data.respondentPhone || null;
+
   const existingCase = await prisma.case.findFirst({
     where: {
       registrationType: data.registrationType,
@@ -107,11 +136,21 @@ export async function POST(req: NextRequest) {
       incomingDate: data.incomingDate ? new Date(data.incomingDate) : new Date(),
       attachmentsCount: data.attachmentsCount || 0,
       hospitalName: data.hospitalName?.trim() || null,
-      respondentName: data.respondentName?.trim() || null,
+      respondentName: primaryRespondent ? primaryRespondent.trim() : null,
+      respondentPhone: primaryRespondentPhone ? primaryRespondentPhone.trim() : null,
       prosecution: prosecutionName,
       prosecutionId: data.prosecutionId || null,
+      partialProsecution: partialProsecutionName,
+      partialProsecutionId: data.partialProsecutionId || null,
       governorate: data.governorate?.trim() || null,
-      complainantName: data.complainantName.trim(),
+      complainantName: primaryComplainant.trim(),
+      complainantPhone: primaryComplainantPhone ? primaryComplainantPhone.trim() : null,
+      complainants: data.complainants && data.complainants.length > 0
+        ? (data.complainants as any)
+        : [{ name: primaryComplainant.trim(), phone: primaryComplainantPhone?.trim() || null }],
+      respondents: data.respondents && data.respondents.length > 0
+        ? (data.respondents as any)
+        : primaryRespondent ? [{ name: primaryRespondent.trim(), phone: primaryRespondentPhone?.trim() || null }] : [],
       description: data.description.trim(),
       createdById: (session.user as any).id,
       specialties: data.specialtyIds?.length
@@ -120,6 +159,7 @@ export async function POST(req: NextRequest) {
     },
     include: {
       prosecutionRel: true,
+      partialProsecutionRel: true,
       specialties: { include: { specialty: true } },
     },
   });

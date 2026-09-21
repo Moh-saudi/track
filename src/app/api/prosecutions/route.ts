@@ -8,6 +8,8 @@ const prosecutionSchema = z.object({
   name: z.string().min(2, "يجب إدخال اسم النيابة بشكل صحيح"),
   code: z.string().optional().nullable(),
   governorate: z.string().optional().nullable(),
+  type: z.enum(["PLENARY", "DISTRICT"]).optional(),
+  parentId: z.string().optional().nullable(),
   active: z.boolean().optional(),
 });
 
@@ -20,6 +22,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const all = searchParams.get("all") === "true";
   const governorate = searchParams.get("governorate");
+  const type = searchParams.get("type");
 
   const where: any = {};
   if (!all) {
@@ -28,10 +31,16 @@ export async function GET(req: NextRequest) {
   if (governorate) {
     where.governorate = governorate;
   }
+  if (type) {
+    where.type = type;
+  }
 
   const prosecutions = await prisma.prosecution.findMany({
     where,
     orderBy: [{ governorate: "asc" }, { name: "asc" }],
+    include: {
+      parent: { select: { id: true, name: true } },
+    },
   });
   return NextResponse.json(prosecutions);
 }
@@ -66,6 +75,8 @@ export async function POST(req: NextRequest) {
       name: parsed.data.name.trim(),
       code: parsed.data.code?.trim() || null,
       governorate: parsed.data.governorate?.trim() || null,
+      type: parsed.data.type || "PLENARY",
+      parentId: parsed.data.parentId || null,
       active: parsed.data.active ?? true,
     },
   });
