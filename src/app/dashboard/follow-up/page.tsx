@@ -136,11 +136,24 @@ export default async function FollowUpDashboard() {
     id: c.id,
     caseNumber: c.caseNumber,
     caseYear: c.caseYear,
-    registrationType: c.registrationType,
+    registrationType: c.registrationType || "COMPLAINT",
     respondentName: c.respondentName,
+    respondentPhone: c.respondentPhone,
+    respondents: Array.isArray(c.respondents) && c.respondents.length > 0
+      ? (c.respondents as any)
+      : c.respondentName
+      ? [{ name: c.respondentName, phone: c.respondentPhone }]
+      : [],
     hospitalName: c.hospitalName,
     complainantName: c.complainantName,
+    complainantPhone: c.complainantPhone,
+    complainants: Array.isArray(c.complainants) && c.complainants.length > 0
+      ? (c.complainants as any)
+      : c.complainantName
+      ? [{ name: c.complainantName, phone: c.complainantPhone }]
+      : [],
     prosecution: c.prosecution,
+    partialProsecution: c.partialProsecution,
     attachmentsCount: c.attachmentsCount,
     createdAt: c.createdAt.toISOString(),
     assignedAt: c.assignedAt ? c.assignedAt.toISOString() : null,

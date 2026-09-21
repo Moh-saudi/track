@@ -113,8 +113,18 @@ export default async function RegistrationDashboard() {
       prosecutionCaseNumber: c.prosecutionCaseNumber || null,
       registrationType: c.registrationType || "COMPLAINT",
       complainantName: c.complainantName || null,
+      complainants: Array.isArray(c.complainants) && c.complainants.length > 0
+        ? (c.complainants as any)
+        : c.complainantName
+        ? [{ name: c.complainantName, phone: c.complainantPhone }]
+        : [],
       prosecution: c.prosecution || null,
       respondentName: c.respondentName || c.hospitalName || null,
+      respondents: Array.isArray(c.respondents) && c.respondents.length > 0
+        ? (c.respondents as any)
+        : c.respondentName
+        ? [{ name: c.respondentName, phone: c.respondentPhone }]
+        : [],
       incomingDate: safeIsoDate(c.incomingDate),
       attachmentsCount: typeof c.attachmentsCount === "number" ? c.attachmentsCount : 0,
       status: c.status || "REGISTERED",

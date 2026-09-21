@@ -51,9 +51,23 @@ export interface SerializedFollowUpCase {
   caseYear: number;
   registrationType: string;
   respondentName?: string | null;
+  respondentPhone?: string | null;
+  respondents?: Array<{
+    name: string;
+    phone?: string | null;
+    profession?: string | null;
+    nationalId?: string | null;
+  }>;
   hospitalName?: string | null;
   complainantName?: string | null;
+  complainantPhone?: string | null;
+  complainants?: Array<{
+    name: string;
+    phone?: string | null;
+    nationalId?: string | null;
+  }>;
   prosecution?: string | null;
+  partialProsecution?: string | null;
   attachmentsCount: number;
   createdAt: string;
   assignedAt?: string | null;
@@ -438,11 +452,39 @@ export function FollowUpDashboardClient({
                       </TableCell>
 
                       <TableCell className="text-xs">
-                        {c.respondentName || c.hospitalName ? (
-                          <span className="truncate flex items-center gap-1 max-w-[180px] font-semibold text-slate-900" title={c.respondentName || c.hospitalName || ""}>
-                            <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                            <span>{c.respondentName || c.hospitalName}</span>
-                          </span>
+                        {c.respondents && c.respondents.length > 0 ? (
+                          <div className="flex flex-col gap-1.5 max-w-[220px]">
+                            {c.respondents.map((resp, idx) => (
+                              <div key={idx} className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-semibold text-slate-900 flex items-center gap-1" title={resp.name}>
+                                  <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                                  <span>{resp.name}</span>
+                                </span>
+                                {resp.profession && (
+                                  <span className="px-1.5 py-0.2 rounded text-[10px] bg-teal-50 text-teal-800 border border-teal-200 font-medium">
+                                    {resp.profession}
+                                  </span>
+                                )}
+                                {resp.phone && (
+                                  <span className="text-[10px] text-slate-500 font-mono" dir="ltr">
+                                    {resp.phone}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : c.respondentName || c.hospitalName ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="truncate flex items-center gap-1 max-w-[180px] font-semibold text-slate-900" title={c.respondentName || c.hospitalName || ""}>
+                              <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                              <span>{c.respondentName || c.hospitalName}</span>
+                            </span>
+                            {c.respondentPhone && (
+                              <span className="text-[10px] text-slate-500 font-mono mr-4" dir="ltr">
+                                {c.respondentPhone}
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-slate-400">—</span>
                         )}
@@ -450,8 +492,28 @@ export function FollowUpDashboardClient({
 
                       <TableCell>
                         <div className="text-xs">
-                          <p className="font-semibold text-slate-800">{c.complainantName || "—"}</p>
-                          <p className="text-[11px] text-slate-500">{c.prosecution || "—"}</p>
+                          {c.complainants && c.complainants.length > 0 ? (
+                            <div className="flex flex-col gap-1 max-w-[190px]">
+                              {c.complainants.map((comp, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-semibold text-slate-800">{comp.name}</span>
+                                  {comp.phone && (
+                                    <span className="text-[10px] text-slate-500 font-mono" dir="ltr">
+                                      {comp.phone}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="font-semibold text-slate-800">{c.complainantName || "—"}</p>
+                          )}
+                          <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5 flex-wrap">
+                            <span>{c.prosecution || "—"}</span>
+                            {c.partialProsecution && (
+                              <span className="text-teal-700 font-medium">/ {c.partialProsecution}</span>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
 

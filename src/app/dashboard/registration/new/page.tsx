@@ -214,13 +214,22 @@ export default function NewCasePage() {
   // قائمة المشكو في حقهم (متعدد ومتجاور)
   const [respondents, setRespondents] = useState<PartyEntry[]>([{ name: "", phone: "" }]);
 
-  // قائمة النيابات (تبدأ فوراً بالقائمة الرسمية المعتمدة لضمان عدم ظهورها فارغة إطلاقاً)
+  // خريطة أسماء النيابات الكلية لربط التبعية
+  const plenaryMapByName: Record<string, string> = {};
+  OFFICIAL_PROSECUTIONS_LIST.forEach((item, idx) => {
+    if (item.type === "PLENARY") {
+      plenaryMapByName[item.name] = `official_${idx + 1}`;
+    }
+  });
+
+  // قائمة النيابات (تبدأ فوراً بالقائمة الرسمية المعتمدة مع ربط كامل لضمان عدم قفل الجزئية)
   const initialProsecutionsList: Prosecution[] = OFFICIAL_PROSECUTIONS_LIST.map((item, idx) => ({
     id: `official_${idx + 1}`,
     name: item.name,
     governorate: item.governorate,
     type: item.type,
-    parentId: item.parentName || null,
+    parentId: item.parentName ? plenaryMapByName[item.parentName] || null : null,
+    parent: item.parentName ? { id: plenaryMapByName[item.parentName] || "", name: item.parentName } : null,
   }));
 
   const [prosecutions, setProsecutions] = useState<Prosecution[]>(initialProsecutionsList);
@@ -252,8 +261,12 @@ export default function NewCasePage() {
     (p) => !p.type || p.type === "PLENARY" || !p.parentId
   );
   const districtProsecutions = prosecutions.filter(
-    (p) => p.type === "DISTRICT" || !!p.parentId
+    (p) => p.type === "DISTRICT" || !!p.parentId || p.name.includes("جزئية")
   );
+  const effectiveDistrictProsecutions =
+    districtProsecutions.length > 0
+      ? districtProsecutions
+      : initialProsecutionsList.filter((p) => p.type === "DISTRICT");
 
   // تصفية النيابات الكلية بالمحافظة إن تم تحديدها
   const filteredPlenaryOptions = plenaryProsecutions
@@ -264,33 +277,37 @@ export default function NewCasePage() {
       subtitle: p.governorate ? `محافظة ${p.governorate}` : undefined,
     }));
 
-  // تصفية النيابات الجزئية
+  // تصفية النيابات الجزئية بمرونة كاملة تضمن عدم قفل القائمة نهائياً
   const selectedPlenaryObj = prosecutions.find((p) => p.id === selectedPlenaryId);
 
-  const filteredDistrictOptions = districtProsecutions
-    .filter((p) => {
-      if (selectedPlenaryId) {
-        return (
-          p.parentId === selectedPlenaryId ||
-          (p.parent && p.parent.id === selectedPlenaryId) ||
-          (p.parent && selectedPlenaryObj && p.parent.name === selectedPlenaryObj.name) ||
-          (p.parentId === selectedPlenaryObj?.name)
-        );
-      }
-      if (governorate) {
-        return p.governorate === governorate;
-      }
-      return true;
-    })
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      subtitle: p.parent?.name ? `تابعة لـ ${p.parent.name}` : p.governorate ? `محافظة ${p.governorate}` : undefined,
-    }));
+  let matchingDistricts = effectiveDistrictProsecutions;
+  if (selectedPlenaryId) {
+    const directlyLinked = effectiveDistrictProsecutions.filter(
+      (p) =>
+        p.parentId === selectedPlenaryId ||
+        (p.parent && p.parent.id === selectedPlenaryId) ||
+        (selectedPlenaryObj && p.parent && p.parent.name === selectedPlenaryObj.name) ||
+        (selectedPlenaryObj && p.parentId === selectedPlenaryObj.name)
+    );
+    if (directlyLinked.length > 0) {
+      matchingDistricts = directlyLinked;
+    } else if (selectedPlenaryObj?.governorate) {
+      const byGov = effectiveDistrictProsecutions.filter((p) => p.governorate === selectedPlenaryObj.governorate);
+      matchingDistricts = byGov.length > 0 ? byGov : effectiveDistrictProsecutions;
+    }
+  } else if (governorate) {
+    const byGov = effectiveDistrictProsecutions.filter((p) => p.governorate === governorate);
+    matchingDistricts = byGov.length > 0 ? byGov : effectiveDistrictProsecutions;
+  }
+
+  const filteredDistrictOptions = matchingDistricts.map((p) => ({
+    id: p.id,
+    name: p.name,
+    subtitle: p.parent?.name ? `تابعة لـ ${p.parent.name}` : p.governorate ? `محافظة ${p.governorate}` : undefined,
+  }));
 
   function handleGovernorateChange(gov: string) {
     setGovernorate(gov);
-    // تصفير الاختيارات إذا لم تعد متطابقة
     if (selectedPlenaryObj && selectedPlenaryObj.governorate && selectedPlenaryObj.governorate !== gov) {
       setSelectedPlenaryId("");
       setSelectedDistrictId("");
@@ -301,9 +318,30 @@ export default function NewCasePage() {
     setSelectedPlenaryId(procId);
     setSelectedDistrictId("");
     if (!procId) return;
-    const p = prosecutions.find((item) => item.id === procId);
+    const p = prosecutions.find((item) => item.id === procId) || initialProsecutionsList.find((item) => item.id === procId);
     if (p?.governorate && !governorate) {
       setGovernorate(p.governorate);
+    }
+  }
+
+  function handleDistrictSelect(procId: string) {
+    setSelectedDistrictId(procId);
+    if (!procId) return;
+    const dist =
+      prosecutions.find((item) => item.id === procId) ||
+      initialProsecutionsList.find((item) => item.id === procId);
+    if (dist) {
+      if (dist.parentId) {
+        setSelectedPlenaryId(dist.parentId);
+      } else if (dist.parent?.name) {
+        const parent =
+          prosecutions.find((p) => p.name === dist.parent?.name) ||
+          initialProsecutionsList.find((p) => p.name === dist.parent?.name);
+        if (parent) setSelectedPlenaryId(parent.id);
+      }
+      if (dist.governorate && !governorate) {
+        setGovernorate(dist.governorate);
+      }
     }
   }
 
@@ -759,19 +797,19 @@ export default function NewCasePage() {
                 onChange={(id) => handlePlenarySelect(id)}
               />
 
-              {/* 3. النيابة الجزئية (قائمة منسدلة ذكية ببحث مدمج بداخلها) */}
+              {/* 3. النيابة الجزئية (مفتوحة دائماً وغير مقفلة) */}
               <SearchableSelect
                 label="النيابة الجزئية (اختياري)"
                 value={selectedDistrictId}
                 options={filteredDistrictOptions}
                 placeholder={
-                  filteredDistrictOptions.length === 0
-                    ? "-- لا توجد نيابة جزئية تابعة --"
+                  selectedPlenaryObj
+                    ? `-- حدد النيابة الجزئية التابعة (${filteredDistrictOptions.length}) --`
                     : `-- حدد النيابة الجزئية (${filteredDistrictOptions.length}) --`
                 }
-                emptyMessage="لا توجد نيابة جزئية تابعة"
-                disabled={filteredDistrictOptions.length === 0}
-                onChange={(id) => setSelectedDistrictId(id)}
+                emptyMessage="لا توجد نيابة جزئية مطابقة للبحث"
+                disabled={false}
+                onChange={(id) => handleDistrictSelect(id)}
               />
             </div>
           </div>

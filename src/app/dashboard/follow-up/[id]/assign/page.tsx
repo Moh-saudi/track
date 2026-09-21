@@ -4,7 +4,7 @@ import { use, useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatDate } from "@/lib/formatters";
-import { Paperclip, Clock, Check } from "lucide-react";
+import { Paperclip, Clock, Check, User, Users, Scale } from "lucide-react";
 
 interface SubCommittee {
   id: string;
@@ -17,15 +17,28 @@ interface Specialty {
   name: string;
 }
 
+interface CaseParty {
+  name: string;
+  phone?: string | null;
+  nationalId?: string | null;
+  medicalProfession?: string | null;
+  notes?: string | null;
+}
+
 interface CaseDetails {
   id: string;
   caseNumber: string;
   caseYear: number;
   registrationType: string;
   respondentName?: string;
-  hospitalName?: string;
+  respondentPhone?: string;
+  respondents?: CaseParty[];
   complainantName?: string;
+  complainantPhone?: string;
+  complainants?: CaseParty[];
   prosecution?: string;
+  partialProsecution?: string;
+  governorate?: string;
   description: string;
   attachmentsCount: number;
   specialties: { specialty: Specialty }[];
@@ -169,6 +182,7 @@ export default function FollowUpAssignPage({ params }: { params: Promise<{ id: s
           </span>
         </div>
 
+        {/* بيانات نوع السجل والنيابات */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
           <div>
             <span className="text-slate-400 block font-medium">نوع السجل:</span>
@@ -177,16 +191,88 @@ export default function FollowUpAssignPage({ params }: { params: Promise<{ id: s
             </span>
           </div>
           <div>
-            <span className="text-slate-400 block font-medium">الشاكي:</span>
-            <span className="font-bold text-slate-800">{caseData.complainantName || "—"}</span>
+            <span className="text-slate-400 block font-medium">النيابة الكلية:</span>
+            <span className="font-bold text-teal-900">{caseData.prosecution || "—"}</span>
           </div>
           <div>
-            <span className="text-slate-400 block font-medium">المشكو في حقه:</span>
-            <span className="font-bold text-slate-900">{caseData.respondentName || caseData.hospitalName || "—"}</span>
+            <span className="text-slate-400 block font-medium">النيابة الجزئية:</span>
+            <span className="font-bold text-slate-700">{caseData.partialProsecution || "—"}</span>
           </div>
           <div>
-            <span className="text-slate-400 block font-medium">النيابة العامة:</span>
-            <span className="font-bold text-slate-800">{caseData.prosecution || "—"}</span>
+            <span className="text-slate-400 block font-medium">المحافظة:</span>
+            <span className="font-bold text-slate-800">{caseData.governorate || "—"}</span>
+          </div>
+        </div>
+
+        {/* قائمة الشاكين والمشكو في حقهم بالكامل */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2 border-t border-slate-200/60">
+          {/* الشاكون */}
+          <div>
+            <span className="text-slate-500 block font-medium mb-1.5 flex items-center gap-1">
+              <Users className="w-3.5 h-3.5 text-teal-700" />
+              <span>
+                الشاكي / مقدمو الشكوى (
+                {caseData.complainants && caseData.complainants.length > 0
+                  ? caseData.complainants.length
+                  : caseData.complainantName
+                  ? 1
+                  : 0}
+                ):
+              </span>
+            </span>
+            <div className="space-y-1">
+              {(caseData.complainants && caseData.complainants.length > 0
+                ? caseData.complainants
+                : caseData.complainantName
+                ? [{ name: caseData.complainantName, phone: caseData.complainantPhone }]
+                : []
+              ).map((c, i) => (
+                <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-teal-50/60 border border-teal-200 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-teal-800 bg-teal-100 px-1 rounded">#{i + 1}</span>
+                    <span className="font-bold text-slate-900">{c.name}</span>
+                  </div>
+                  {c.phone && <span className="font-mono text-slate-600 text-[11px]" dir="ltr">{c.phone}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* المشكو في حقهم (كافة الأطراف الإضافية) */}
+          <div>
+            <span className="text-slate-500 block font-medium mb-1.5 flex items-center gap-1">
+              <User className="w-3.5 h-3.5 text-amber-700" />
+              <span>
+                المشكو في حقهم (
+                {caseData.respondents && caseData.respondents.length > 0
+                  ? caseData.respondents.length
+                  : caseData.respondentName
+                  ? 1
+                  : 0}
+                ):
+              </span>
+            </span>
+            <div className="space-y-1">
+              {(caseData.respondents && caseData.respondents.length > 0
+                ? caseData.respondents
+                : caseData.respondentName
+                ? [{ name: caseData.respondentName, phone: caseData.respondentPhone, medicalProfession: null }]
+                : []
+              ).map((r, i) => (
+                <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-amber-50/60 border border-amber-200 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1 rounded">#{i + 1}</span>
+                    <span className="font-bold text-slate-900">{r.name}</span>
+                    {r.medicalProfession && (
+                      <span className="text-[10px] bg-white border border-amber-300 text-amber-900 px-1.5 py-0.5 rounded font-medium">
+                        {r.medicalProfession}
+                      </span>
+                    )}
+                  </div>
+                  {r.phone && <span className="font-mono text-slate-600 text-[11px]" dir="ltr">{r.phone}</span>}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 

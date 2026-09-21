@@ -56,6 +56,8 @@ export interface SerializedCase {
   complainantName: string | null;
   prosecution: string | null;
   respondentName: string | null;
+  respondents?: Array<{ name: string; phone?: string | null; profession?: string | null }>;
+  complainants?: Array<{ name: string; phone?: string | null }>;
   hospitalName?: string | null;
   incomingDate?: string | null;
   attachmentsCount: number;
@@ -237,7 +239,24 @@ export function CasesTable({ initialCases }: CasesTableProps) {
 
                     {/* المشكو في حقه */}
                     <TableCell>
-                      {c.respondentName || c.hospitalName ? (
+                      {c.respondents && c.respondents.length > 0 ? (
+                        <div className="flex flex-col gap-0.5 max-w-[200px]">
+                          <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 truncate" title={c.respondents.map(r => r.name).join(" - ")}>
+                            <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate">{c.respondents[0].name}</span>
+                            {c.respondents.length > 1 && (
+                              <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-200 px-1 rounded shrink-0">
+                                +{c.respondents.length - 1}
+                              </span>
+                            )}
+                          </span>
+                          {c.respondents[0].phone && (
+                            <span className="text-[10px] text-slate-500 font-mono mr-5" dir="ltr">
+                              {c.respondents[0].phone}
+                            </span>
+                          )}
+                        </div>
+                      ) : c.respondentName || c.hospitalName ? (
                         <span className="flex items-center gap-1.5 text-xs font-medium text-slate-800 max-w-[180px] truncate" title={(c.respondentName || c.hospitalName)!}>
                           <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span className="truncate">{c.respondentName || c.hospitalName}</span>
