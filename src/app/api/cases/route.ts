@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/rbac";
 import { writeAuditLog } from "@/lib/audit";
+import { ensureSchemaMigrated } from "@/lib/db-migrate";
 
 const partySchema = z.object({
   name: z.string().min(1, "الاسم مطلوب"),
@@ -55,22 +56,30 @@ export async function GET() {
     return NextResponse.json({ error: "غير مصرح بالاطلاع على قائمة القضايا" }, { status: 403 });
   }
 
-  const cases = await prisma.case.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    include: {
-      subCommittee: true,
-      prosecutionRel: true,
-      specialties: { include: { specialty: true } },
-      reviewers: {
-        include: {
-          user: { select: { id: true, fullName: true, employer: true, role: true } },
+  await ensureSchemaMigrated();
+
+  try {
+    const cases = await prisma.case.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: {
+        subCommittee: true,
+        prosecutionRel: true,
+        partialProsecutionRel: true,
+        specialties: { include: { specialty: true } },
+        reviewers: {
+          include: {
+            user: { select: { id: true, fullName: true, employer: true, role: true } },
+          },
         },
+        followUpOfficer: { select: { id: true, fullName: true } },
       },
-      followUpOfficer: { select: { id: true, fullName: true } },
-    },
-  });
-  return NextResponse.json(cases);
+    });
+    return NextResponse.json(cases);
+  } catch (err: any) {
+    console.error("GET /api/cases error:", err);
+    return NextResponse.json({ error: err.message || "تعذر جلب القضايا" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -82,6 +91,8 @@ export async function POST(req: NextRequest) {
   const parsed = createCaseSchema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const data = parsed.data;
+
+  await ensureSchemaMigrated();
 
   if ((data.registrationType === "CASE" || data.registrationType === "REPORT") && !data.prosecutionCaseNumber?.trim()) {
     return NextResponse.json({
