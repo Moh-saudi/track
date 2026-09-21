@@ -63,6 +63,28 @@ export async function GET() {
     // مسح أي حظر مؤقت ناتج عن محاولات تسجيل الدخول الخاطئة
     await prisma.$executeRawUnsafe(`TRUNCATE TABLE "LoginThrottle";`).catch(() => {});
 
+    // تفعيل كافة النيابات وضمان وجود القائمة المعتمدة
+    await prisma.$executeRawUnsafe(`UPDATE "Prosecution" SET "active" = true WHERE "active" IS NULL OR "active" = false;`).catch(() => {});
+    const procsCount = await prisma.prosecution.count();
+    if (procsCount < 20) {
+      const { OFFICIAL_PROSECUTIONS_LIST } = await import("@/lib/constants/prosecutions");
+      for (const p of OFFICIAL_PROSECUTIONS_LIST.filter((x) => x.type === "PLENARY")) {
+        await prisma.prosecution.upsert({
+          where: { name: p.name },
+          update: { governorate: p.governorate, type: "PLENARY", active: true },
+          create: { name: p.name, governorate: p.governorate, type: "PLENARY", active: true },
+        });
+      }
+      for (const p of OFFICIAL_PROSECUTIONS_LIST.filter((x) => x.type === "DISTRICT")) {
+        const parent = p.parentName ? await prisma.prosecution.findFirst({ where: { name: p.parentName } }) : null;
+        await prisma.prosecution.upsert({
+          where: { name: p.name },
+          update: { governorate: p.governorate, type: "DISTRICT", parentId: parent?.id || null, active: true },
+          create: { name: p.name, governorate: p.governorate, type: "DISTRICT", parentId: parent?.id || null, active: true },
+        });
+      }
+    }
+
     // 2. كلمة المرور الموحدة المعتمدة
     const defaultPassword = "ChangeMe123!";
     const passwordHash = await bcrypt.hash(defaultPassword, 12);

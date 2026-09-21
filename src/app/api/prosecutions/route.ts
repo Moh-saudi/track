@@ -35,13 +35,62 @@ export async function GET(req: NextRequest) {
     where.type = type;
   }
 
-  const prosecutions = await prisma.prosecution.findMany({
+  let prosecutions = await prisma.prosecution.findMany({
     where,
     orderBy: [{ governorate: "asc" }, { name: "asc" }],
     include: {
       parent: { select: { id: true, name: true } },
     },
   });
+
+  if (prosecutions.length === 0) {
+    try {
+      const totalCount = await prisma.prosecution.count();
+      if (totalCount === 0) {
+        const { OFFICIAL_PROSECUTIONS_LIST } = await import("@/lib/constants/prosecutions");
+        const plenaryMap: Record<string, string> = {};
+        for (const item of OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "PLENARY")) {
+          const created = await prisma.prosecution.create({
+            data: {
+              name: item.name,
+              governorate: item.governorate,
+              type: "PLENARY",
+              active: true,
+            },
+          });
+          plenaryMap[item.name] = created.id;
+        }
+        for (const item of OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "DISTRICT")) {
+          const parentId = item.parentName ? plenaryMap[item.parentName] || null : null;
+          await prisma.prosecution.create({
+            data: {
+              name: item.name,
+              governorate: item.governorate,
+              type: "DISTRICT",
+              parentId,
+              active: true,
+            },
+          });
+        }
+        prosecutions = await prisma.prosecution.findMany({
+          where,
+          orderBy: [{ governorate: "asc" }, { name: "asc" }],
+          include: { parent: { select: { id: true, name: true } } },
+        });
+      } else {
+        await prisma.prosecution.updateMany({ data: { active: true } });
+        delete where.active;
+        prosecutions = await prisma.prosecution.findMany({
+          where,
+          orderBy: [{ governorate: "asc" }, { name: "asc" }],
+          include: { parent: { select: { id: true, name: true } } },
+        });
+      }
+    } catch (err) {
+      console.error("Auto-seed prosecutions fallback error:", err);
+    }
+  }
+
   return NextResponse.json(prosecutions);
 }
 
