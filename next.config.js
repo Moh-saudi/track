@@ -38,6 +38,7 @@ if (isProduction) {
 const nextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "30mb" },
+    optimizePackageImports: ["lucide-react"],
   },
   poweredByHeader: false,
   async headers() {

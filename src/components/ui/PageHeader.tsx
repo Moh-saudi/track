@@ -33,6 +33,7 @@ export function PageHeader({
                 {item.href && !isLast ? (
                   <Link
                     href={item.href}
+                    prefetch={false}
                     className="hover:text-teal-700 transition-colors"
                   >
                     {item.label}

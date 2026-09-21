@@ -86,6 +86,7 @@ export function UserMenu({ user, roleLabel }: UserMenuProps) {
           <div className="py-1">
             <Link
               href="/dashboard/profile"
+              prefetch={false}
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-colors"
             >
@@ -95,6 +96,7 @@ export function UserMenu({ user, roleLabel }: UserMenuProps) {
 
             <Link
               href="/dashboard/profile#security"
+              prefetch={false}
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-colors"
             >

@@ -168,6 +168,7 @@ export function Sidebar({ role = "REGISTRATION_CLERK", navItems, isOpenMobile, o
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={false}
                     onClick={onCloseMobile}
                     className={`group flex items-center gap-3 px-3 py-2 text-xs font-medium rounded-lg transition-all duration-150 ${
                       active

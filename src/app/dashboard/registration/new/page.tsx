@@ -172,6 +172,7 @@ export default function NewCasePage() {
         actions={
           <Link
             href="/dashboard/registration"
+            prefetch={false}
             className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs sm:text-sm font-medium hover:bg-slate-50 shadow-xs font-body"
           >
             <ArrowRight className="w-4 h-4" />
@@ -480,7 +481,7 @@ export default function NewCasePage() {
 
           {/* أزرار الحفظ والإلغاء */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-            <Link href="/dashboard/registration">
+            <Link href="/dashboard/registration" prefetch={false}>
               <Button type="button" variant="secondary">
                 إلغاء
               </Button>
