@@ -7,8 +7,24 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    // 0. ترقية جدول المستخدمين وضمان وجود الأعمدة والجداول الأمنية الجديدة
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "sessionVersion" INTEGER NOT NULL DEFAULT 1;
+    `).catch((e) => console.error("Alter User error:", e));
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "LoginThrottle" (
+        "identifierHash" TEXT NOT NULL,
+        "failureCount" INTEGER NOT NULL DEFAULT 0,
+        "windowStart" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "blockedUntil" TIMESTAMP(3),
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "LoginThrottle_pkey" PRIMARY KEY ("identifierHash")
+      );
+    `).catch((e) => console.error("Create LoginThrottle error:", e));
+
     // 1. مسح أي حظر مؤقت ناتج عن محاولات تسجيل الدخول الخاطئة
-    await prisma.loginThrottle.deleteMany().catch(() => {});
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "LoginThrottle";`).catch(() => {});
 
     // 2. كلمة المرور الموحدة المعتمدة
     const defaultPassword = "ChangeMe123!";
