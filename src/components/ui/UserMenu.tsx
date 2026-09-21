@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { ChevronDown, User, ShieldCheck, LogOut, Building2 } from "lucide-react";
+import { signOut } from "next-auth/react";
 
 export interface UserMenuProps {
   user: {
@@ -105,17 +106,16 @@ export function UserMenu({ user, roleLabel }: UserMenuProps) {
             </Link>
           </div>
 
-          {/* زر تسجيل الخروج */}
+          {/* زر تسجيل الخروج — خطوة واحدة فورية ومباشرة */}
           <div className="pt-1 border-t border-slate-100 mt-1">
-            <form action="/api/auth/signout" method="POST">
-              <button
-                type="submit"
-                className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors text-right"
-              >
-                <LogOut className="w-4 h-4 text-rose-500" />
-                <span>تسجيل الخروج</span>
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors text-right"
+            >
+              <LogOut className="w-4 h-4 text-rose-500" />
+              <span>تسجيل الخروج</span>
+            </button>
           </div>
         </div>
       )}
