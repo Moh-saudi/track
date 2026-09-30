@@ -24,12 +24,17 @@ import {
   Shield,
   Stethoscope,
   Eye,
+  EyeOff,
   CheckCircle2,
   AlertCircle,
   Edit,
   PowerOff,
   Power,
   RefreshCw,
+  MessageCircle,
+  Copy,
+  Check,
+  Send,
 } from "lucide-react";
 
 export interface UserItem {
@@ -200,6 +205,49 @@ export function AdminUsersTable({
   // إعادة تعيين كلمة المرور
   const [resetNewPassword, setResetNewPassword] = useState("");
 
+  // ميزة مشاركة بيانات الحساب عبر واتساب
+  const [formPhone, setFormPhone] = useState("");
+  const [sendViaWhatsAppOnCreate, setSendViaWhatsAppOnCreate] = useState(true);
+  const [whatsappModal, setWhatsappModal] = useState<{
+    fullName: string;
+    email: string;
+    password?: string;
+    role: string;
+    phone?: string;
+    isNewAccount?: boolean;
+  } | null>(null);
+  const [whatsappPhone, setWhatsappPhone] = useState("");
+  const [whatsappPassword, setWhatsappPassword] = useState("");
+  const [showPasswordInModal, setShowPasswordInModal] = useState(true);
+  const [copiedText, setCopiedText] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
+
+  // صياغة رسالة الواتساب الرسمية المعتمدة
+  function buildWhatsAppMessageText({
+    fullName,
+    email,
+    password,
+    roleLabel,
+    loginUrl,
+  }: {
+    fullName: string;
+    email: string;
+    password?: string;
+    roleLabel: string;
+    loginUrl: string;
+  }): string {
+    let msg = `السلام عليكم ورحمة الله وبركاته،\nالأستاذ/الدكتور: ${fullName}\n\n`;
+    msg += `تحية طيبة وبعد،،\nيسعدنا إبلاغكم بأنه تم اعتماد وتفعيل حسابكم الرسمي على «منظومة تتبع قضايا المسؤولية الطبية» (اللجنة العليا للمسؤولية الطبية — جمهورية مصر العربية):\n\n`;
+    msg += `🌐 رابط الدخول للمنظومة:\n${loginUrl}\n\n`;
+    msg += `📧 البريد الإلكتروني:\n${email}\n`;
+    if (password && password.trim().length > 0) {
+      msg += `🔑 كلمة المرور الأولية:\n${password}\n`;
+    }
+    msg += `🛡️ الصلاحية والصفة:\n${roleLabel}\n\n`;
+    msg += `⚠️ تنبيه أمني:\nهذه البيانات سرية وشخصية للغاية. يُرجى الدخول وتغيير كلمة المرور فور تسجيل الدخول من خلال صفحة الملف الشخصي.`;
+    return msg;
+  }
+
   // تصفية المستخدمين
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
@@ -256,16 +304,40 @@ export function AdminUsersTable({
           throw new Error(data.error?.message || data.error || "تعذر إنشاء المستخدم");
         }
 
-        setSuccessMsg(`تم إنشاء حساب المستخدم (${data.fullName}) بالصلاحية المحددة بنجاح.`);
+        const createdFullName = data.fullName || formFullName;
+        const createdEmail = data.email || formEmail;
+        const createdPassword = formPassword;
+        const targetPhone = formPhone;
+        const createdRole = formRole;
+
+        setSuccessMsg(`تم إنشاء حساب المستخدم (${createdFullName}) بالصلاحية المحددة بنجاح.`);
         setIsCreateOpen(false);
+
         // تصفير الحقول
         setFormFullName("");
         setFormEmail("");
         setFormPassword("");
+        setFormPhone("");
         setFormRole("REGISTRATION_CLERK");
         setFormEmployer("");
         setFormSubCommitteeId("");
         setFormSpecialtyId("");
+
+        // فتح نافذة إرسال الواتساب بالبيانات
+        if (sendViaWhatsAppOnCreate) {
+          setWhatsappModal({
+            fullName: createdFullName,
+            email: createdEmail,
+            password: createdPassword,
+            role: createdRole,
+            phone: targetPhone,
+            isNewAccount: true,
+          });
+          setWhatsappPhone(targetPhone);
+          setWhatsappPassword(createdPassword);
+          setShowPasswordInModal(true);
+        }
+
         router.refresh();
       } catch (err: any) {
         setError(err.message);
@@ -355,11 +427,25 @@ export function AdminUsersTable({
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "تعذر إعادة تعيين كلمة المرور");
-
-        setSuccessMsg(`تم تعيين كلمة مرور جديدة للمستخدم (${passwordUser.fullName}) بنجاح.`);
+        const targetUser = passwordUser;
+        const newPwd = resetNewPassword;
+        setSuccessMsg(`تم تعيين كلمة مرور جديدة للمستخدم (${targetUser.fullName}) بنجاح.`);
         setPasswordUser(null);
         setResetNewPassword("");
+
+        // فتح نافذة إرسال كلمة المرور الجديدة عبر واتساب
+        setWhatsappModal({
+          fullName: targetUser.fullName,
+          email: targetUser.email,
+          password: newPwd,
+          role: targetUser.role,
+          phone: "",
+          isNewAccount: false,
+        });
+        setWhatsappPhone("");
+        setWhatsappPassword(newPwd);
+        setShowPasswordInModal(true);
+
         router.refresh();
       } catch (err: any) {
         setError(err.message);
@@ -595,6 +681,28 @@ export function AdminUsersTable({
                           كلمة المرور
                         </Button>
 
+                        {/* إرسال بيانات الدخول عبر واتساب */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setWhatsappModal({
+                              fullName: u.fullName,
+                              email: u.email,
+                              role: u.role,
+                              isNewAccount: false,
+                            });
+                            setWhatsappPhone("");
+                            setWhatsappPassword("");
+                            setShowPasswordInModal(true);
+                            setError(null);
+                          }}
+                          title="إرسال بيانات الحساب ورابط الدخول عبر واتساب"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold transition-colors"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>واتساب</span>
+                        </button>
+
                         {/* تفعيل / تعطيل الحساب */}
                         <button
                           type="button"
@@ -792,6 +900,36 @@ export function AdminUsersTable({
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* ميزة إرسال بيانات الدخول عبر واتساب */}
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-emerald-950 flex items-center gap-1.5 font-heading">
+                    <MessageCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>رقم هاتف الواتساب للمستخدم (اختياري)</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-[11px] text-emerald-800 font-semibold cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={sendViaWhatsAppOnCreate}
+                      onChange={(e) => setSendViaWhatsAppOnCreate(e.target.checked)}
+                      className="w-3.5 h-3.5 text-emerald-600 rounded-sm border-emerald-300 focus:ring-emerald-500 cursor-pointer"
+                    />
+                    <span>إرسال البيانات فور الحفظ</span>
+                  </label>
+                </div>
+                <input
+                  type="tel"
+                  value={formPhone}
+                  onChange={(e) => setFormPhone(e.target.value)}
+                  placeholder="مثال: 01012345678 أو +201012345678"
+                  dir="ltr"
+                  className="form-input text-xs font-mono bg-white"
+                />
+                <p className="text-[11px] text-emerald-700 leading-relaxed font-body">
+                  💡 عند تفعيل هذا الخيار، سيتم فتح نافذة تجهيز رسالة الواتساب الرسمية المعتمدة فوراً متضمنة (الاسم، البريد، كلمة المرور، ورابط المنظومة).
+                </p>
               </div>
 
               {/* الأزرار */}
@@ -1038,6 +1176,222 @@ export function AdminUsersTable({
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── مودال إرسال بيانات الدخول عبر واتساب ─── */}
+      {whatsappModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4 my-8 animate-in fade-in zoom-in-95">
+            {/* رأس النافذة */}
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 shadow-xs">
+                  <MessageCircle className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 font-heading flex items-center gap-2">
+                    <span>إرسال بيانات الحساب عبر واتساب</span>
+                    <Badge variant="emerald" className="text-[10px] py-0 px-1.5 font-sans">
+                      WhatsApp
+                    </Badge>
+                  </h3>
+                  <p className="text-xs text-slate-500 font-body">
+                    {whatsappModal.isNewAccount
+                      ? "تم إنشاء الحساب بنجاح! يمكنك الآن مشاركة البيانات الرسمية مع المستخدم"
+                      : "إرسال وتذكير المستخدم ببيانات الحساب ورابط الدخول للمنظومة"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setWhatsappModal(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* بطاقة ملخص الحساب */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+              <div>
+                <span className="text-slate-500 block text-[11px]">اسم المستخدم</span>
+                <span className="font-bold text-slate-900 font-heading text-xs">{whatsappModal.fullName}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block text-[11px]">الصلاحية المحددة</span>
+                <Badge variant={ROLE_INFO[whatsappModal.role]?.badgeVariant ?? "slate"}>
+                  {ROLE_INFO[whatsappModal.role]?.label ?? whatsappModal.role}
+                </Badge>
+              </div>
+              <div className="sm:col-span-2">
+                <span className="text-slate-500 block text-[11px]">البريد الإلكتروني</span>
+                <div className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 mt-1">
+                  <span className="font-mono text-slate-800 text-xs" dir="ltr">{whatsappModal.email}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(whatsappModal.email);
+                      setSuccessMsg("تم نسخ البريد الإلكتروني إلى الحافظة");
+                      setTimeout(() => setSuccessMsg(null), 3000);
+                    }}
+                    className="text-slate-500 hover:text-teal-700 text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>نسخ</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* حقل كلمة المرور للرسالة */}
+            <div className="form-group">
+              <div className="flex items-center justify-between mb-1">
+                <label className="form-label text-xs font-bold text-slate-800">
+                  كلمة المرور المضمنة في الرسالة
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordInModal(!showPasswordInModal)}
+                    className="text-[11px] text-slate-500 hover:text-slate-700 flex items-center gap-1 font-medium"
+                  >
+                    {showPasswordInModal ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <span>{showPasswordInModal ? "إخفاء" : "إظهار"}</span>
+                  </button>
+                  {whatsappPassword && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(whatsappPassword);
+                        setCopiedPassword(true);
+                        setTimeout(() => setCopiedPassword(false), 2000);
+                      }}
+                      className="text-[11px] text-teal-700 hover:text-teal-800 font-semibold flex items-center gap-1 font-sans"
+                    >
+                      {copiedPassword ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedPassword ? "تم النسخ" : "نسخ كلمة المرور"}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+              <input
+                type={showPasswordInModal ? "text" : "password"}
+                value={whatsappPassword}
+                onChange={(e) => setWhatsappPassword(e.target.value)}
+                placeholder="أدخل أو عدّل كلمة المرور المراد تضمينها في الرسالة..."
+                className="form-input text-xs font-mono"
+              />
+              <span className="text-[11px] text-slate-500 mt-1 block">
+                * يمكنك كتابة كلمة المرور أو تركها فارغة إذا كان المستخدم يعرفها بالفعل.
+              </span>
+            </div>
+
+            {/* حقل رقم هاتف الواتساب */}
+            <div className="form-group">
+              <label className="form-label text-xs font-bold text-slate-800">
+                رقم هاتف الواتساب للمستلم
+              </label>
+              <input
+                type="tel"
+                value={whatsappPhone}
+                onChange={(e) => setWhatsappPhone(e.target.value)}
+                placeholder="مثال: 01012345678 أو 201012345678"
+                dir="ltr"
+                className="form-input text-xs font-mono"
+              />
+              <span className="text-[11px] text-slate-500 mt-1 block">
+                * عند إدخال الرقم يفتح الشات مباشرة مع الرقم. وإذا تركته فارغاً سيفتح تطبيق واتساب لاختيار جهة الاتصال.
+              </span>
+            </div>
+
+            {/* معاينة نص الرسالة الرسمية */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700">معاينة الرسالة المعتمدة:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const origin = typeof window !== "undefined" ? window.location.origin : "https://trackcd.vercel.app";
+                    const roleLabel = ROLE_INFO[whatsappModal.role]?.label || whatsappModal.role;
+                    const text = buildWhatsAppMessageText({
+                      fullName: whatsappModal.fullName,
+                      email: whatsappModal.email,
+                      password: whatsappPassword,
+                      roleLabel,
+                      loginUrl: `${origin}/login`,
+                    });
+                    navigator.clipboard.writeText(text);
+                    setCopiedText(true);
+                    setTimeout(() => setCopiedText(false), 2000);
+                  }}
+                  className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 transition-colors"
+                >
+                  {copiedText ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedText ? "تم نسخ الرسالة ✅" : "نسخ نص الرسالة بالكامل"}</span>
+                </button>
+              </div>
+
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/90 rounded-xl text-xs text-slate-800 leading-relaxed font-body whitespace-pre-wrap max-h-44 overflow-y-auto selection:bg-emerald-200">
+                {buildWhatsAppMessageText({
+                  fullName: whatsappModal.fullName,
+                  email: whatsappModal.email,
+                  password: whatsappPassword,
+                  roleLabel: ROLE_INFO[whatsappModal.role]?.label || whatsappModal.role,
+                  loginUrl: typeof window !== "undefined" ? `${window.location.origin}/login` : "https://trackcd.vercel.app/login",
+                })}
+              </div>
+            </div>
+
+            {/* أزرار الإجراءات */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-3 border-t border-slate-200">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setWhatsappModal(null)}
+                className="w-full sm:w-auto"
+              >
+                إغلاق
+              </Button>
+
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  const origin = typeof window !== "undefined" ? window.location.origin : "https://trackcd.vercel.app";
+                  const roleLabel = ROLE_INFO[whatsappModal.role]?.label || whatsappModal.role;
+                  const messageText = buildWhatsAppMessageText({
+                    fullName: whatsappModal.fullName,
+                    email: whatsappModal.email,
+                    password: whatsappPassword,
+                    roleLabel,
+                    loginUrl: `${origin}/login`,
+                  });
+
+                  let cleanPhone = whatsappPhone.replace(/\D/g, "");
+                  if (cleanPhone.startsWith("00")) {
+                    cleanPhone = cleanPhone.substring(2);
+                  }
+                  if (cleanPhone.startsWith("01") && cleanPhone.length === 11) {
+                    cleanPhone = "2" + cleanPhone; // إضافة كود مصر الدولي
+                  }
+
+                  const encoded = encodeURIComponent(messageText);
+                  const waUrl = cleanPhone
+                    ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encoded}`
+                    : `https://api.whatsapp.com/send?text=${encoded}`;
+
+                  window.open(waUrl, "_blank", "noopener,noreferrer");
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto font-bold flex items-center justify-center gap-1.5 shadow-sm"
+                icon={<Send className="w-4 h-4" />}
+              >
+                <span>فتح وإرسال عبر WhatsApp</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}
