@@ -657,13 +657,13 @@ export function AdminUsersTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>المستخدم</TableHead>
-              <TableHead>البريد الإلكتروني</TableHead>
-              <TableHead>الدور والصلاحية</TableHead>
-              <TableHead>جهة العمل (فحص تعارض المصالح)</TableHead>
-              <TableHead>اللجنة الفرعية / التخصص</TableHead>
-              <TableHead>الحالة</TableHead>
-              <TableHead className="text-center">الإجراءات والتحكم</TableHead>
+              <TableHead className="min-w-[220px] whitespace-nowrap">المستخدم</TableHead>
+              <TableHead className="whitespace-nowrap">البريد الإلكتروني</TableHead>
+              <TableHead className="whitespace-nowrap">الدور والصلاحية</TableHead>
+              <TableHead className="whitespace-nowrap">جهة العمل</TableHead>
+              <TableHead className="whitespace-nowrap">اللجنة / التخصص</TableHead>
+              <TableHead className="text-center whitespace-nowrap">الحالة</TableHead>
+              <TableHead className="text-center whitespace-nowrap">الإجراءات والتحكم</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -678,28 +678,28 @@ export function AdminUsersTable({
                 const roleConfig = ROLE_INFO[u.role];
                 return (
                   <TableRow key={u.id}>
-                    <TableCell className="font-bold text-slate-900 text-xs font-heading">
+                    <TableCell className="font-bold text-slate-900 text-xs font-heading whitespace-nowrap min-w-[220px]">
                       <div className="flex items-center gap-2">
                         <span
                           className={`w-2 h-2 rounded-full shrink-0 ${
                             u.active ? "bg-emerald-500" : "bg-rose-400"
                           }`}
                         />
-                        <span>{u.fullName}</span>
+                        <span className="leading-relaxed">{u.fullName}</span>
                       </div>
                     </TableCell>
 
-                    <TableCell className="font-mono text-xs text-slate-600" dir="ltr">
+                    <TableCell className="font-mono text-xs text-slate-600 whitespace-nowrap" dir="ltr">
                       {u.email}
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <Badge variant={roleConfig?.badgeVariant ?? "slate"}>
                         {roleConfig?.label ?? u.role}
                       </Badge>
                     </TableCell>
 
-                    <TableCell className="text-xs font-medium text-slate-800">
+                    <TableCell className="text-xs font-medium text-slate-800 whitespace-nowrap">
                       {u.employer ? (
                         <span className="inline-flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-md text-slate-700">
                           <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
@@ -710,7 +710,7 @@ export function AdminUsersTable({
                       )}
                     </TableCell>
 
-                    <TableCell className="text-xs text-slate-600">
+                    <TableCell className="text-xs text-slate-600 whitespace-nowrap">
                       {u.subCommittee?.name ? (
                         <span className="text-slate-700 font-medium block">
                           {u.subCommittee.name}
@@ -726,7 +726,7 @@ export function AdminUsersTable({
                       ) : null}
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell className="text-center whitespace-nowrap">
                       <span
                         className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
                           u.active
@@ -739,35 +739,33 @@ export function AdminUsersTable({
                     </TableCell>
 
                     <TableCell className="text-center whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1">
+                      <div className="inline-flex items-center gap-1 justify-center">
                         {/* تعديل الصلاحيات */}
-                        <Button
+                        <button
                           type="button"
-                          variant="secondary"
-                          size="sm"
                           onClick={() => openEditModal(u)}
                           title="تعديل الدور والصلاحيات وجهة العمل"
-                          icon={<Edit className="w-3.5 h-3.5 text-slate-600" />}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors shadow-2xs"
                         >
-                          تعديل
-                        </Button>
+                          <Edit className="w-3.5 h-3.5 text-slate-600" />
+                          <span>تعديل</span>
+                        </button>
 
                         {/* إعادة تعيين كلمة المرور */}
-                        <Button
+                        <button
                           type="button"
-                          variant="secondary"
-                          size="sm"
                           onClick={() => {
                             setPasswordUser(u);
                             setError(null);
                             setSuccessMsg(null);
                             setResetNewPassword("");
                           }}
-                          icon={<KeyRound className="w-3.5 h-3.5 text-teal-600" />}
                           title="إعادة تعيين كلمة المرور"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-teal-200 bg-teal-50/60 hover:bg-teal-100 text-teal-700 text-xs font-medium transition-colors shadow-2xs"
                         >
-                          كلمة المرور
-                        </Button>
+                          <KeyRound className="w-3.5 h-3.5 text-teal-600" />
+                          <span>كلمة المرور</span>
+                        </button>
 
                         {/* إرسال بيانات الدخول عبر واتساب */}
                         <button
@@ -792,7 +790,7 @@ export function AdminUsersTable({
                             setError(null);
                           }}
                           title="إرسال بيانات الحساب ورابط الدخول عبر واتساب"
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold transition-colors"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold transition-colors shadow-2xs"
                         >
                           <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
                           <span>واتساب</span>
@@ -804,7 +802,7 @@ export function AdminUsersTable({
                           onClick={() => handleToggleActive(u)}
                           disabled={isPending}
                           title={u.active ? "تعطيل الحساب مؤقتاً" : "إعادة تفعيل الحساب"}
-                          className={`p-1.5 rounded-lg border text-xs transition-colors ${
+                          className={`p-1.5 rounded-lg border text-xs transition-colors shadow-2xs ${
                             u.active
                               ? "border-rose-200 text-rose-600 hover:bg-rose-50"
                               : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"
