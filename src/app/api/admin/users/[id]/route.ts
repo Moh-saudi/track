@@ -75,7 +75,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const updated = await prisma.user.update({
     where: { id: id },
     data: updateData,
-    select: { id: true, email: true, fullName: true, role: true, active: true, sessionVersion: true },
+    select: { id: true, email: true, fullName: true, role: true, active: true, sessionVersion: true, phone: true, initialPassword: true },
   });
 
   await writeAuditLog({

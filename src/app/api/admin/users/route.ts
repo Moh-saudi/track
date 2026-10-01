@@ -34,6 +34,9 @@ export async function GET() {
       employer: true, active: true, createdAt: true, subCommitteeId: true,
       subCommittee: { select: { name: true, code: true } },
       specialty: { select: { name: true } },
+      phone: true,
+      nationalId: true,
+      initialPassword: true,
     },
   });
 

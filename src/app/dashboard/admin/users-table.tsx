@@ -1101,166 +1101,113 @@ export function AdminUsersTable({
       {/* ─── مودال إرسال بيانات الدخول عبر واتساب ─── */}
       {whatsappModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4 my-8 animate-in fade-in zoom-in-95">
-            {/* رأس النافذة */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-5 space-y-3 my-6 animate-in fade-in zoom-in-95">
+
+            {/* رأس المودال */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 shadow-xs">
-                  <MessageCircle className="w-5 h-5 text-emerald-600" />
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 font-heading flex items-center gap-2">
-                    <span>إرسال بيانات الحساب عبر واتساب</span>
-                    <Badge variant="emerald" className="text-[10px] py-0 px-1.5 font-sans">
-                      WhatsApp
-                    </Badge>
-                  </h3>
-                  <p className="text-xs text-slate-500 font-body">
-                    {whatsappModal.isNewAccount
-                      ? "تم إنشاء الحساب بنجاح! يمكنك الآن مشاركة البيانات الرسمية مع المستخدم"
-                      : "إرسال وتذكير المستخدم ببيانات الحساب ورابط الدخول للمنظومة"}
-                  </p>
+                  <h3 className="text-sm font-bold text-slate-900 font-heading">إرسال عبر واتساب</h3>
+                  <p className="text-[11px] text-slate-500">{whatsappModal.fullName} — <Badge variant={ROLE_INFO[whatsappModal.role]?.badgeVariant ?? "slate"} className="text-[10px] py-0">{ROLE_INFO[whatsappModal.role]?.label ?? whatsappModal.role}</Badge></p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setWhatsappModal(null)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-              >
+              <button type="button" onClick={() => setWhatsappModal(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* بطاقة ملخص الحساب */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-              <div>
-                <span className="text-slate-500 block text-[11px]">اسم المستخدم</span>
-                <span className="font-bold text-slate-900 font-heading text-xs">{whatsappModal.fullName}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block text-[11px]">الصلاحية المحددة</span>
-                <Badge variant={ROLE_INFO[whatsappModal.role]?.badgeVariant ?? "slate"}>
-                  {ROLE_INFO[whatsappModal.role]?.label ?? whatsappModal.role}
-                </Badge>
-              </div>
-              <div className="sm:col-span-2">
-                <span className="text-slate-500 block text-[11px]">البريد الإلكتروني</span>
-                <div className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 mt-1">
-                  <span className="font-mono text-slate-800 text-xs" dir="ltr">{whatsappModal.email}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(whatsappModal.email);
-                      setSuccessMsg("تم نسخ البريد الإلكتروني إلى الحافظة");
-                      setTimeout(() => setSuccessMsg(null), 3000);
-                    }}
-                    className="text-slate-500 hover:text-teal-700 text-[11px] font-semibold flex items-center gap-1 transition-colors"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>نسخ</span>
+            {/* البريد + رقم الهاتف في صفين */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* البريد */}
+              <div className="form-group">
+                <label className="form-label text-xs">البريد الإلكتروني</label>
+                <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+                  <span className="font-mono text-xs text-slate-700 flex-1 truncate" dir="ltr">{whatsappModal.email}</span>
+                  <button type="button" onClick={() => { navigator.clipboard.writeText(whatsappModal.email); }}
+                    className="text-slate-400 hover:text-teal-600 shrink-0">
+                    <Copy className="w-3 h-3" />
                   </button>
                 </div>
               </div>
+
+              {/* رقم الواتساب */}
+              <div className="form-group">
+                <label className="form-label text-xs">رقم الواتساب</label>
+                <input type="tel" value={whatsappPhone} onChange={(e) => setWhatsappPhone(e.target.value)}
+                  placeholder="01012345678" dir="ltr"
+                  className="form-input text-xs font-mono" />
+              </div>
             </div>
 
-            {/* حقل كلمة المرور — مطلوب دائماً ولا يمكن تركه فارغاً */}
+            {/* كلمة المرور — تُعرض تلقائياً ولا تطلب الكتابة يدوياً */}
             <div className="form-group">
               <div className="flex items-center justify-between mb-1">
-                <label className="form-label form-label-required text-xs font-bold text-slate-800">
-                  كلمة المرور المضمنة في الرسالة
-                </label>
+                <label className="form-label text-xs font-bold text-slate-700">كلمة المرور في الرسالة</label>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswordInModal(!showPasswordInModal)}
-                    className="text-[11px] text-slate-500 hover:text-slate-700 flex items-center gap-1 font-medium"
-                  >
-                    {showPasswordInModal ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  <button type="button" onClick={() => setShowPasswordInModal(!showPasswordInModal)}
+                    className="text-[11px] text-slate-400 hover:text-slate-600 flex items-center gap-0.5">
+                    {showPasswordInModal ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                     <span>{showPasswordInModal ? "إخفاء" : "إظهار"}</span>
                   </button>
                   {whatsappPassword && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(whatsappPassword);
-                        setCopiedPassword(true);
-                        setTimeout(() => setCopiedPassword(false), 2000);
-                      }}
-                      className="text-[11px] text-teal-700 hover:text-teal-800 font-semibold flex items-center gap-1 font-sans"
-                    >
-                      {copiedPassword ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedPassword ? "تم النسخ" : "نسخ كلمة المرور"}</span>
+                    <button type="button" onClick={() => { navigator.clipboard.writeText(whatsappPassword); setCopiedPassword(true); setTimeout(() => setCopiedPassword(false), 2000); }}
+                      className="text-[11px] text-teal-600 hover:text-teal-800 font-semibold flex items-center gap-0.5">
+                      {copiedPassword ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedPassword ? "نُسخت" : "نسخ"}</span>
                     </button>
                   )}
                 </div>
               </div>
               <input
                 type={showPasswordInModal ? "text" : "password"}
-                required
                 value={whatsappPassword}
                 onChange={(e) => setWhatsappPassword(e.target.value)}
-                placeholder="كلمة المرور مطلوبة لإرسال الرسالة..."
+                placeholder={whatsappPassword ? "" : "كلمة المرور غير محفوظة — أعد تعيينها أولاً"}
                 className={`form-input text-xs font-mono ${
-                  !whatsappPassword.trim() ? "border-rose-300 bg-rose-50 focus:ring-rose-400" : ""
+                  !whatsappPassword.trim()
+                    ? "border-amber-300 bg-amber-50 placeholder:text-amber-600"
+                    : "border-emerald-300 bg-emerald-50"
                 }`}
               />
-              {!whatsappPassword.trim() && (
-                <span className="text-[11px] text-rose-600 mt-1 flex items-center gap-1">
+              {!whatsappPassword.trim() ? (
+                <span className="text-[11px] text-amber-700 mt-1 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3 shrink-0" />
-                  يجب كتابة كلمة المرور — تأكد من إدخالها قبل الإرسال
+                  كلمة المرور غير محفوظة في الملف — استخدم زر "كلمة المرور" في الجدول لإعادة تعيينها
+                </span>
+              ) : (
+                <span className="text-[11px] text-emerald-700 mt-1 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 shrink-0" />
+                  كلمة المرور محفوظة ومُضمَّنة في الرسالة تلقائياً
                 </span>
               )}
             </div>
 
-            {/* حقل رقم هاتف الواتساب */}
-            <div className="form-group">
-              <label className="form-label text-xs font-bold text-slate-800">
-                رقم هاتف الواتساب للمستلم
-              </label>
-              <input
-                type="tel"
-                value={whatsappPhone}
-                onChange={(e) => setWhatsappPhone(e.target.value)}
-                placeholder="مثال: 01012345678 أو 201012345678"
-                dir="ltr"
-                className="form-input text-xs font-mono"
-              />
-              <span className="text-[11px] text-slate-500 mt-1 block">
-                * عند إدخال الرقم يفتح الشات مباشرة مع الرقم. وإذا تركته فارغاً سيفتح تطبيق واتساب لاختيار جهة الاتصال.
-              </span>
-            </div>
-
-            {/* معاينة نص الرسالة الرسمية */}
-            <div className="space-y-1.5">
+            {/* معاينة الرسالة */}
+            <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">معاينة الرسالة المعتمدة:</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const origin = typeof window !== "undefined" ? window.location.origin : "https://trackcd.vercel.app";
-                    const roleLabel = ROLE_INFO[whatsappModal.role]?.label || whatsappModal.role;
-                    const text = buildWhatsAppMessageText({
-                      fullName: whatsappModal.fullName,
-                      email: whatsappModal.email,
-                      password: whatsappPassword,
-                      roleLabel,
-                      loginUrl: `${origin}/login`,
-                    });
-                    navigator.clipboard.writeText(text);
-                    setCopiedText(true);
-                    setTimeout(() => setCopiedText(false), 2000);
-                  }}
-                  className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 transition-colors"
-                >
-                  {copiedText ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedText ? "تم نسخ الرسالة ✅" : "نسخ نص الرسالة بالكامل"}</span>
+                <span className="text-xs font-bold text-slate-700">معاينة الرسالة:</span>
+                <button type="button" onClick={() => {
+                  const origin = typeof window !== "undefined" ? window.location.origin : "https://trackcd.vercel.app";
+                  const text = buildWhatsAppMessageText({
+                    fullName: whatsappModal.fullName, email: whatsappModal.email,
+                    password: whatsappPassword,
+                    roleLabel: ROLE_INFO[whatsappModal.role]?.label || whatsappModal.role,
+                    loginUrl: `${origin}/login`,
+                  });
+                  navigator.clipboard.writeText(text);
+                  setCopiedText(true); setTimeout(() => setCopiedText(false), 2000);
+                }} className="text-xs text-emerald-700 font-semibold flex items-center gap-1">
+                  {copiedText ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedText ? "تم النسخ ✅" : "نسخ الرسالة"}</span>
                 </button>
               </div>
-
-              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/90 rounded-xl text-xs text-slate-800 leading-relaxed font-body whitespace-pre-wrap max-h-44 overflow-y-auto selection:bg-emerald-200">
+              <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs text-slate-800 leading-relaxed whitespace-pre-wrap max-h-36 overflow-y-auto">
                 {buildWhatsAppMessageText({
-                  fullName: whatsappModal.fullName,
-                  email: whatsappModal.email,
+                  fullName: whatsappModal.fullName, email: whatsappModal.email,
                   password: whatsappPassword,
                   roleLabel: ROLE_INFO[whatsappModal.role]?.label || whatsappModal.role,
                   loginUrl: typeof window !== "undefined" ? `${window.location.origin}/login` : "https://trackcd.vercel.app/login",
@@ -1269,56 +1216,37 @@ export function AdminUsersTable({
             </div>
 
             {/* أزرار الإجراءات */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-3 border-t border-slate-200">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setWhatsappModal(null)}
-                className="w-full sm:w-auto"
-              >
-                إغلاق
-              </Button>
-
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200">
+              <Button type="button" variant="secondary" size="sm" onClick={() => setWhatsappModal(null)}>إغلاق</Button>
+              <Button type="button" variant="primary" size="sm"
                 onClick={() => {
                   const origin = typeof window !== "undefined" ? window.location.origin : "https://trackcd.vercel.app";
-                  const roleLabel = ROLE_INFO[whatsappModal.role]?.label || whatsappModal.role;
                   const messageText = buildWhatsAppMessageText({
-                    fullName: whatsappModal.fullName,
-                    email: whatsappModal.email,
+                    fullName: whatsappModal.fullName, email: whatsappModal.email,
                     password: whatsappPassword,
-                    roleLabel,
+                    roleLabel: ROLE_INFO[whatsappModal.role]?.label || whatsappModal.role,
                     loginUrl: `${origin}/login`,
                   });
-
                   let cleanPhone = whatsappPhone.replace(/\D/g, "");
-                  if (cleanPhone.startsWith("00")) {
-                    cleanPhone = cleanPhone.substring(2);
-                  }
-                  if (cleanPhone.startsWith("01") && cleanPhone.length === 11) {
-                    cleanPhone = "2" + cleanPhone; // إضافة كود مصر الدولي
-                  }
-
+                  if (cleanPhone.startsWith("00")) cleanPhone = cleanPhone.substring(2);
+                  if (cleanPhone.startsWith("01") && cleanPhone.length === 11) cleanPhone = "2" + cleanPhone;
                   const encoded = encodeURIComponent(messageText);
                   const waUrl = cleanPhone
                     ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encoded}`
                     : `https://api.whatsapp.com/send?text=${encoded}`;
-
                   window.open(waUrl, "_blank", "noopener,noreferrer");
                 }}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto font-bold flex items-center justify-center gap-1.5 shadow-sm"
-                icon={<Send className="w-4 h-4" />}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5"
+                icon={<Send className="w-3.5 h-3.5" />}
               >
-                <span>فتح وإرسال عبر WhatsApp</span>
+                فتح وإرسال عبر WhatsApp
               </Button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }
+
