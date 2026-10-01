@@ -224,6 +224,9 @@ export default async function AdminDashboardPage({
     phone: u.phone ?? null,
     nationalId: u.nationalId ?? null,
     initialPassword: u.initialPassword ?? null,
+    lastSeenAt: u.lastSeenAt instanceof Date ? u.lastSeenAt.toISOString() : (u.lastSeenAt ? String(u.lastSeenAt) : null),
+    todayActiveMinutes: Number(u.todayActiveMinutes) || 0,
+    createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : (u.createdAt ? String(u.createdAt) : null),
   }));
 
 
