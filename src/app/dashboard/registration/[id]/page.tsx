@@ -103,6 +103,10 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
   const typeInfo = typeConfig[caseRecord.registrationType] || { label: caseRecord.registrationType, variant: "slate" };
   const statusInfo = statusConfig[caseRecord.status] || { label: caseRecord.status, variant: "slate" };
 
+  const canEdit =
+    (isCreatedByMe && caseRecord.status === "REGISTERED") ||
+    currentRole === "ADMIN";
+
   return (
     <div className="space-y-6 font-body pb-12">
       {/* ─── رأس الصفحة ومسار التصفح ─── */}
@@ -119,6 +123,16 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
             <Badge variant={statusInfo.variant} size="md">
               {statusInfo.label}
             </Badge>
+
+            {canEdit && (
+              <Link
+                href={`/dashboard/registration/${caseRecord.id}/edit`}
+                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold font-heading transition-colors shadow-xs"
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>تعديل بيانات السجل</span>
+              </Link>
+            )}
 
             <Link
               href="/dashboard/registration"

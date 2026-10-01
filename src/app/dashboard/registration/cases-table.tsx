@@ -193,7 +193,8 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                 <TableHead>تاريخ الوارد</TableHead>
                 <TableHead>المرفقات</TableHead>
                 <TableHead>تاريخ القيد</TableHead>
-                <TableHead className="text-center">حالة السجل</TableHead>
+                <TableHead className="text-center">موقف التعديل</TableHead>
+                <TableHead className="text-center">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -205,9 +206,13 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                     {/* رقم السجل + النوع */}
                     <TableCell>
                       <div className="space-y-1">
-                        <span className="font-bold text-slate-900 font-mono text-sm block font-heading">
+                        <Link
+                          href={`/dashboard/registration/${c.id}`}
+                          className="font-bold text-slate-900 hover:text-teal-700 font-mono text-sm block font-heading transition-colors"
+                          title="عرض ملف السجل"
+                        >
                           {c.caseNumber} / {c.caseYear}
-                        </span>
+                        </Link>
                         <Badge variant={typeInfo.variant} size="sm">
                           {typeInfo.label}
                         </Badge>
@@ -307,6 +312,26 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                         </span>
                       )}
                     </TableCell>
+
+                    {/* الإجراءات */}
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <Link
+                          href={`/dashboard/registration/${c.id}`}
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-teal-700 hover:bg-slate-100 transition-colors inline-flex"
+                          title="عرض ملف وتفاصيل السجل"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Link>
+                        <Link
+                          href={`/dashboard/registration/${c.id}/edit`}
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-teal-700 hover:bg-teal-50 transition-colors inline-flex"
+                          title="تعديل وتصحيح بيانات السجل"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </Link>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -395,6 +420,23 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                     ) : (
                       <span className="text-[11px] text-slate-400">قيد أصلي</span>
                     )}
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                    <Link
+                      href={`/dashboard/registration/${c.id}`}
+                      className="flex-1 text-center py-2 px-3 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>عرض التفاصيل</span>
+                    </Link>
+                    <Link
+                      href={`/dashboard/registration/${c.id}/edit`}
+                      className="flex-1 text-center py-2 px-3 rounded-lg bg-teal-50 border border-teal-200 text-xs font-bold text-teal-800 hover:bg-teal-100/70 transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>تعديل السجل</span>
+                    </Link>
                   </div>
                 </div>
               </div>

@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EgyptianPhoneInput } from "@/components/ui/EgyptianPhoneInput";
 import {
-  FileText,
   Building2,
   Scale,
   ClipboardList,
@@ -19,15 +18,16 @@ import {
   ArrowRight,
   Plus,
   Trash2,
-  Phone,
   UserCheck,
   Users,
   ChevronDown,
   Check,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { EGYPT_GOVERNORATES } from "@/lib/constants/governorates";
 import { OFFICIAL_PROSECUTIONS_LIST } from "@/lib/constants/prosecutions";
-import { isValidEgyptianPhone, sanitizeEgyptianPhone } from "@/lib/formatters";
+import { isValidEgyptianPhone } from "@/lib/formatters";
 
 interface Prosecution {
   id: string;
@@ -43,7 +43,6 @@ interface PartyEntry {
   phone: string;
 }
 
-// ─── مكون القائمة المنسدلة الذكية مع حقل بحث مدمج داخل القائمة نفسها ───
 interface SearchableSelectProps {
   label: string;
   required?: boolean;
@@ -73,7 +72,6 @@ function SearchableSelect({
 
   const selectedItem = options.find((opt) => opt.id === value);
 
-  // إغلاق القائمة عند النقر خارجها
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -103,7 +101,6 @@ function SearchableSelect({
         {label}
       </label>
 
-      {/* زر القائمة الرئيسي */}
       <div className="relative">
         <button
           type="button"
@@ -140,10 +137,8 @@ function SearchableSelect({
           </div>
         </button>
 
-        {/* القائمة المنبثقة وبداخلها حقل البحث المدمج مباشرة */}
         {isOpen && !disabled && (
           <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-200 p-2 space-y-2 max-h-72 flex flex-col animate-in fade-in-50 zoom-in-95">
-            {/* حقل البحث داخل القائمة نفسها */}
             <div className="relative shrink-0">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
@@ -156,7 +151,6 @@ function SearchableSelect({
               />
             </div>
 
-            {/* العناصر المتاحة */}
             <div className="overflow-y-auto flex-1 space-y-1 divide-y divide-slate-100/60 max-h-52 pr-0.5">
               {filteredOptions.length === 0 ? (
                 <div className="p-3 text-center text-xs text-slate-400 font-body">
@@ -200,39 +194,84 @@ function SearchableSelect({
   );
 }
 
-export default function NewCasePage() {
+interface EditCaseClientProps {
+  initialCase: {
+    id: string;
+    registrationType: "COMPLAINT" | "CASE" | "REPORT";
+    caseNumber: string;
+    caseYear: number;
+    prosecutionCaseNumber?: string;
+    incomingDate?: string;
+    attachmentsCount?: number;
+    governorate?: string;
+    prosecution?: string;
+    prosecutionId?: string;
+    partialProsecution?: string;
+    partialProsecutionId?: string;
+    description?: string;
+    complainantName?: string;
+    complainantPhone?: string;
+    respondentName?: string;
+    respondentPhone?: string;
+    complainants?: Array<{ name: string; phone?: string | null }>;
+    respondents?: Array<{ name: string; phone?: string | null }>;
+    status?: string;
+  };
+}
+
+export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const [registrationType, setRegistrationType] = useState<"COMPLAINT" | "CASE" | "REPORT">("COMPLAINT");
-  const [caseNumber, setCaseNumber] = useState("");
-  const [prosecutionCaseNumber, setProsecutionCaseNumber] = useState("");
-  const [caseYear, setCaseYear] = useState<number>(new Date().getFullYear());
-  const [incomingDate, setIncomingDate] = useState<string>(new Date().toISOString().split("T")[0]);
-  const [governorate, setGovernorate] = useState("");
-  const [description, setDescription] = useState("");
-  const [attachmentsCount, setAttachmentsCount] = useState<number>(0);
+  const [registrationType, setRegistrationType] = useState<"COMPLAINT" | "CASE" | "REPORT">(
+    initialCase.registrationType || "COMPLAINT"
+  );
+  const [caseNumber, setCaseNumber] = useState(initialCase.caseNumber || "");
+  const [prosecutionCaseNumber, setProsecutionCaseNumber] = useState(
+    initialCase.prosecutionCaseNumber || ""
+  );
+  const [caseYear, setCaseYear] = useState<number>(initialCase.caseYear || new Date().getFullYear());
+  const [incomingDate, setIncomingDate] = useState<string>(initialCase.incomingDate || "");
+  const [governorate, setGovernorate] = useState(initialCase.governorate || "");
+  const [description, setDescription] = useState(initialCase.description || "");
+  const [attachmentsCount, setAttachmentsCount] = useState<number>(
+    initialCase.attachmentsCount ?? 0
+  );
 
-  // قائمة الشاكين (متعدد ومتجاور)
-  const [complainants, setComplainants] = useState<PartyEntry[]>([{ name: "", phone: "" }]);
-  // قائمة المشكو في حقهم (متعدد ومتجاور)
-  const [respondents, setRespondents] = useState<PartyEntry[]>([{ name: "", phone: "" }]);
-
-  // خريطة أسماء النيابات الكلية لربط التبعية
-  const plenaryMapByName: Record<string, string> = {};
-  OFFICIAL_PROSECUTIONS_LIST.forEach((item, idx) => {
-    if (item.type === "PLENARY") {
-      plenaryMapByName[item.name] = `official_${idx + 1}`;
+  // تهيئة قائمة الشاكين
+  const initialComplainants: PartyEntry[] = useMemo(() => {
+    if (initialCase.complainants && initialCase.complainants.length > 0) {
+      return initialCase.complainants.map((c) => ({
+        name: c.name || "",
+        phone: c.phone || "",
+      }));
     }
-  });
+    return [{ name: initialCase.complainantName || "", phone: initialCase.complainantPhone || "" }];
+  }, [initialCase]);
+
+  const [complainants, setComplainants] = useState<PartyEntry[]>(initialComplainants);
+
+  // تهيئة قائمة المشكو في حقهم
+  const initialRespondents: PartyEntry[] = useMemo(() => {
+    if (initialCase.respondents && initialCase.respondents.length > 0) {
+      return initialCase.respondents.map((r) => ({
+        name: r.name || "",
+        phone: r.phone || "",
+      }));
+    }
+    return [{ name: initialCase.respondentName || "", phone: initialCase.respondentPhone || "" }];
+  }, [initialCase]);
+
+  const [respondents, setRespondents] = useState<PartyEntry[]>(initialRespondents);
 
   const [prosecutions, setProsecutions] = useState<Prosecution[]>([]);
   const [selectedPlenaryId, setSelectedPlenaryId] = useState("");
   const [selectedDistrictId, setSelectedDistrictId] = useState("");
 
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  // تحميل النيابات وتحديثها من السيرفر
+  // تحميل النيابات وتحديثها
   useEffect(() => {
     async function loadData() {
       try {
@@ -250,7 +289,6 @@ export default function NewCasePage() {
     loadData();
   }, []);
 
-  // دمج القائمة المعتمدة مع قائمة السيرفر لضمان الربط التام حتى لو كانت قاعدة البيانات قاصرة
   const mergedProsecutions: Prosecution[] = useMemo(() => {
     const serverMap = new Map<string, Prosecution>();
     prosecutions.forEach((p) => serverMap.set(p.name, p));
@@ -277,7 +315,6 @@ export default function NewCasePage() {
       };
     });
 
-    // إضافة أي نيابات إضافية مخصصة من السيرفر
     prosecutions.forEach((serverItem) => {
       if (!OFFICIAL_PROSECUTIONS_LIST.some((o) => o.name === serverItem.name)) {
         result.push(serverItem);
@@ -287,19 +324,39 @@ export default function NewCasePage() {
     return result;
   }, [prosecutions]);
 
-  // فصل النيابات الكلية
+  // مزامنة واختيار النيابة الحالية للسجل عند تحميل النيابات
+  useEffect(() => {
+    if (mergedProsecutions.length > 0) {
+      if (!selectedPlenaryId && (initialCase.prosecution || initialCase.prosecutionId)) {
+        const match = mergedProsecutions.find(
+          (p) =>
+            (initialCase.prosecutionId && p.id === initialCase.prosecutionId) ||
+            p.name === initialCase.prosecution
+        );
+        if (match) setSelectedPlenaryId(match.id);
+      }
+
+      if (!selectedDistrictId && (initialCase.partialProsecution || initialCase.partialProsecutionId)) {
+        const match = mergedProsecutions.find(
+          (p) =>
+            (initialCase.partialProsecutionId && p.id === initialCase.partialProsecutionId) ||
+            p.name === initialCase.partialProsecution
+        );
+        if (match) setSelectedDistrictId(match.id);
+      }
+    }
+  }, [mergedProsecutions, initialCase, selectedPlenaryId, selectedDistrictId]);
+
   const plenaryProsecutions = useMemo(() => {
     return mergedProsecutions.filter((p) => p.type === "PLENARY" || !p.parentId);
   }, [mergedProsecutions]);
 
-  // فصل النيابات الجزئية
   const districtProsecutions = useMemo(() => {
     return mergedProsecutions.filter(
       (p) => p.type === "DISTRICT" || !!p.parentId || p.name.includes("جزئية")
     );
   }, [mergedProsecutions]);
 
-  // تصفية النيابات الكلية بالمحافظة إن تم تحديدها
   const filteredPlenaryOptions = useMemo(() => {
     return plenaryProsecutions
       .filter((p) => !governorate || p.governorate === governorate)
@@ -310,15 +367,12 @@ export default function NewCasePage() {
       }));
   }, [plenaryProsecutions, governorate]);
 
-  // النيابة الكلية المحددة حالياً
   const selectedPlenaryObj = useMemo(() => {
     return mergedProsecutions.find((p) => p.id === selectedPlenaryId);
   }, [mergedProsecutions, selectedPlenaryId]);
 
-  // تصفية النيابات الجزئية: تتبع بدقة متناهية النيابة الكلية المختارة
   const filteredDistrictOptions = useMemo(() => {
     if (selectedPlenaryId && selectedPlenaryObj) {
-      // إذا تم اختيار نيابة كلية: تظهر حصرياً النيابات الجزئية التابعة لها
       const linked = districtProsecutions.filter((d) => {
         if (d.parentId === selectedPlenaryId || d.parent?.id === selectedPlenaryId) return true;
         if (d.parent?.name === selectedPlenaryObj.name) return true;
@@ -335,7 +389,6 @@ export default function NewCasePage() {
     }
 
     if (governorate) {
-      // إذا لم يحدد نيابة كلية ولكن حدد محافظة: تظهر فقط نيابات تلك المحافظة
       const byGov = districtProsecutions.filter((d) => {
         const dGov = d.governorate || OFFICIAL_PROSECUTIONS_LIST.find((o) => o.name === d.name)?.governorate;
         return dGov === governorate;
@@ -347,7 +400,6 @@ export default function NewCasePage() {
       }));
     }
 
-    // إذا لم يحدد محافظة أو نيابة كلية
     return districtProsecutions.map((p) => ({
       id: p.id,
       name: p.name,
@@ -365,7 +417,6 @@ export default function NewCasePage() {
 
   function handlePlenarySelect(procId: string) {
     setSelectedPlenaryId(procId);
-    // تصفير النيابة الجزئية فوراً لأنها مرتبطة بالنيابة الكلية السابقة
     setSelectedDistrictId("");
     if (!procId) return;
     const p = mergedProsecutions.find((item) => item.id === procId);
@@ -425,6 +476,7 @@ export default function NewCasePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
 
     if (!caseNumber.trim()) {
       setError("يرجى إدخال رقم السجل بشكل صحيح");
@@ -434,6 +486,15 @@ export default function NewCasePage() {
     const firstComplainant = complainants[0]?.name.trim();
     if (!firstComplainant) {
       setError("اسم الشاكي الأول حقل إلزامي (شاكي واحد على الأقل)");
+      return;
+    }
+
+    // التحقق الصارم من النيابة الكلية
+    const selectedPlenary = mergedProsecutions.find((p) => p.id === selectedPlenaryId);
+    const selectedDistrict = mergedProsecutions.find((p) => p.id === selectedDistrictId);
+
+    if (!selectedPlenaryId || !selectedPlenary) {
+      setError("يرجى اختيار النيابة العامة الكلية المختصة (حقل إلزامي)");
       return;
     }
 
@@ -471,39 +532,27 @@ export default function NewCasePage() {
       }
     }
 
-    const selectedPlenary = mergedProsecutions.find((p) => p.id === selectedPlenaryId);
-    const selectedDistrict = mergedProsecutions.find((p) => p.id === selectedDistrictId);
-
-    if (!selectedPlenaryId || !selectedPlenary) {
-      setError("يرجى اختيار النيابة العامة الكلية المختصة (حقل إلزامي)");
-      return;
-    }
-
     startTransition(async () => {
       try {
         const payload = {
           registrationType,
           caseNumber: caseNumber.trim(),
-          prosecutionCaseNumber: prosecutionCaseNumber.trim() || undefined,
+          prosecutionCaseNumber: prosecutionCaseNumber.trim() || null,
           caseYear: Number(caseYear),
-          incomingDate: incomingDate || undefined,
-          complainantName: cleanComplainants[0]?.name,
-          complainantPhone: cleanComplainants[0]?.phone || undefined,
-          respondentName: cleanRespondents[0]?.name || undefined,
-          respondentPhone: cleanRespondents[0]?.phone || undefined,
+          incomingDate: incomingDate || null,
           complainants: cleanComplainants,
           respondents: cleanRespondents,
-          prosecutionId: selectedPlenaryId.startsWith("official_") ? undefined : selectedPlenaryId || undefined,
-          prosecution: selectedPlenary?.name || undefined,
-          partialProsecutionId: selectedDistrictId.startsWith("official_") ? undefined : selectedDistrictId || undefined,
-          partialProsecution: selectedDistrict?.name || undefined,
-          governorate: governorate.trim() || undefined,
+          prosecutionId: selectedPlenaryId.startsWith("official_") ? null : selectedPlenaryId || null,
+          prosecution: selectedPlenary?.name || null,
+          partialProsecutionId: selectedDistrictId.startsWith("official_") ? null : selectedDistrictId || null,
+          partialProsecution: selectedDistrict?.name || null,
+          governorate: governorate.trim() || null,
           description: description.trim(),
           attachmentsCount: Number(attachmentsCount) || 0,
         };
 
-        const res = await fetch("/api/cases", {
-          method: "POST",
+        const res = await fetch(`/api/cases/${initialCase.id}`, {
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
@@ -514,11 +563,14 @@ export default function NewCasePage() {
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || "تعذر قيد السجل، يرجى مراجعة البيانات");
+          throw new Error(data.error || "تعذر تحديث بيانات السجل، يرجى مراجعة البيانات");
         }
 
-        router.push("/dashboard/registration");
-        router.refresh();
+        setSuccess("تم تحديث وتصحيح بيانات السجل بنجاح! جاري تحويلك لملف السجل...");
+        setTimeout(() => {
+          router.push(`/dashboard/registration/${initialCase.id}`);
+          router.refresh();
+        }, 1200);
       } catch (err: any) {
         setError(err.message);
       }
@@ -527,31 +579,39 @@ export default function NewCasePage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* ─── رأس الصفحة الموحد ─── */}
       <PageHeader
         breadcrumbs={[
           { label: "الرئيسية", href: "/dashboard" },
           { label: "قيد السجلات", href: "/dashboard/registration" },
-          { label: "قيد سجل جديد" },
+          { label: `ملف السجل #${initialCase.caseNumber}`, href: `/dashboard/registration/${initialCase.id}` },
+          { label: "تعديل وتصحيح بيانات السجل" },
         ]}
-        title="قيد شكوى / قضية / محضر نيابة جديد"
-        description="تسجيل وحفظ بيانات السجل والمرفقات والأطراف تمهيداً للإحالة للجان الفحص الفرعية."
+        title={`تعديل السجل: ${initialCase.caseNumber} / ${initialCase.caseYear}`}
+        description="تعديل وتصحيح بيانات السجل والنيابة المختصة والأطراف المسجلين بدقة وتوثيق ذلك في سجل التدقيق الرقابي."
         actions={
           <Link
-            href="/dashboard/registration"
+            href={`/dashboard/registration/${initialCase.id}`}
             prefetch={false}
             className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs sm:text-sm font-medium hover:bg-slate-50 shadow-xs font-body"
           >
             <ArrowRight className="w-4 h-4" />
-            <span>عودة للسجلات</span>
+            <span>إلغاء والعودة للملف</span>
           </Link>
         }
       />
 
       <Card className="space-y-6 p-6 sm:p-8">
         {error && (
-          <div className="alert-error text-xs">
+          <div className="alert-error text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {success && (
+          <div className="alert-success text-xs flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200 p-3 rounded-xl font-bold">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+            <span>{success}</span>
           </div>
         )}
 
@@ -589,7 +649,7 @@ export default function NewCasePage() {
             </div>
           </div>
 
-          {/* 2. بيانات السجل الأساسية (حقول متجاورة في صف واحد متناسق) */}
+          {/* 2. بيانات السجل الأساسية */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
             <div className="form-group">
               <label className="form-label form-label-required">تاريخ الوارد</label>
@@ -641,11 +701,7 @@ export default function NewCasePage() {
                     ? "مثال: 1082 مدني"
                     : "مثال: 582 لسنة 2026"
                 }
-                className={`form-input text-xs font-mono font-medium h-10 ${
-                  (registrationType === "CASE" || registrationType === "REPORT") && !prosecutionCaseNumber.trim()
-                    ? "border-amber-300 focus:border-teal-600"
-                    : ""
-                }`}
+                className="form-input text-xs font-mono font-medium h-10"
                 dir="auto"
               />
             </div>
@@ -675,7 +731,7 @@ export default function NewCasePage() {
             </div>
           </div>
 
-          {/* 3. الشاكون وأصحاب الشكوى (صفوف أفقية متجاورة ونظيفة) */}
+          {/* 3. الشاكون وأصحاب الشكوى */}
           <div className="p-4 bg-slate-50/60 border border-slate-200 rounded-xl space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -748,7 +804,7 @@ export default function NewCasePage() {
             </div>
           </div>
 
-          {/* 4. المشكو في حقهم (صفوف أفقية متجاورة ونظيفة) */}
+          {/* 4. المشكو في حقهم */}
           <div className="p-4 bg-slate-50/60 border border-slate-200 rounded-xl space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -816,7 +872,7 @@ export default function NewCasePage() {
             </div>
           </div>
 
-          {/* 5. النيابات المختصة (المحافظة + النيابة الكلية + النيابة الجزئية متجاورة في صف واحد مع بحث مدمج) */}
+          {/* 5. النيابات المختصة */}
           <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-xl space-y-3">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
               <div className="flex items-center gap-2">
@@ -826,11 +882,10 @@ export default function NewCasePage() {
                 </span>
               </div>
               <span className="text-[11px] text-slate-500 font-body">
-                ابحث مباشرة داخل القائمة عند فتحها
+                تحديد النيابة الكلية إلزامي لحفظ السجل
               </span>
             </div>
 
-            {/* الحقول الثلاثة متجاورة تماماً */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* 1. المحافظة */}
               <div className="form-group">
@@ -849,7 +904,7 @@ export default function NewCasePage() {
                 </select>
               </div>
 
-              {/* 2. النيابة الكلية (قائمة منسدلة ذكية ببحث مدمج بداخلها) */}
+              {/* 2. النيابة الكلية */}
               <SearchableSelect
                 label="النيابة الكلية"
                 required
@@ -861,7 +916,7 @@ export default function NewCasePage() {
                 onChange={(id) => handlePlenarySelect(id)}
               />
 
-              {/* 3. النيابة الجزئية (مفتوحة دائماً وغير مقفلة) */}
+              {/* 3. النيابة الجزئية */}
               <SearchableSelect
                 label="النيابة الجزئية (اختياري)"
                 value={selectedDistrictId}
@@ -874,39 +929,42 @@ export default function NewCasePage() {
                     : `-- حدد النيابة الجزئية (${filteredDistrictOptions.length}) --`
                 }
                 emptyMessage="لا توجد نيابة جزئية مطابقة للبحث"
-                disabled={false}
                 onChange={(id) => handleDistrictSelect(id)}
               />
             </div>
           </div>
 
-          {/* 6. ملخص الواقعة / موضوع الشكوى */}
+          {/* 6. ملخص الواقعة */}
           <div className="form-group">
-            <label className="form-label form-label-required">ملخص الواقعة / موضوع الشكوى</label>
+            <label className="form-label form-label-required">ملخص الواقعة / تفاصيل الشكوى</label>
             <textarea
               required
               rows={4}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="اكتب ملخص الإجراء الطبي المتنازع بشأنه وما ورد بتقرير النيابة أو عريضة الشكوى..."
-              className="form-input form-textarea text-xs"
+              placeholder="اكتب ملخصاً وافياً عن الواقعة وتفاصيل الشكوى المقدمة والإجراءات المتخذة..."
+              className="form-textarea text-xs leading-relaxed"
             />
           </div>
 
-          {/* أزرار الحفظ والإلغاء */}
+          {/* زر الحفظ */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-            <Link href="/dashboard/registration" prefetch={false}>
-              <Button type="button" variant="secondary">
-                إلغاء
-              </Button>
+            <Link
+              href={`/dashboard/registration/${initialCase.id}`}
+              className="h-10 px-5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold font-heading inline-flex items-center transition-colors"
+            >
+              إلغاء
             </Link>
             <Button
               type="submit"
               variant="primary"
+              size="lg"
               loading={isPending}
-              icon={<Save className="w-4 h-4" />}
+              disabled={isPending}
+              className="font-heading font-bold"
             >
-              قيد وحفظ السجل رسمياً
+              <Save className="w-4 h-4 ml-2" />
+              <span>حفظ وتحديث بيانات السجل</span>
             </Button>
           </div>
         </form>

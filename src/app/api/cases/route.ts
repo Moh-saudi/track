@@ -116,6 +116,13 @@ export async function POST(req: NextRequest) {
     prosecutionName = p.name;
   }
 
+  if (!prosecutionName && !data.prosecutionId) {
+    return NextResponse.json(
+      { error: "النيابة العامة المختصة حقل إلزامي، يرجى اختيار النيابة الكلية" },
+      { status: 400 }
+    );
+  }
+
   let partialProsecutionName = data.partialProsecution?.trim() || null;
   if (data.partialProsecutionId && !partialProsecutionName) {
     const pp = await prisma.prosecution.findUnique({ where: { id: data.partialProsecutionId } });
