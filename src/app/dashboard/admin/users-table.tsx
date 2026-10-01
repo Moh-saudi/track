@@ -247,6 +247,33 @@ export function AdminUsersTable({
     return pwd.split("").sort(() => 0.5 - Math.random()).join("");
   }
 
+  const [isSyncingPassword, setIsSyncingPassword] = useState(false);
+
+  // مزامنة فورية لكلمة المرور في قاعدة البيانات لمنع أي تفاوت عند التوليد أو التعديل
+  async function syncWhatsappPassword(userId?: string, newPwd?: string, phoneVal?: string) {
+    if (!userId || !newPwd) return;
+    setIsSyncingPassword(true);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          newPassword: newPwd.trim(),
+          initialPassword: newPwd.trim(),
+          phone: phoneVal?.trim() || undefined,
+        }),
+      });
+      if (res.ok) {
+        setWhatsappModal((prev) => (prev ? { ...prev, password: newPwd.trim(), needsPasswordSync: false } : null));
+        router.refresh();
+      }
+    } catch (e) {
+      console.error("Failed to sync password to user", e);
+    } finally {
+      setIsSyncingPassword(false);
+    }
+  }
+
   // توليد كلمة مرور قوية عشوائية
   function generateRandomPassword(target: "create" | "reset" | "whatsapp") {
     const pwd = generatePasswordString();
@@ -257,6 +284,9 @@ export function AdminUsersTable({
     } else {
       setWhatsappPassword(pwd);
       setWhatsappModal((prev) => (prev ? { ...prev, needsPasswordSync: true } : null));
+      if (whatsappModal?.id) {
+        syncWhatsappPassword(whatsappModal.id, pwd, whatsappPhone);
+      }
     }
   }
 
@@ -1160,7 +1190,12 @@ export function AdminUsersTable({
                   <p className="text-[11px] text-slate-500">{whatsappModal.fullName} — <Badge variant={ROLE_INFO[whatsappModal.role]?.badgeVariant ?? "slate"} className="text-[10px] py-0">{ROLE_INFO[whatsappModal.role]?.label ?? whatsappModal.role}</Badge></p>
                 </div>
               </div>
-              <button type="button" onClick={() => setWhatsappModal(null)}
+              <button type="button" onClick={async () => {
+                if (whatsappModal?.id && whatsappModal.needsPasswordSync) {
+                  await syncWhatsappPassword(whatsappModal.id, whatsappPassword, whatsappPhone);
+                }
+                setWhatsappModal(null);
+              }}
                 className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
                 <X className="w-4 h-4" />
               </button>
@@ -1221,12 +1256,19 @@ export function AdminUsersTable({
                   setWhatsappPassword(e.target.value);
                   setWhatsappModal((prev) => (prev ? { ...prev, needsPasswordSync: true } : null));
                 }}
+                onBlur={() => {
+                  if (whatsappModal?.id && whatsappModal.needsPasswordSync) {
+                    syncWhatsappPassword(whatsappModal.id, whatsappPassword, whatsappPhone);
+                  }
+                }}
                 placeholder="كلمة المرور..."
                 className="form-input text-xs font-mono border-emerald-300 bg-emerald-50"
               />
               <span className="text-[11px] text-emerald-700 mt-1 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3 shrink-0" />
-                كلمة المرور ظاهرة ومُضمَّنة تلقائياً في نص الرسالة أدناه (تُعتمد تلقائياً للحساب)
+                {isSyncingPassword
+                  ? "جارٍ حفظ وتحديث كلمة المرور في قاعدة البيانات..."
+                  : "كلمة المرور ظاهرة ومحفوظة تلقائياً في قاعدة البيانات ومضمنة في الرسالة"}
               </span>
             </div>
 
@@ -1261,7 +1303,12 @@ export function AdminUsersTable({
 
             {/* أزرار الإجراءات */}
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200">
-              <Button type="button" variant="secondary" size="sm" onClick={() => setWhatsappModal(null)}>إغلاق</Button>
+              <Button type="button" variant="secondary" size="sm" onClick={async () => {
+                if (whatsappModal?.id && whatsappModal.needsPasswordSync) {
+                  await syncWhatsappPassword(whatsappModal.id, whatsappPassword, whatsappPhone);
+                }
+                setWhatsappModal(null);
+              }}>إغلاق</Button>
               <Button type="button" variant="primary" size="sm"
                 onClick={async () => {
                   if (whatsappPhone && !isValidEgyptianPhone(whatsappPhone)) {
