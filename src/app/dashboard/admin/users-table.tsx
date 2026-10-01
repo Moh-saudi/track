@@ -921,82 +921,48 @@ export function AdminUsersTable({
       {/* ─── مودال تعديل بيانات وصلاحيات المستخدم ─── */}
       {editUser && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full p-6 space-y-4 my-8 animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-5 space-y-3 my-6 animate-in fade-in zoom-in-95">
+
+            {/* رأس المودال */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 font-heading">
-                  <Edit className="w-4 h-4 text-teal-600" />
-                  <span>تعديل بيانات وصلاحيات المستخدم: {editUser.fullName}</span>
-                </h3>
-                <p className="text-xs text-slate-500 font-body">
-                  تحديث المستوى الوظيفي، جهة العمل، واللجنة الفرعية
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditUser(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
-              >
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 font-heading">
+                <Edit className="w-4 h-4 text-teal-600" />
+                <span>تعديل: {editUser.fullName}</span>
+              </h3>
+              <button type="button" onClick={() => setEditUser(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleUpdateUser} className="space-y-4">
-              <div className="form-group">
-                <label className="form-label form-label-required text-xs">الاسم الكامل</label>
-                <input
-                  type="text"
-                  required
-                  value={formFullName}
-                  onChange={(e) => setFormFullName(e.target.value)}
-                  className="form-input text-xs"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label text-xs">البريد الإلكتروني (غير قابل للتعديل)</label>
-                <input
-                  type="email"
-                  disabled
-                  value={formEmail}
-                  dir="ltr"
-                  className="form-input text-xs font-mono bg-slate-100 text-slate-500 cursor-not-allowed"
-                />
-              </div>
-
-              {/* تعديل الدور */}
-              <div className="form-group">
-                <label className="form-label form-label-required text-xs">الدور والصلاحيات</label>
-                <select
-                  required
-                  value={formRole}
-                  onChange={(e) => setFormRole(e.target.value)}
-                  className="form-input text-xs font-medium"
-                >
-                  {Object.entries(ROLE_INFO).map(([key, info]) => (
-                    <option key={key} value={key}>
-                      {info.label} — ({info.description})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* بطاقة توضيحية للصلاحيات */}
-              {ROLE_INFO[formRole] && (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-xs">
-                  <p className="font-bold text-slate-800">حدود الرؤية: {ROLE_INFO[formRole].visibility}</p>
-                  <ul className="list-disc list-inside text-[11px] text-slate-600">
-                    {ROLE_INFO[formRole].permissions.map((p, idx) => (
-                      <li key={idx}>{p}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* الدور + جهة العمل */}
+            <form onSubmit={handleUpdateUser} className="space-y-3">
+              {/* الصف 1: الاسم + البريد (قراءة فقط) */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="form-group">
-                  <label className="form-label text-xs">جهة العمل الإدارية</label>
+                  <label className="form-label form-label-required text-xs">الاسم الكامل</label>
+                  <input type="text" required value={formFullName}
+                    onChange={(e) => setFormFullName(e.target.value)}
+                    className="form-input text-xs" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label text-xs">البريد الإلكتروني</label>
+                  <input type="email" disabled value={formEmail} dir="ltr"
+                    className="form-input text-xs font-mono bg-slate-100 text-slate-400 cursor-not-allowed" />
+                </div>
+              </div>
+
+              {/* الصف 2: الدور + جهة العمل */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="form-group">
+                  <label className="form-label form-label-required text-xs">الدور والصلاحية</label>
+                  <select required value={formRole} onChange={(e) => setFormRole(e.target.value)}
+                    className="form-input text-xs font-medium">
+                    {Object.entries(ROLE_INFO).map(([key, info]) => (
+                      <option key={key} value={key}>{info.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label text-xs">الجهة الإدارية</label>
                   <select value={formEmployer} onChange={(e) => setFormEmployer(e.target.value)} className="form-input text-xs">
                     <option value="">— اختر الجهة —</option>
                     {ADMIN_DEPARTMENTS.map((dept) => (
@@ -1004,78 +970,50 @@ export function AdminUsersTable({
                     ))}
                   </select>
                 </div>
-                {/* التخصص */}
-                <div className="form-group">
-                  <label className="form-label text-xs">التخصص الطبي</label>
-                  <select value={formSpecialtyId} onChange={(e) => setFormSpecialtyId(e.target.value)} className="form-input text-xs">
-                    <option value="">— بدون تخصص —</option>
-                    {specialties.map((sp) => (
-                      <option key={sp.id} value={sp.id}>{sp.name}</option>
-                    ))}
-                  </select>
-                </div>
               </div>
 
-              {/* اللجنة الفرعية */}
+              {/* اللجنة الفرعية (فقط لعضو اللجنة) */}
               {formRole === "SUBCOMMITTEE_MEMBER" && (
                 <div className="form-group">
-                  <label className="form-label form-label-required text-xs">اللجنة الفرعية التابع لها</label>
-                  <select
-                    required
-                    value={formSubCommitteeId}
-                    onChange={(e) => setFormSubCommitteeId(e.target.value)}
-                    className="form-input text-xs"
-                  >
+                  <label className="form-label form-label-required text-xs text-amber-900">اللجنة الفرعية</label>
+                  <select required value={formSubCommitteeId} onChange={(e) => setFormSubCommitteeId(e.target.value)} className="form-input text-xs bg-amber-50">
                     <option value="">— اختر اللجنة الفرعية —</option>
-                    {subCommittees.map((sc) => (
-                      <option key={sc.id} value={sc.id}>
-                        {sc.name} ({sc.code})
-                      </option>
-                    ))}
+                    {subCommittees.map((sc) => <option key={sc.id} value={sc.id}>{sc.name} ({sc.code})</option>)}
                   </select>
                 </div>
               )}
 
-              {/* بيانات التواصل: الرقم القومي + الهاتف */}
+              {/* الصف 3: التخصص + الرقم القومي */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="form-group">
-                  <label className="form-label text-xs">الرقم القومي (14 رقماً)</label>
-                  <input
-                    type="text" inputMode="numeric" maxLength={14}
-                    value={formNationalId}
-                    onChange={(e) => setFormNationalId(e.target.value.replace(/\D/g, ""))}
-                    placeholder="2XXXXXXXXXXXXX" dir="ltr" className="form-input text-xs font-mono"
-                  />
+                  <label className="form-label text-xs">التخصص الطبي</label>
+                  <select value={formSpecialtyId} onChange={(e) => setFormSpecialtyId(e.target.value)} className="form-input text-xs">
+                    <option value="">— بدون تخصص —</option>
+                    {specialties.map((sp) => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
+                  </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label text-xs flex items-center gap-1">
-                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    رقم الواتساب
-                  </label>
-                  <input
-                    type="tel" value={formPhone}
-                    onChange={(e) => setFormPhone(e.target.value)}
-                    placeholder="01012345678" dir="ltr" className="form-input text-xs font-mono"
-                  />
+                  <label className="form-label text-xs">الرقم القومي (14 رقماً)</label>
+                  <input type="text" inputMode="numeric" maxLength={14} value={formNationalId}
+                    onChange={(e) => setFormNationalId(e.target.value.replace(/\D/g, ""))}
+                    placeholder="2XXXXXXXXXXXXX" dir="ltr" className="form-input text-xs font-mono" />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setEditUser(null)}
-                >
-                  إلغاء
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  loading={isPending}
-                  disabled={isPending}
-                >
+              {/* الصف 4: رقم الواتساب */}
+              <div className="form-group">
+                <label className="form-label text-xs flex items-center gap-1">
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  رقم الواتساب (يُحفظ في البروفايل)
+                </label>
+                <input type="tel" value={formPhone} onChange={(e) => setFormPhone(e.target.value)}
+                  placeholder="01012345678" dir="ltr" className="form-input text-xs font-mono" />
+              </div>
+
+              {/* الأزرار */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                <Button type="button" variant="secondary" size="sm" onClick={() => setEditUser(null)}>إلغاء</Button>
+                <Button type="submit" variant="primary" size="sm" loading={isPending} disabled={isPending}>
                   حفظ التعديلات
                 </Button>
               </div>
@@ -1083,6 +1021,7 @@ export function AdminUsersTable({
           </div>
         </div>
       )}
+
 
       {/* ─── مودال تعيين كلمة المرور بواسطة الإدارة ─── */}
       {passwordUser && (
