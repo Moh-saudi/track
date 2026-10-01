@@ -762,20 +762,15 @@ export function AdminUsersTable({
                       <button
                         type="button"
                         onClick={() => handleOpenUserDetails(u)}
-                        className="flex items-center gap-2 text-right group hover:text-teal-700 transition-colors focus:outline-hidden"
-                        title="انقر لعرض بطاقة المستخدم وتفاصيل النشاط وساعات العمل وكلمة المرور"
+                        className="flex items-center gap-2 text-right hover:text-teal-700 transition-colors focus:outline-hidden cursor-pointer"
+                        title="عرض تفاصيل المستخدم"
                       >
                         <span
-                          className={`w-2.5 h-2.5 rounded-full shrink-0 transition-transform group-hover:scale-125 ${
+                          className={`w-2 h-2 rounded-full shrink-0 ${
                             u.active ? "bg-emerald-500" : "bg-rose-400"
                           }`}
                         />
-                        <span className="leading-relaxed underline decoration-dotted decoration-slate-300 group-hover:decoration-teal-600">
-                          {u.fullName}
-                        </span>
-                        <span className="text-[10px] font-normal text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded-md opacity-75 group-hover:opacity-100 transition-opacity font-body">
-                          الملف الشامل 👁️
-                        </span>
+                        <span className="leading-relaxed hover:underline">{u.fullName}</span>
                       </button>
                     </TableCell>
 
