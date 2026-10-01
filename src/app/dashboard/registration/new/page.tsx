@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { EgyptianPhoneInput } from "@/components/ui/EgyptianPhoneInput";
 import {
   FileText,
   Building2,
@@ -713,17 +714,12 @@ export default function NewCasePage() {
                       className="form-input text-xs h-9"
                     />
                   </div>
-                  <div className="w-full sm:w-60 flex items-center gap-1.5 shrink-0">
-                    <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <input
-                      type="tel"
-                      inputMode="numeric"
-                      maxLength={11}
+                  <div className="w-full sm:w-64 shrink-0">
+                    <EgyptianPhoneInput
                       value={item.phone}
-                      onChange={(e) => updateComplainant(idx, "phone", sanitizeEgyptianPhone(e.target.value))}
-                      placeholder="01XXXXXXXXX"
-                      className="form-input text-xs font-mono h-9"
-                      dir="ltr"
+                      onChange={(val) => updateComplainant(idx, "phone", val)}
+                      placeholder="رقم الهاتف (اختياري)..."
+                      size="sm"
                     />
                   </div>
                   {complainants.length > 1 && (
@@ -786,17 +782,12 @@ export default function NewCasePage() {
                       className="form-input text-xs h-9"
                     />
                   </div>
-                  <div className="w-full sm:w-60 flex items-center gap-1.5 shrink-0">
-                    <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <input
-                      type="tel"
-                      inputMode="numeric"
-                      maxLength={11}
+                  <div className="w-full sm:w-64 shrink-0">
+                    <EgyptianPhoneInput
                       value={item.phone}
-                      onChange={(e) => updateRespondent(idx, "phone", sanitizeEgyptianPhone(e.target.value))}
-                      placeholder="01XXXXXXXXX"
-                      className="form-input text-xs font-mono h-9"
-                      dir="ltr"
+                      onChange={(val) => updateRespondent(idx, "phone", val)}
+                      placeholder="رقم الهاتف (اختياري)..."
+                      size="sm"
                     />
                   </div>
                   {respondents.length > 1 && (

@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, CreditCard, FileText, Save, User } from "lucide-react";
-import { PageHeader, Card, Button } from "@/components/ui";
+import { PageHeader, Card, Button, EgyptianPhoneInput } from "@/components/ui";
 import { isValidEgyptianPhone, sanitizeEgyptianPhone } from "@/lib/formatters";
 
 interface Specialty {
@@ -218,16 +218,11 @@ export default function NewDoctorPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">رقم الهاتف (11 رقماً مصرياً)</label>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={11}
-                  className="form-input text-xs font-mono"
-                  dir="ltr"
+                <label className="form-label mb-1">رقم الهاتف (11 رقماً مصرياً)</label>
+                <EgyptianPhoneInput
                   value={phone}
-                  onChange={(e) => setPhone(sanitizeEgyptianPhone(e.target.value))}
-                  placeholder="01XXXXXXXXX"
+                  onChange={setPhone}
+                  size="md"
                 />
               </div>
             </div>

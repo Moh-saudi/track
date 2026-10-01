@@ -114,3 +114,71 @@ export function sanitizeEgyptianPhone(phone: string | null | undefined): string 
   if (!phone) return "";
   return toEnglishDigits(phone).replace(/\D/g, "").slice(0, 11);
 }
+
+export interface EgyptianPhoneStatus {
+  isValid: boolean;
+  cleanPhone: string;
+  network?: string;
+  message?: string;
+  isPartial?: boolean;
+  isError?: boolean;
+}
+
+/**
+ * فحص حالة رقم الهاتف المصري لحظياً وإرجاع اسم الشبكة وعدد الأرقام المتبقية وحالة الصحة
+ */
+export function getEgyptianPhoneStatus(phone: string | null | undefined): EgyptianPhoneStatus {
+  if (!phone) {
+    return { isValid: false, cleanPhone: "", message: "" };
+  }
+  const clean = sanitizeEgyptianPhone(phone);
+  if (!clean) {
+    return { isValid: false, cleanPhone: "", message: "" };
+  }
+
+  // تحديد الشبكة المصرية
+  let network = "";
+  if (clean.startsWith("010")) network = "فودافون (010)";
+  else if (clean.startsWith("011")) network = "اتصالات (011)";
+  else if (clean.startsWith("012")) network = "أورنج (012)";
+  else if (clean.startsWith("015")) network = "وي (015)";
+
+  if (clean.length === 11) {
+    if (network) {
+      return {
+        isValid: true,
+        cleanPhone: clean,
+        network,
+        message: `✓ رقم صحيح — ${network}`,
+      };
+    }
+    return {
+      isValid: false,
+      isError: true,
+      cleanPhone: clean,
+      message: "⚠️ يجب أن يبدأ الرقم بـ 010 أو 011 أو 012 أو 015",
+    };
+  }
+
+  // أقل من 11 رقماً
+  if (clean.length >= 3 && !network) {
+    return {
+      isValid: false,
+      isError: true,
+      cleanPhone: clean,
+      isPartial: true,
+      message: "⚠️ بادئة غير صحيحة (يجب أن يبدأ بـ 010 أو 011 أو 012 أو 015)",
+    };
+  }
+
+  const remaining = 11 - clean.length;
+  return {
+    isValid: false,
+    cleanPhone: clean,
+    isPartial: true,
+    network,
+    message: network
+      ? `${network} — متبقي ${remaining} ${remaining === 1 ? "رقم" : "أرقام"} (${clean.length}/11)`
+      : `متبقي ${remaining} ${remaining === 1 ? "رقم" : "أرقام"} (${clean.length}/11)`,
+  };
+}

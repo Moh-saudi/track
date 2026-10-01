@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { EgyptianPhoneInput } from "@/components/ui/EgyptianPhoneInput";
 import {
   KeyRound,
   Building2,
@@ -927,22 +928,24 @@ export function AdminUsersTable({
               </div>
 
               {/* الصف الخامس: رقم الهاتف + خيار إرسال واتساب */}
-              <div className="flex items-end gap-2">
-                <div className="form-group flex-1">
-                  <label className="form-label text-xs flex items-center gap-1">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="form-label text-xs flex items-center gap-1 mb-0">
                     <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     رقم الواتساب (يُحفظ في البروفايل)
                   </label>
-                  <input type="tel" inputMode="numeric" maxLength={11} value={formPhone}
-                    onChange={(e) => setFormPhone(sanitizeEgyptianPhone(e.target.value))}
-                    placeholder="01XXXXXXXXX" dir="ltr" className="form-input text-xs font-mono" />
+                  <label className="flex items-center gap-1.5 text-[11px] text-emerald-800 font-semibold cursor-pointer shrink-0">
+                    <input type="checkbox" checked={sendViaWhatsAppOnCreate}
+                      onChange={(e) => setSendViaWhatsAppOnCreate(e.target.checked)}
+                      className="w-3.5 h-3.5 text-emerald-600 rounded-sm border-emerald-300 cursor-pointer" />
+                    <span>إرسال واتساب فور الحفظ</span>
+                  </label>
                 </div>
-                <label className="flex items-center gap-1.5 pb-1 text-[11px] text-emerald-800 font-semibold cursor-pointer shrink-0">
-                  <input type="checkbox" checked={sendViaWhatsAppOnCreate}
-                    onChange={(e) => setSendViaWhatsAppOnCreate(e.target.checked)}
-                    className="w-3.5 h-3.5 text-emerald-600 rounded-sm border-emerald-300 cursor-pointer" />
-                  <span>إرسال واتساب فور الحفظ</span>
-                </label>
+                <EgyptianPhoneInput
+                  value={formPhone}
+                  onChange={setFormPhone}
+                  size="sm"
+                />
               </div>
 
               {/* الأزرار */}
@@ -1042,13 +1045,15 @@ export function AdminUsersTable({
 
               {/* الصف 4: رقم الواتساب */}
               <div className="form-group">
-                <label className="form-label text-xs flex items-center gap-1">
+                <label className="form-label text-xs flex items-center gap-1 mb-1">
                   <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   رقم الواتساب (يُحفظ في البروفايل)
                 </label>
-                <input type="tel" inputMode="numeric" maxLength={11} value={formPhone}
-                  onChange={(e) => setFormPhone(sanitizeEgyptianPhone(e.target.value))}
-                  placeholder="01XXXXXXXXX" dir="ltr" className="form-input text-xs font-mono" />
+                <EgyptianPhoneInput
+                  value={formPhone}
+                  onChange={setFormPhone}
+                  size="sm"
+                />
               </div>
 
               {/* الأزرار */}
@@ -1177,11 +1182,12 @@ export function AdminUsersTable({
 
               {/* رقم الواتساب */}
               <div className="form-group">
-                <label className="form-label text-xs">رقم الواتساب</label>
-                <input type="tel" inputMode="numeric" maxLength={11} value={whatsappPhone}
-                  onChange={(e) => setWhatsappPhone(sanitizeEgyptianPhone(e.target.value))}
-                  placeholder="01XXXXXXXXX" dir="ltr"
-                  className="form-input text-xs font-mono" />
+                <label className="form-label text-xs mb-1">رقم الواتساب</label>
+                <EgyptianPhoneInput
+                  value={whatsappPhone}
+                  onChange={setWhatsappPhone}
+                  size="sm"
+                />
               </div>
             </div>
 

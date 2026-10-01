@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { EgyptianPhoneInput } from "@/components/ui/EgyptianPhoneInput";
 import { isValidEgyptianPhone, sanitizeEgyptianPhone } from "@/lib/formatters";
 
 export const MEDICAL_PROFESSIONS = [
@@ -269,21 +270,13 @@ export function CasePartiesManager({
                 </div>
 
                 <div>
-                  <label className="form-label text-[11px] text-slate-600">رقم الهاتف</label>
-                  <div className="relative">
-                    <input
-                      type="tel"
-                      inputMode="numeric"
-                      maxLength={11}
-                      disabled={readOnly}
-                      value={item.phone || ""}
-                      onChange={(e) => updateComplainant(idx, "phone", sanitizeEgyptianPhone(e.target.value))}
-                      placeholder="01XXXXXXXXX"
-                      className="form-input text-xs h-9 font-mono pl-7 bg-white"
-                      dir="ltr"
-                    />
-                    <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-2.5 pointer-events-none" />
-                  </div>
+                  <label className="form-label text-[11px] text-slate-600 mb-1">رقم الهاتف</label>
+                  <EgyptianPhoneInput
+                    disabled={readOnly}
+                    value={item.phone || ""}
+                    onChange={(val) => updateComplainant(idx, "phone", val)}
+                    size="sm"
+                  />
                 </div>
 
                 <div>
@@ -382,21 +375,13 @@ export function CasePartiesManager({
                 </div>
 
                 <div>
-                  <label className="form-label text-[11px] text-slate-600">رقم الهاتف</label>
-                  <div className="relative">
-                    <input
-                      type="tel"
-                      inputMode="numeric"
-                      maxLength={11}
-                      disabled={readOnly}
-                      value={item.phone || ""}
-                      onChange={(e) => updateRespondent(idx, "phone", sanitizeEgyptianPhone(e.target.value))}
-                      placeholder="01XXXXXXXXX"
-                      className="form-input text-xs h-9 font-mono pl-7 bg-white"
-                      dir="ltr"
-                    />
-                    <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-2.5 pointer-events-none" />
-                  </div>
+                  <label className="form-label text-[11px] text-slate-600 mb-1">رقم الهاتف</label>
+                  <EgyptianPhoneInput
+                    disabled={readOnly}
+                    value={item.phone || ""}
+                    onChange={(val) => updateRespondent(idx, "phone", val)}
+                    size="sm"
+                  />
                 </div>
 
                 <div>
@@ -531,21 +516,13 @@ export function CasePartiesManager({
                   </div>
 
                   <div>
-                    <label className="form-label text-[11px] text-slate-600">رقم الهاتف</label>
-                    <div className="relative">
-                      <input
-                        type="tel"
-                        inputMode="numeric"
-                        maxLength={11}
-                        disabled={readOnly}
-                        value={item.phone || ""}
-                        onChange={(e) => updateAttendee(idx, "phone", sanitizeEgyptianPhone(e.target.value))}
-                        placeholder="01XXXXXXXXX"
-                        className="form-input text-xs h-9 font-mono pl-7 bg-white"
-                        dir="ltr"
-                      />
-                      <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-2.5 pointer-events-none" />
-                    </div>
+                    <label className="form-label text-[11px] text-slate-600 mb-1">رقم الهاتف</label>
+                    <EgyptianPhoneInput
+                      disabled={readOnly}
+                      value={item.phone || ""}
+                      onChange={(val) => updateAttendee(idx, "phone", val)}
+                      size="sm"
+                    />
                   </div>
                 </div>
 
