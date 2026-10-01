@@ -9,13 +9,16 @@ import { writeAuditLog } from "@/lib/audit";
 import { getPasswordPolicyError } from "@/lib/password-policy";
 
 const updateSchema = z.object({
-  active:         z.boolean().optional(),
-  fullName:       z.string().min(2).optional(),
-  employer:       z.string().nullable().optional(),
-  subCommitteeId: z.string().nullable().optional(),
-  specialtyId:    z.string().nullable().optional(),
-  role:           z.enum(["REGISTRATION_CLERK", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "FINANCE", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER"]).optional(),
-  newPassword:    z.string().optional(),
+  active:          z.boolean().optional(),
+  fullName:        z.string().min(2).optional(),
+  employer:        z.string().nullable().optional(),
+  subCommitteeId:  z.string().nullable().optional(),
+  specialtyId:     z.string().nullable().optional(),
+  role:            z.enum(["REGISTRATION_CLERK", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "FINANCE", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER"]).optional(),
+  newPassword:     z.string().optional(),
+  nationalId:      z.string().regex(/^\d{14}$/, "الرقم القومي يجب أن يتكون من 14 رقماً").nullable().optional(),
+  phone:           z.string().nullable().optional(),
+  initialPassword: z.string().nullable().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -56,6 +59,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     updateData.role = parsed.data.role;
     securityContextChanged = true;
   }
+  if (parsed.data.nationalId !== undefined) updateData.nationalId = parsed.data.nationalId?.trim() || null;
+  if (parsed.data.phone !== undefined) updateData.phone = parsed.data.phone?.trim() || null;
+  if (parsed.data.initialPassword !== undefined) updateData.initialPassword = parsed.data.initialPassword?.trim() || null;
   if (parsed.data.newPassword) {
     const passwordError = getPasswordPolicyError(parsed.data.newPassword, before.email);
     if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 });

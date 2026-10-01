@@ -48,7 +48,11 @@ export interface UserItem {
   specialtyId?: string | null;
   subCommittee?: { name: string } | null;
   specialty?: { name: string } | null;
+  phone?: string | null;
+  nationalId?: string | null;
+  initialPassword?: string | null;
 }
+
 
 export interface SubCommitteeItem {
   id: string;
@@ -183,6 +187,8 @@ export function AdminUsersTable({
   const [formEmployer, setFormEmployer] = useState("");
   const [formSubCommitteeId, setFormSubCommitteeId] = useState("");
   const [formSpecialtyId, setFormSpecialtyId] = useState("");
+  const [formNationalId, setFormNationalId] = useState("");
+  const [formPhone, setFormPhone] = useState("");
 
   // رسائل التنبيه والأخطاء
   const [error, setError] = useState<string | null>(null);
@@ -206,7 +212,6 @@ export function AdminUsersTable({
   const [resetNewPassword, setResetNewPassword] = useState("");
 
   // ميزة مشاركة بيانات الحساب عبر واتساب
-  const [formPhone, setFormPhone] = useState("");
   const [sendViaWhatsAppOnCreate, setSendViaWhatsAppOnCreate] = useState(true);
   const [whatsappModal, setWhatsappModal] = useState<{
     fullName: string;
@@ -281,6 +286,11 @@ export function AdminUsersTable({
       return;
     }
 
+    if (formNationalId && !/^\d{14}$/.test(formNationalId)) {
+      setError("الرقم القومي يجب أن يتكون من 14 رقماً بالضبط");
+      return;
+    }
+
     startTransition(async () => {
       try {
         const payload = {
@@ -291,6 +301,9 @@ export function AdminUsersTable({
           employer: formEmployer || null,
           subCommitteeId: formRole === "SUBCOMMITTEE_MEMBER" ? formSubCommitteeId || null : null,
           specialtyId: formSpecialtyId || null,
+          nationalId: formNationalId || null,
+          phone: formPhone || null,
+          initialPassword: formPassword,
         };
 
         const res = await fetch("/api/admin/users", {
@@ -306,9 +319,10 @@ export function AdminUsersTable({
 
         const createdFullName = data.fullName || formFullName;
         const createdEmail = data.email || formEmail;
-        const createdPassword = formPassword;
-        const targetPhone = formPhone;
         const createdRole = formRole;
+        // استخدام رقم الهاتف المحفوظ وكلمة المرور المحفوظة من البيانات المُرجعة
+        const savedPhone = data.phone || formPhone;
+        const savedPassword = data.initialPassword || formPassword;
 
         setSuccessMsg(`تم إنشاء حساب المستخدم (${createdFullName}) بالصلاحية المحددة بنجاح.`);
         setIsCreateOpen(false);
@@ -318,23 +332,24 @@ export function AdminUsersTable({
         setFormEmail("");
         setFormPassword("");
         setFormPhone("");
+        setFormNationalId("");
         setFormRole("REGISTRATION_CLERK");
         setFormEmployer("");
         setFormSubCommitteeId("");
         setFormSpecialtyId("");
 
-        // فتح نافذة إرسال الواتساب بالبيانات
+        // فتح نافذة إرسال الواتساب بالبيانات المحفوظة مباشرة
         if (sendViaWhatsAppOnCreate) {
           setWhatsappModal({
             fullName: createdFullName,
             email: createdEmail,
-            password: createdPassword,
+            password: savedPassword,
             role: createdRole,
-            phone: targetPhone,
+            phone: savedPhone,
             isNewAccount: true,
           });
-          setWhatsappPhone(targetPhone);
-          setWhatsappPassword(createdPassword);
+          setWhatsappPhone(savedPhone);
+          setWhatsappPassword(savedPassword);
           setShowPasswordInModal(true);
         }
 
@@ -345,12 +360,18 @@ export function AdminUsersTable({
     });
   }
 
+
   // حفظ تعديل بيانات وصلاحيات المستخدم
   async function handleUpdateUser(e: React.FormEvent) {
     e.preventDefault();
     if (!editUser) return;
     setError(null);
     setSuccessMsg(null);
+
+    if (formNationalId && !/^\d{14}$/.test(formNationalId)) {
+      setError("الرقم القومي يجب أن يتكون من 14 رقماً بالضبط");
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -360,6 +381,8 @@ export function AdminUsersTable({
           employer: formEmployer || null,
           subCommitteeId: formRole === "SUBCOMMITTEE_MEMBER" ? formSubCommitteeId || null : null,
           specialtyId: formSpecialtyId || null,
+          nationalId: formNationalId || null,
+          phone: formPhone || null,
         };
 
         const res = await fetch(`/api/admin/users/${editUser.id}`, {
@@ -462,6 +485,8 @@ export function AdminUsersTable({
     setFormEmployer(u.employer || "");
     setFormSubCommitteeId(u.subCommitteeId || "");
     setFormSpecialtyId(u.specialtyId || "");
+    setFormNationalId(u.nationalId || "");
+    setFormPhone(u.phone || "");
     setError(null);
     setSuccessMsg(null);
   }
@@ -691,8 +716,9 @@ export function AdminUsersTable({
                               role: u.role,
                               isNewAccount: false,
                             });
-                            setWhatsappPhone("");
-                            setWhatsappPassword("");
+                            // استخدام رقم الهاتف وكلمة المرور المحفوظين في ملف المستخدم مباشرة
+                            setWhatsappPhone(u.phone || "");
+                            setWhatsappPassword(u.initialPassword || "");
                             setShowPasswordInModal(true);
                             setError(null);
                           }}
@@ -902,35 +928,63 @@ export function AdminUsersTable({
                 </select>
               </div>
 
-              {/* ميزة إرسال بيانات الدخول عبر واتساب */}
-              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-emerald-950 flex items-center gap-1.5 font-heading">
-                    <MessageCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>رقم هاتف الواتساب للمستخدم (اختياري)</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 text-[11px] text-emerald-800 font-semibold cursor-pointer">
+
+              {/* الرقم القومي ورقم الهاتف — تُحفظ في البروفايل ويُستخدمان لاحقاً */}
+              <div className="p-3.5 bg-teal-50/70 border border-teal-200 rounded-xl space-y-3">
+                <p className="text-[11px] font-bold text-teal-900 flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                  بيانات التواصل والهوية (تُحفظ في ملف المستخدم)
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* الرقم القومي */}
+                  <div className="form-group">
+                    <label className="form-label text-xs">الرقم القومي (14 رقماً — اختياري)</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={14}
+                      value={formNationalId}
+                      onChange={(e) => setFormNationalId(e.target.value.replace(/\D/g, ""))}
+                      placeholder="2XXXXXXXXXXXXX"
+                      dir="ltr"
+                      className="form-input text-xs font-mono"
+                    />
+                  </div>
+
+                  {/* رقم هاتف الواتساب */}
+                  <div className="form-group">
+                    <label className="form-label text-xs flex items-center gap-1">
+                      <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      رقم هاتف الواتساب (اختياري)
+                    </label>
+                    <input
+                      type="tel"
+                      value={formPhone}
+                      onChange={(e) => setFormPhone(e.target.value)}
+                      placeholder="01012345678"
+                      dir="ltr"
+                      className="form-input text-xs font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-[11px] text-teal-700 leading-relaxed font-body">
+                    💡 تُحفظ هذه البيانات في ملف المستخدم وتُملأ تلقائياً في نافذة الواتساب عند كل إرسال.
+                  </p>
+                  <label className="flex items-center gap-1.5 text-[11px] text-emerald-800 font-semibold cursor-pointer shrink-0">
                     <input
                       type="checkbox"
                       checked={sendViaWhatsAppOnCreate}
                       onChange={(e) => setSendViaWhatsAppOnCreate(e.target.checked)}
                       className="w-3.5 h-3.5 text-emerald-600 rounded-sm border-emerald-300 focus:ring-emerald-500 cursor-pointer"
                     />
-                    <span>إرسال البيانات فور الحفظ</span>
+                    <span>إرسال واتساب فور الحفظ</span>
                   </label>
                 </div>
-                <input
-                  type="tel"
-                  value={formPhone}
-                  onChange={(e) => setFormPhone(e.target.value)}
-                  placeholder="مثال: 01012345678 أو +201012345678"
-                  dir="ltr"
-                  className="form-input text-xs font-mono bg-white"
-                />
-                <p className="text-[11px] text-emerald-700 leading-relaxed font-body">
-                  💡 عند تفعيل هذا الخيار، سيتم فتح نافذة تجهيز رسالة الواتساب الرسمية المعتمدة فوراً متضمنة (الاسم، البريد، كلمة المرور، ورابط المنظومة).
-                </p>
               </div>
+
 
               {/* الأزرار */}
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
@@ -1079,6 +1133,43 @@ export function AdminUsersTable({
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* بيانات التواصل — الرقم القومي ورقم الهاتف */}
+              <div className="p-3 bg-teal-50/60 border border-teal-200 rounded-xl space-y-3">
+                <p className="text-[11px] font-bold text-teal-900 flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                  بيانات التواصل والهوية
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="form-group">
+                    <label className="form-label text-xs">الرقم القومي (14 رقماً — اختياري)</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={14}
+                      value={formNationalId}
+                      onChange={(e) => setFormNationalId(e.target.value.replace(/\D/g, ""))}
+                      placeholder="2XXXXXXXXXXXXX"
+                      dir="ltr"
+                      className="form-input text-xs font-mono"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label text-xs flex items-center gap-1">
+                      <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      رقم هاتف الواتساب (اختياري)
+                    </label>
+                    <input
+                      type="tel"
+                      value={formPhone}
+                      onChange={(e) => setFormPhone(e.target.value)}
+                      placeholder="01012345678"
+                      dir="ltr"
+                      className="form-input text-xs font-mono"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">

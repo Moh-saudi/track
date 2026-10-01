@@ -9,13 +9,16 @@ import { writeAuditLog } from "@/lib/audit";
 import { getPasswordPolicyError } from "@/lib/password-policy";
 
 const createUserSchema = z.object({
-  email:          z.string().email("بريد إلكتروني غير صحيح"),
-  fullName:       z.string().min(2, "الاسم مطلوب"),
-  password:       z.string().min(1, "كلمة المرور مطلوبة"),
-  role:           z.enum(["REGISTRATION_CLERK", "FOLLOW_UP_OFFICER", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "FINANCE", "ADMIN", "RISK_OFFICER"]),
-  employer:       z.string().optional().nullable(),
-  subCommitteeId: z.string().optional().nullable(),
-  specialtyId:    z.string().optional().nullable(),
+  email:           z.string().email("بريد إلكتروني غير صحيح"),
+  fullName:        z.string().min(2, "الاسم مطلوب"),
+  password:        z.string().min(1, "كلمة المرور مطلوبة"),
+  role:            z.enum(["REGISTRATION_CLERK", "FOLLOW_UP_OFFICER", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "FINANCE", "ADMIN", "RISK_OFFICER"]),
+  employer:        z.string().optional().nullable(),
+  subCommitteeId:  z.string().optional().nullable(),
+  specialtyId:     z.string().optional().nullable(),
+  nationalId:      z.string().regex(/^\d{14}$/, "الرقم القومي يجب أن يتكون من 14 رقماً").optional().nullable(),
+  phone:           z.string().optional().nullable(),
+  initialPassword: z.string().optional().nullable(),
 });
 
 export async function GET() {
@@ -58,16 +61,19 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.user.create({
     data: {
-      email:          normalizedEmail,
-      fullName:       data.fullName.trim(),
+      email:           normalizedEmail,
+      fullName:        data.fullName.trim(),
       passwordHash,
-      role:           data.role as any,
-      employer:       data.employer?.trim() || null,
-      subCommitteeId: data.role === "SUBCOMMITTEE_MEMBER" ? (data.subCommitteeId || null) : null,
-      specialtyId:    data.specialtyId || null,
-      active:         true,
+      role:            data.role as any,
+      employer:        data.employer?.trim() || null,
+      subCommitteeId:  data.role === "SUBCOMMITTEE_MEMBER" ? (data.subCommitteeId || null) : null,
+      specialtyId:     data.specialtyId || null,
+      nationalId:      data.nationalId?.trim() || null,
+      phone:           data.phone?.trim() || null,
+      initialPassword: data.initialPassword?.trim() || data.password,
+      active:          true,
     },
-    select: { id: true, email: true, fullName: true, role: true, employer: true, active: true },
+    select: { id: true, email: true, fullName: true, role: true, employer: true, active: true, phone: true, initialPassword: true },
   });
 
   await writeAuditLog({

@@ -221,7 +221,11 @@ export default async function AdminDashboardPage({
     specialtyId: u.specialtyId ?? null,
     subCommittee: u.subCommittee ? { name: String(u.subCommittee.name || "") } : null,
     specialty: u.specialty ? { name: String(u.specialty.name || "") } : null,
+    phone: u.phone ?? null,
+    nationalId: u.nationalId ?? null,
+    initialPassword: u.initialPassword ?? null,
   }));
+
 
   return (
     <AdminDashboardClient

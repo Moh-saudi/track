@@ -72,6 +72,9 @@ model User {
   passwordHash    String
   role            UserRole
   employer        String?   // جهة العمل / المستشفى التابع لها الطبيب (لفحص تعارض المصالح)
+  nationalId      String?   // الرقم القومي المعتمد (14 رقماً)
+  phone           String?   // رقم هاتف المستخدم للتواصل ورسائل الواتساب
+  initialPassword String?   // كلمة المرور المنشأة/الأولية لتمكين الإرسال المباشر عبر واتساب
   active          Boolean   @default(true)
   sessionVersion  Int       @default(1) // إبطال الجلسات فور تغيير الدور/كلمة المرور/حالة الحساب
 
