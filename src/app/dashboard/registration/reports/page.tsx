@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Filter,
   Users,
+  AlertCircle,
 } from "lucide-react";
 
 interface UserWorkload {
@@ -98,9 +99,11 @@ export default function RegistrationReportsPage() {
   const [createdById, setCreatedById] = useState("ALL");
 
   const [activeTab, setActiveTab] = useState<"summary" | "cases" | "workload">("summary");
+  const [error, setError] = useState<string | null>(null);
 
   function fetchReport() {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams();
     if (prosecutionId !== "ALL") params.set("prosecutionId", prosecutionId);
     if (registrationType !== "ALL") params.set("registrationType", registrationType);
@@ -111,13 +114,21 @@ export default function RegistrationReportsPage() {
     if (createdById !== "ALL") params.set("createdById", createdById);
 
     fetch(`/api/registration/reports?${params.toString()}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (!json.error) {
-          setData(json);
+      .then(async (res) => {
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `خطأ في الخادم (${res.status})`);
         }
+        return res.json();
       })
-      .catch((err) => console.error(err))
+      .then((json) => {
+        if (json.error) throw new Error(json.error);
+        setData(json);
+      })
+      .catch((err: any) => {
+        console.error("fetchReport error:", err);
+        setError(err.message || "تعذر تحميل تقارير التسجيل، يرجى المحاولة لاحقاً");
+      })
       .finally(() => setLoading(false));
   }
 
@@ -138,12 +149,24 @@ export default function RegistrationReportsPage() {
     setStartDate("");
     setEndDate("");
     setCreatedById("ALL");
-
+    setError(null);
     setLoading(true);
+
     fetch("/api/registration/reports")
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `خطأ في الخادم (${res.status})`);
+        }
+        return res.json();
+      })
       .then((json) => {
-        if (!json.error) setData(json);
+        if (json.error) throw new Error(json.error);
+        setData(json);
+      })
+      .catch((err: any) => {
+        console.error("handleResetFilters error:", err);
+        setError(err.message || "تعذر تحميل تقارير التسجيل، يرجى المحاولة لاحقاً");
       })
       .finally(() => setLoading(false));
   }
@@ -249,6 +272,23 @@ export default function RegistrationReportsPage() {
           </div>
         </div>
       </div>
+
+      {/* تنبيه الخطأ إن وجد */}
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={fetchReport}
+            className="px-3 py-1 bg-white border border-rose-300 rounded-lg text-rose-700 font-bold hover:bg-rose-100/50 transition-colors"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
+      )}
 
       {/* بطاقات المؤشرات ومعدلات التشغيل اليومية والعامة */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
