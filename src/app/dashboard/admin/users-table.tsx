@@ -72,6 +72,39 @@ interface Props {
   specialties?: SpecialtyItem[];
 }
 
+// ─── الجهات الإدارية المعتمدة في المنظومة ───────────────────────────────────
+export const ADMIN_DEPARTMENTS = [
+  "اللجنة العليا للمسؤولية الطبية",
+  "مكتب الاستلام والبريد",
+  "قسم تسجيل الملفات والقيد",
+  "قسم الأرشفة الإلكترونية",
+  "قسم المتابعة والتوجيه",
+  "قسم الموارد البشرية",
+  "قسم المالية والبدلات",
+  "قسم الشؤون القانونية",
+  "مكتب مدير المنظومة",
+  "كلية طب جامعة القاهرة (قصر العيني)",
+  "كلية طب جامعة عين شمس",
+  "كلية طب جامعة الأزهر",
+  "كلية طب جامعة الإسكندرية",
+  "كلية طب جامعة الفيوم",
+  "كلية طب جامعة المنيا",
+  "كلية طب جامعة أسيوط",
+  "كلية طب جامعة سوهاج",
+  "كلية طب جامعة أسوان",
+  "كلية طب جامعة المنصورة",
+  "كلية طب جامعة المنوفية",
+  "كلية طب جامعة طنطا",
+  "كلية طب جامعة الزقازيق",
+  "كلية طب جامعة قناة السويس",
+  "المجلس الصحي المصري",
+  "الهيئة العامة للمستشفيات والمعاهد التعليمية",
+  "مستشفى قصر العيني",
+  "معهد الأورام القومي",
+  "مركز القلب القومي",
+  "أخرى",
+];
+
 export const ROLE_INFO: Record<
   string,
   {
@@ -443,29 +476,35 @@ export function AdminUsersTable({
 
     startTransition(async () => {
       try {
+        // تحديث كلمة المرور وحفظ initialPassword في نفس الوقت
         const res = await fetch(`/api/admin/users/${passwordUser.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ newPassword: resetNewPassword }),
+          body: JSON.stringify({
+            newPassword: resetNewPassword,
+            initialPassword: resetNewPassword, // حفظ الباسورد الجديد لاستخدامه في الواتساب لاحقاً
+          }),
         });
 
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "تعذر تعيين كلمة المرور");
+
         const targetUser = passwordUser;
         const newPwd = resetNewPassword;
         setSuccessMsg(`تم تعيين كلمة مرور جديدة للمستخدم (${targetUser.fullName}) بنجاح.`);
         setPasswordUser(null);
         setResetNewPassword("");
 
-        // فتح نافذة إرسال كلمة المرور الجديدة عبر واتساب
+        // فتح نافذة إرسال كلمة المرور الجديدة عبر واتساب مع تعبئة الباسورد والهاتف تلقائياً
         setWhatsappModal({
           fullName: targetUser.fullName,
           email: targetUser.email,
           password: newPwd,
           role: targetUser.role,
-          phone: "",
+          phone: targetUser.phone || "",
           isNewAccount: false,
         });
-        setWhatsappPhone("");
+        setWhatsappPhone(targetUser.phone || "");
         setWhatsappPassword(newPwd);
         setShowPasswordInModal(true);
 
@@ -760,250 +799,118 @@ export function AdminUsersTable({
       {/* ─── مودال إضافة مستخدم وصلاحية جديدة ─── */}
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full p-6 space-y-4 my-8 animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-5 space-y-3 my-6 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 font-heading">
-                  <UserPlus className="w-4 h-4 text-teal-600" />
-                  <span>إضافة مستخدم جديد وتحديد صلاحياته</span>
-                </h3>
-                <p className="text-xs text-slate-500 font-body">
-                  إنشاء حساب موظف أو عضو لجنة وربطه بالدور واللجنة وجهة العمل
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsCreateOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
-              >
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 font-heading">
+                <UserPlus className="w-4 h-4 text-teal-600" />
+                <span>إضافة مستخدم جديد</span>
+              </h3>
+              <button type="button" onClick={() => setIsCreateOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="space-y-4">
-              {/* الاسم والبريد */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <form onSubmit={handleCreateUser} className="space-y-3">
+              {/* الصف الأول: الاسم + البريد */}
+              <div className="grid grid-cols-2 gap-2">
                 <div className="form-group">
-                  <label className="form-label form-label-required text-xs">الاسم الرسمي الكامل</label>
-                  <input
-                    type="text"
-                    required
-                    value={formFullName}
-                    onChange={(e) => setFormFullName(e.target.value)}
-                    placeholder="مثال: د. محمد سامي الألفي"
-                    className="form-input text-xs"
-                  />
+                  <label className="form-label form-label-required text-xs">الاسم الكامل</label>
+                  <input type="text" required value={formFullName} onChange={(e) => setFormFullName(e.target.value)}
+                    placeholder="د. محمد سامي الألفي" className="form-input text-xs" />
                 </div>
-
                 <div className="form-group">
-                  <label className="form-label form-label-required text-xs">البريد الإلكتروني الرسمي</label>
-                  <input
-                    type="email"
-                    required
-                    value={formEmail}
-                    onChange={(e) => setFormEmail(e.target.value)}
-                    placeholder="name@organization.gov.eg"
-                    dir="ltr"
-                    className="form-input text-xs font-mono"
-                  />
+                  <label className="form-label form-label-required text-xs">البريد الإلكتروني</label>
+                  <input type="email" required value={formEmail} onChange={(e) => setFormEmail(e.target.value)}
+                    placeholder="name@org.gov.eg" dir="ltr" className="form-input text-xs font-mono" />
                 </div>
               </div>
 
-              {/* كلمة المرور */}
+              {/* الصف الثاني: كلمة المرور */}
               <div className="form-group">
                 <div className="flex items-center justify-between">
-                  <label className="form-label form-label-required text-xs">كلمة المرور الأولية (8 أحرف على الأقل)</label>
-                  <button
-                    type="button"
-                    onClick={() => generateRandomPassword("create")}
-                    className="text-[11px] font-semibold text-teal-700 hover:text-teal-800 hover:underline flex items-center gap-1"
-                  >
-                    <span>توليد كلمة سر معقدة تلقائياً</span>
+                  <label className="form-label form-label-required text-xs">كلمة المرور الأولية</label>
+                  <button type="button" onClick={() => generateRandomPassword("create")}
+                    className="text-[11px] font-semibold text-teal-700 hover:underline">
+                    ⚡ توليد تلقائي
                   </button>
                 </div>
-                <input
-                  type="text"
-                  required
-                  value={formPassword}
-                  onChange={(e) => setFormPassword(e.target.value)}
-                  placeholder="أدخل كلمة مرور قوية أو اضغط توليد..."
-                  className="form-input text-xs font-mono"
-                />
+                <input type="text" required value={formPassword} onChange={(e) => setFormPassword(e.target.value)}
+                  placeholder="8 أحرف على الأقل..." className="form-input text-xs font-mono" />
               </div>
 
-              {/* الدور والصلاحية */}
-              <div className="form-group">
-                <label className="form-label form-label-required text-xs">الدور والصلاحيات في المنظومة (Role)</label>
-                <select
-                  required
-                  value={formRole}
-                  onChange={(e) => setFormRole(e.target.value)}
-                  className="form-input text-xs font-medium"
-                >
-                  {Object.entries(ROLE_INFO).map(([key, info]) => (
-                    <option key={key} value={key}>
-                      {info.label} — ({info.description})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* بطاقة توضيحية للصلاحيات الممنوحة للدور المختار */}
-              {ROLE_INFO[formRole] && (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-teal-600 shrink-0" />
-                    <span className="font-bold text-slate-800 font-heading">
-                      نطاق الصلاحيات المقررة لدور: {ROLE_INFO[formRole].label}
-                    </span>
-                  </div>
-                  <p className="text-slate-600 text-[11px]">
-                    <strong className="text-slate-700">حدود الرؤية:</strong> {ROLE_INFO[formRole].visibility}
-                  </p>
-                  <ul className="list-disc list-inside text-[11px] text-slate-600 space-y-0.5">
-                    {ROLE_INFO[formRole].permissions.map((p, idx) => (
-                      <li key={idx}>{p}</li>
+              {/* الصف الثالث: الدور + الجهة الإدارية */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="form-group">
+                  <label className="form-label form-label-required text-xs">الدور والصلاحية</label>
+                  <select required value={formRole} onChange={(e) => setFormRole(e.target.value)} className="form-input text-xs font-medium">
+                    {Object.entries(ROLE_INFO).map(([key, info]) => (
+                      <option key={key} value={key}>{info.label}</option>
                     ))}
-                  </ul>
+                  </select>
                 </div>
-              )}
-
-              {/* جهة العمل لفحص تعارض المصالح */}
-              <div className="form-group">
-                <label className="form-label text-xs">
-                  جهة العمل الحالية (مستشفى / جامعة / جهة حكومية)
-                </label>
-                <input
-                  type="text"
-                  value={formEmployer}
-                  onChange={(e) => setFormEmployer(e.target.value)}
-                  placeholder="مثال: مستشفى قصر العيني، جامعة عين شمس، معهد الأورام..."
-                  className="form-input text-xs"
-                />
-                <span className="text-[11px] text-slate-500 mt-1 block">
-                  * تُستخدم جهة العمل لفحص وتفادي تعارض المصالح الآلي عند إسناد الشكاوى والقضايا.
-                </span>
+                <div className="form-group">
+                  <label className="form-label text-xs">الجهة الإدارية</label>
+                  <select value={formEmployer} onChange={(e) => setFormEmployer(e.target.value)} className="form-input text-xs">
+                    <option value="">— اختر الجهة —</option>
+                    {ADMIN_DEPARTMENTS.map((dept) => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              {/* الحقول الإضافية الخاصة بأعضاء اللجان الفاحصة */}
+              {/* اللجنة الفرعية (فقط لعضو اللجنة) */}
               {formRole === "SUBCOMMITTEE_MEMBER" && (
-                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-3">
-                  <div className="form-group">
-                    <label className="form-label form-label-required text-xs text-amber-900">
-                      اللجنة الفرعية التابع لها العضو
-                    </label>
-                    <select
-                      required
-                      value={formSubCommitteeId}
-                      onChange={(e) => setFormSubCommitteeId(e.target.value)}
-                      className="form-input text-xs bg-white"
-                    >
-                      <option value="">— اختر اللجنة الفرعية المختصة —</option>
-                      {subCommittees.map((sc) => (
-                        <option key={sc.id} value={sc.id}>
-                          {sc.name} ({sc.code})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="form-group">
+                  <label className="form-label form-label-required text-xs text-amber-900">اللجنة الفرعية</label>
+                  <select required value={formSubCommitteeId} onChange={(e) => setFormSubCommitteeId(e.target.value)} className="form-input text-xs bg-amber-50">
+                    <option value="">— اختر اللجنة الفرعية —</option>
+                    {subCommittees.map((sc) => <option key={sc.id} value={sc.id}>{sc.name} ({sc.code})</option>)}
+                  </select>
                 </div>
               )}
 
-              {/* التخصص الطبي */}
-              <div className="form-group">
-                <label className="form-label text-xs">
-                  التخصص الطبي الرئيسي (اختياري للأطباء والاستشاريين)
-                </label>
-                <select
-                  value={formSpecialtyId}
-                  onChange={(e) => setFormSpecialtyId(e.target.value)}
-                  className="form-input text-xs"
-                >
-                  <option value="">— بدون تخصص محدد —</option>
-                  {specialties.map((sp) => (
-                    <option key={sp.id} value={sp.id}>
-                      {sp.name}
-                    </option>
-                  ))}
-                </select>
+              {/* الصف الرابع: التخصص + الرقم القومي */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="form-group">
+                  <label className="form-label text-xs">التخصص الطبي</label>
+                  <select value={formSpecialtyId} onChange={(e) => setFormSpecialtyId(e.target.value)} className="form-input text-xs">
+                    <option value="">— بدون تخصص —</option>
+                    {specialties.map((sp) => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label text-xs">الرقم القومي (14 رقماً)</label>
+                  <input type="text" inputMode="numeric" maxLength={14} value={formNationalId}
+                    onChange={(e) => setFormNationalId(e.target.value.replace(/\D/g, ""))}
+                    placeholder="2XXXXXXXXXXXXX" dir="ltr" className="form-input text-xs font-mono" />
+                </div>
               </div>
 
-
-              {/* الرقم القومي ورقم الهاتف — تُحفظ في البروفايل ويُستخدمان لاحقاً */}
-              <div className="p-3.5 bg-teal-50/70 border border-teal-200 rounded-xl space-y-3">
-                <p className="text-[11px] font-bold text-teal-900 flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                  بيانات التواصل والهوية (تُحفظ في ملف المستخدم)
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* الرقم القومي */}
-                  <div className="form-group">
-                    <label className="form-label text-xs">الرقم القومي (14 رقماً — اختياري)</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={14}
-                      value={formNationalId}
-                      onChange={(e) => setFormNationalId(e.target.value.replace(/\D/g, ""))}
-                      placeholder="2XXXXXXXXXXXXX"
-                      dir="ltr"
-                      className="form-input text-xs font-mono"
-                    />
-                  </div>
-
-                  {/* رقم هاتف الواتساب */}
-                  <div className="form-group">
-                    <label className="form-label text-xs flex items-center gap-1">
-                      <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      رقم هاتف الواتساب (اختياري)
-                    </label>
-                    <input
-                      type="tel"
-                      value={formPhone}
-                      onChange={(e) => setFormPhone(e.target.value)}
-                      placeholder="01012345678"
-                      dir="ltr"
-                      className="form-input text-xs font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-1">
-                  <p className="text-[11px] text-teal-700 leading-relaxed font-body">
-                    💡 تُحفظ هذه البيانات في ملف المستخدم وتُملأ تلقائياً في نافذة الواتساب عند كل إرسال.
-                  </p>
-                  <label className="flex items-center gap-1.5 text-[11px] text-emerald-800 font-semibold cursor-pointer shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={sendViaWhatsAppOnCreate}
-                      onChange={(e) => setSendViaWhatsAppOnCreate(e.target.checked)}
-                      className="w-3.5 h-3.5 text-emerald-600 rounded-sm border-emerald-300 focus:ring-emerald-500 cursor-pointer"
-                    />
-                    <span>إرسال واتساب فور الحفظ</span>
+              {/* الصف الخامس: رقم الهاتف + خيار إرسال واتساب */}
+              <div className="flex items-end gap-2">
+                <div className="form-group flex-1">
+                  <label className="form-label text-xs flex items-center gap-1">
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    رقم الواتساب (يُحفظ في البروفايل)
                   </label>
+                  <input type="tel" value={formPhone} onChange={(e) => setFormPhone(e.target.value)}
+                    placeholder="01012345678" dir="ltr" className="form-input text-xs font-mono" />
                 </div>
+                <label className="flex items-center gap-1.5 pb-1 text-[11px] text-emerald-800 font-semibold cursor-pointer shrink-0">
+                  <input type="checkbox" checked={sendViaWhatsAppOnCreate}
+                    onChange={(e) => setSendViaWhatsAppOnCreate(e.target.checked)}
+                    className="w-3.5 h-3.5 text-emerald-600 rounded-sm border-emerald-300 cursor-pointer" />
+                  <span>إرسال واتساب فور الحفظ</span>
+                </label>
               </div>
-
 
               {/* الأزرار */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIsCreateOpen(false)}
-                >
-                  إلغاء
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  loading={isPending}
-                  disabled={isPending || formFullName.length < 2 || !formEmail.includes("@")}
-                >
-                  إنشاء الحساب وتعيين الصلاحيات
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                <Button type="button" variant="secondary" size="sm" onClick={() => setIsCreateOpen(false)}>إلغاء</Button>
+                <Button type="submit" variant="primary" size="sm" loading={isPending}
+                  disabled={isPending || formFullName.length < 2 || !formEmail.includes("@")}>
+                  إنشاء الحساب
                 </Button>
               </div>
             </form>
@@ -1086,16 +993,27 @@ export function AdminUsersTable({
                 </div>
               )}
 
-              {/* جهة العمل */}
-              <div className="form-group">
-                <label className="form-label text-xs">جهة العمل (لفحص تعارض المصالح)</label>
-                <input
-                  type="text"
-                  value={formEmployer}
-                  onChange={(e) => setFormEmployer(e.target.value)}
-                  placeholder="مستشفى / جامعة..."
-                  className="form-input text-xs"
-                />
+              {/* الدور + جهة العمل */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="form-group">
+                  <label className="form-label text-xs">جهة العمل الإدارية</label>
+                  <select value={formEmployer} onChange={(e) => setFormEmployer(e.target.value)} className="form-input text-xs">
+                    <option value="">— اختر الجهة —</option>
+                    {ADMIN_DEPARTMENTS.map((dept) => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* التخصص */}
+                <div className="form-group">
+                  <label className="form-label text-xs">التخصص الطبي</label>
+                  <select value={formSpecialtyId} onChange={(e) => setFormSpecialtyId(e.target.value)} className="form-input text-xs">
+                    <option value="">— بدون تخصص —</option>
+                    {specialties.map((sp) => (
+                      <option key={sp.id} value={sp.id}>{sp.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* اللجنة الفرعية */}
@@ -1118,57 +1036,27 @@ export function AdminUsersTable({
                 </div>
               )}
 
-              {/* التخصص الطبي */}
-              <div className="form-group">
-                <label className="form-label text-xs">التخصص الطبي</label>
-                <select
-                  value={formSpecialtyId}
-                  onChange={(e) => setFormSpecialtyId(e.target.value)}
-                  className="form-input text-xs"
-                >
-                  <option value="">— بدون تخصص —</option>
-                  {specialties.map((sp) => (
-                    <option key={sp.id} value={sp.id}>
-                      {sp.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* بيانات التواصل — الرقم القومي ورقم الهاتف */}
-              <div className="p-3 bg-teal-50/60 border border-teal-200 rounded-xl space-y-3">
-                <p className="text-[11px] font-bold text-teal-900 flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                  بيانات التواصل والهوية
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="form-group">
-                    <label className="form-label text-xs">الرقم القومي (14 رقماً — اختياري)</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={14}
-                      value={formNationalId}
-                      onChange={(e) => setFormNationalId(e.target.value.replace(/\D/g, ""))}
-                      placeholder="2XXXXXXXXXXXXX"
-                      dir="ltr"
-                      className="form-input text-xs font-mono"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label text-xs flex items-center gap-1">
-                      <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      رقم هاتف الواتساب (اختياري)
-                    </label>
-                    <input
-                      type="tel"
-                      value={formPhone}
-                      onChange={(e) => setFormPhone(e.target.value)}
-                      placeholder="01012345678"
-                      dir="ltr"
-                      className="form-input text-xs font-mono"
-                    />
-                  </div>
+              {/* بيانات التواصل: الرقم القومي + الهاتف */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="form-group">
+                  <label className="form-label text-xs">الرقم القومي (14 رقماً)</label>
+                  <input
+                    type="text" inputMode="numeric" maxLength={14}
+                    value={formNationalId}
+                    onChange={(e) => setFormNationalId(e.target.value.replace(/\D/g, ""))}
+                    placeholder="2XXXXXXXXXXXXX" dir="ltr" className="form-input text-xs font-mono"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label text-xs flex items-center gap-1">
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    رقم الواتساب
+                  </label>
+                  <input
+                    type="tel" value={formPhone}
+                    onChange={(e) => setFormPhone(e.target.value)}
+                    placeholder="01012345678" dir="ltr" className="form-input text-xs font-mono"
+                  />
                 </div>
               </div>
 
@@ -1336,10 +1224,10 @@ export function AdminUsersTable({
               </div>
             </div>
 
-            {/* حقل كلمة المرور للرسالة */}
+            {/* حقل كلمة المرور — مطلوب دائماً ولا يمكن تركه فارغاً */}
             <div className="form-group">
               <div className="flex items-center justify-between mb-1">
-                <label className="form-label text-xs font-bold text-slate-800">
+                <label className="form-label form-label-required text-xs font-bold text-slate-800">
                   كلمة المرور المضمنة في الرسالة
                 </label>
                 <div className="flex items-center gap-2">
@@ -1369,14 +1257,20 @@ export function AdminUsersTable({
               </div>
               <input
                 type={showPasswordInModal ? "text" : "password"}
+                required
                 value={whatsappPassword}
                 onChange={(e) => setWhatsappPassword(e.target.value)}
-                placeholder="أدخل أو عدّل كلمة المرور المراد تضمينها في الرسالة..."
-                className="form-input text-xs font-mono"
+                placeholder="كلمة المرور مطلوبة لإرسال الرسالة..."
+                className={`form-input text-xs font-mono ${
+                  !whatsappPassword.trim() ? "border-rose-300 bg-rose-50 focus:ring-rose-400" : ""
+                }`}
               />
-              <span className="text-[11px] text-slate-500 mt-1 block">
-                * يمكنك كتابة كلمة المرور أو تركها فارغة إذا كان المستخدم يعرفها بالفعل.
-              </span>
+              {!whatsappPassword.trim() && (
+                <span className="text-[11px] text-rose-600 mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  يجب كتابة كلمة المرور — تأكد من إدخالها قبل الإرسال
+                </span>
+              )}
             </div>
 
             {/* حقل رقم هاتف الواتساب */}
