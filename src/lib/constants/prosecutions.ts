@@ -121,46 +121,93 @@ export const OFFICIAL_PROSECUTIONS_LIST: OfficialProsecution[] = [
   // الفيوم
   { name: "الفيوم الكلية", type: "PLENARY", governorate: "الفيوم" },
   { name: "الفيوم الجزئية", type: "DISTRICT", governorate: "الفيوم", parentName: "الفيوم الكلية" },
+  { name: "سنورس الجزئية", type: "DISTRICT", governorate: "الفيوم", parentName: "الفيوم الكلية" },
+  { name: "إطسا الجزئية", type: "DISTRICT", governorate: "الفيوم", parentName: "الفيوم الكلية" },
+  { name: "طامية الجزئية", type: "DISTRICT", governorate: "الفيوم", parentName: "الفيوم الكلية" },
+  { name: "أبشواي الجزئية", type: "DISTRICT", governorate: "الفيوم", parentName: "الفيوم الكلية" },
 
   // بني سويف
   { name: "بني سويف الكلية", type: "PLENARY", governorate: "بني سويف" },
   { name: "بني سويف الجزئية", type: "DISTRICT", governorate: "بني سويف", parentName: "بني سويف الكلية" },
+  { name: "الواسطى الجزئية", type: "DISTRICT", governorate: "بني سويف", parentName: "بني سويف الكلية" },
+  { name: "ناصر الجزئية", type: "DISTRICT", governorate: "بني سويف", parentName: "بني سويف الكلية" },
+  { name: "ببا الجزئية", type: "DISTRICT", governorate: "بني سويف", parentName: "بني سويف الكلية" },
+  { name: "الفشن الجزئية", type: "DISTRICT", governorate: "بني سويف", parentName: "بني سويف الكلية" },
+  { name: "إهناسيا الجزئية", type: "DISTRICT", governorate: "بني سويف", parentName: "بني سويف الكلية" },
+  { name: "سمسطا الجزئية", type: "DISTRICT", governorate: "بني سويف", parentName: "بني سويف الكلية" },
 
   // المنيا
   { name: "جنوب المنيا الكلية", type: "PLENARY", governorate: "المنيا" },
   { name: "المنيا الجزئية", type: "DISTRICT", governorate: "المنيا", parentName: "جنوب المنيا الكلية" },
   { name: "ملوي الجزئية", type: "DISTRICT", governorate: "المنيا", parentName: "جنوب المنيا الكلية" },
+  { name: "أبو قرقاص الجزئية", type: "DISTRICT", governorate: "المنيا", parentName: "جنوب المنيا الكلية" },
+  { name: "ديرمواس الجزئية", type: "DISTRICT", governorate: "المنيا", parentName: "جنوب المنيا الكلية" },
   { name: "شمال المنيا الكلية", type: "PLENARY", governorate: "المنيا" },
   { name: "بني مزار الجزئية", type: "DISTRICT", governorate: "المنيا", parentName: "شمال المنيا الكلية" },
+  { name: "مغاغة الجزئية", type: "DISTRICT", governorate: "المنيا", parentName: "شمال المنيا الكلية" },
+  { name: "سمالوط الجزئية", type: "DISTRICT", governorate: "المنيا", parentName: "شمال المنيا الكلية" },
+  { name: "مطاي الجزئية", type: "DISTRICT", governorate: "المنيا", parentName: "شمال المنيا الكلية" },
+  { name: "العدوة الجزئية", type: "DISTRICT", governorate: "المنيا", parentName: "شمال المنيا الكلية" },
 
   // أسيوط
   { name: "جنوب أسيوط الكلية", type: "PLENARY", governorate: "أسيوط" },
   { name: "أسيوط الجزئية", type: "DISTRICT", governorate: "أسيوط", parentName: "جنوب أسيوط الكلية" },
+  { name: "أبو تيج الجزئية", type: "DISTRICT", governorate: "أسيوط", parentName: "جنوب أسيوط الكلية" },
+  { name: "صدفا الجزئية", type: "DISTRICT", governorate: "أسيوط", parentName: "جنوب أسيوط الكلية" },
+  { name: "الغنايم الجزئية", type: "DISTRICT", governorate: "أسيوط", parentName: "جنوب أسيوط الكلية" },
+  { name: "البداري الجزئية", type: "DISTRICT", governorate: "أسيوط", parentName: "جنوب أسيوط الكلية" },
+  { name: "ساحل سليم الجزئية", type: "DISTRICT", governorate: "أسيوط", parentName: "جنوب أسيوط الكلية" },
   { name: "شمال أسيوط الكلية", type: "PLENARY", governorate: "أسيوط" },
   { name: "ديروط الجزئية", type: "DISTRICT", governorate: "أسيوط", parentName: "شمال أسيوط الكلية" },
+  { name: "القوصية الجزئية", type: "DISTRICT", governorate: "أسيوط", parentName: "شمال أسيوط الكلية" },
+  { name: "منفلوط الجزئية", type: "DISTRICT", governorate: "أسيوط", parentName: "شمال أسيوط الكلية" },
+  { name: "أبنوب الجزئية", type: "DISTRICT", governorate: "أسيوط", parentName: "شمال أسيوط الكلية" },
+  { name: "الفتح الجزئية", type: "DISTRICT", governorate: "أسيوط", parentName: "شمال أسيوط الكلية" },
 
   // سوهاج
   { name: "جنوب سوهاج الكلية", type: "PLENARY", governorate: "سوهاج" },
   { name: "سوهاج الجزئية", type: "DISTRICT", governorate: "سوهاج", parentName: "جنوب سوهاج الكلية" },
+  { name: "جرجا الجزئية", type: "DISTRICT", governorate: "سوهاج", parentName: "جنوب سوهاج الكلية" },
+  { name: "البلينا الجزئية", type: "DISTRICT", governorate: "سوهاج", parentName: "جنوب سوهاج الكلية" },
+  { name: "المنشأة الجزئية", type: "DISTRICT", governorate: "سوهاج", parentName: "جنوب سوهاج الكلية" },
+  { name: "دار السلام الجزئية", type: "DISTRICT", governorate: "سوهاج", parentName: "جنوب سوهاج الكلية" },
   { name: "شمال سوهاج الكلية", type: "PLENARY", governorate: "سوهاج" },
   { name: "طهطا الجزئية", type: "DISTRICT", governorate: "سوهاج", parentName: "شمال سوهاج الكلية" },
+  { name: "طما الجزئية", type: "DISTRICT", governorate: "سوهاج", parentName: "شمال سوهاج الكلية" },
+  { name: "المراغة الجزئية", type: "DISTRICT", governorate: "سوهاج", parentName: "شمال سوهاج الكلية" },
+  { name: "جهينة الجزئية", type: "DISTRICT", governorate: "سوهاج", parentName: "شمال سوهاج الكلية" },
+  { name: "ساقلتة الجزئية", type: "DISTRICT", governorate: "سوهاج", parentName: "شمال سوهاج الكلية" },
 
   // قنا
   { name: "قنا الكلية", type: "PLENARY", governorate: "قنا" },
   { name: "قنا الجزئية", type: "DISTRICT", governorate: "قنا", parentName: "قنا الكلية" },
   { name: "نجع حمادي الجزئية", type: "DISTRICT", governorate: "قنا", parentName: "قنا الكلية" },
+  { name: "قوص الجزئية", type: "DISTRICT", governorate: "قنا", parentName: "قنا الكلية" },
+  { name: "دشنا الجزئية", type: "DISTRICT", governorate: "قنا", parentName: "قنا الكلية" },
+  { name: "أبو تشت الجزئية", type: "DISTRICT", governorate: "قنا", parentName: "قنا الكلية" },
+  { name: "فرشوط الجزئية", type: "DISTRICT", governorate: "قنا", parentName: "قنا الكلية" },
+  { name: "نقادة الجزئية", type: "DISTRICT", governorate: "قنا", parentName: "قنا الكلية" },
 
   // الأقصر
   { name: "الأقصر الكلية", type: "PLENARY", governorate: "الأقصر" },
   { name: "الأقصر الجزئية", type: "DISTRICT", governorate: "الأقصر", parentName: "الأقصر الكلية" },
   { name: "إسنا الجزئية", type: "DISTRICT", governorate: "الأقصر", parentName: "الأقصر الكلية" },
+  { name: "أرمنت الجزئية", type: "DISTRICT", governorate: "الأقصر", parentName: "الأقصر الكلية" },
+  { name: "طيبة الجزئية", type: "DISTRICT", governorate: "الأقصر", parentName: "الأقصر الكلية" },
+  { name: "القرنة الجزئية", type: "DISTRICT", governorate: "الأقصر", parentName: "الأقصر الكلية" },
 
   // أسوان
   { name: "أسوان الكلية", type: "PLENARY", governorate: "أسوان" },
   { name: "أسوان الجزئية", type: "DISTRICT", governorate: "أسوان", parentName: "أسوان الكلية" },
   { name: "كوم أمبو الجزئية", type: "DISTRICT", governorate: "أسوان", parentName: "أسوان الكلية" },
+  { name: "إدفو الجزئية", type: "DISTRICT", governorate: "أسوان", parentName: "أسوان الكلية" },
+  { name: "نصر النوبة الجزئية", type: "DISTRICT", governorate: "أسوان", parentName: "أسوان الكلية" },
+  { name: "دراو الجزئية", type: "DISTRICT", governorate: "أسوان", parentName: "أسوان الكلية" },
 
   // البحر الأحمر
   { name: "البحر الأحمر الكلية", type: "PLENARY", governorate: "البحر الأحمر" },
   { name: "الغردقة الجزئية", type: "DISTRICT", governorate: "البحر الأحمر", parentName: "البحر الأحمر الكلية" },
+  { name: "سفاجا الجزئية", type: "DISTRICT", governorate: "البحر الأحمر", parentName: "البحر الأحمر الكلية" },
+  { name: "رأس غارب الجزئية", type: "DISTRICT", governorate: "البحر الأحمر", parentName: "البحر الأحمر الكلية" },
+  { name: "القصير الجزئية", type: "DISTRICT", governorate: "البحر الأحمر", parentName: "البحر الأحمر الكلية" },
 ];

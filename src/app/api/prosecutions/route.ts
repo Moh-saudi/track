@@ -48,24 +48,46 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    if (prosecutions.length === 0) {
+    // التحقق مما إذا كانت النيابات بحاجة لتحديث وربط التبعية الهرمية
+    const districtCount = prosecutions.filter((p) => p.type === "DISTRICT" || p.parentId).length;
+    if (prosecutions.length < 80 || districtCount < 20) {
       try {
-        const totalCount = await prisma.prosecution.count();
-        if (totalCount === 0) {
-          const plenaryMap: Record<string, string> = {};
-          for (const item of OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "PLENARY")) {
+        const plenaryMap: Record<string, string> = {};
+
+        // 1. إنشاء وتحديث النيابات الكلية
+        for (const item of OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "PLENARY")) {
+          const existing = await prisma.prosecution.findUnique({ where: { name: item.name } }).catch(() => null);
+          if (existing) {
+            plenaryMap[item.name] = existing.id;
+            if (!existing.governorate || existing.type !== "PLENARY") {
+              await prisma.prosecution.update({
+                where: { id: existing.id },
+                data: { governorate: item.governorate, type: "PLENARY", active: true },
+              }).catch(() => null);
+            }
+          } else {
             const created = await prisma.prosecution.create({
-              data: {
-                name: item.name,
-                governorate: item.governorate,
-                type: "PLENARY",
-                active: true,
-              },
+              data: { name: item.name, governorate: item.governorate, type: "PLENARY", active: true },
             }).catch(() => null);
             if (created) plenaryMap[item.name] = created.id;
           }
-          for (const item of OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "DISTRICT")) {
-            const parentId = item.parentName ? plenaryMap[item.parentName] || null : null;
+        }
+
+        // 2. إنشاء وتحديث النيابات الجزئية وربطها بالنيابة الكلية التابعة لها
+        for (const item of OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "DISTRICT")) {
+          const parentId = item.parentName ? plenaryMap[item.parentName] || null : null;
+          const existing = await prisma.prosecution.findUnique({ where: { name: item.name } }).catch(() => null);
+          if (existing) {
+            await prisma.prosecution.update({
+              where: { id: existing.id },
+              data: {
+                governorate: item.governorate,
+                type: "DISTRICT",
+                parentId: parentId || existing.parentId,
+                active: true,
+              },
+            }).catch(() => null);
+          } else {
             await prisma.prosecution.create({
               data: {
                 name: item.name,
@@ -76,68 +98,14 @@ export async function GET(req: NextRequest) {
               },
             }).catch(() => null);
           }
-          prosecutions = await prisma.prosecution.findMany({
-            where: all ? {} : { active: true },
-            orderBy: [{ governorate: "asc" }, { name: "asc" }],
-            include: { parent: { select: { id: true, name: true } } },
-          });
-        } else {
-          // التأكد من وجود النيابات الجزئية وربطها بالنيابات الكلية
-          const districtCount = await prisma.prosecution.count({ where: { type: "DISTRICT" } }).catch(() => 0);
-          if (districtCount < 10) {
-            const plenaryMap: Record<string, string> = {};
-            for (const item of OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "PLENARY")) {
-              const existing = await prisma.prosecution.findUnique({ where: { name: item.name } }).catch(() => null);
-              if (existing) {
-                plenaryMap[item.name] = existing.id;
-                if (!existing.governorate || existing.type !== "PLENARY") {
-                  await prisma.prosecution.update({
-                    where: { id: existing.id },
-                    data: { governorate: item.governorate, type: "PLENARY", active: true },
-                  }).catch(() => null);
-                }
-              } else {
-                const created = await prisma.prosecution.create({
-                  data: { name: item.name, governorate: item.governorate, type: "PLENARY", active: true },
-                }).catch(() => null);
-                if (created) plenaryMap[item.name] = created.id;
-              }
-            }
-
-            for (const item of OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "DISTRICT")) {
-              const parentId = item.parentName ? plenaryMap[item.parentName] || null : null;
-              const existing = await prisma.prosecution.findUnique({ where: { name: item.name } }).catch(() => null);
-              if (existing) {
-                await prisma.prosecution.update({
-                  where: { id: existing.id },
-                  data: {
-                    governorate: item.governorate,
-                    type: "DISTRICT",
-                    parentId: parentId || existing.parentId,
-                    active: true,
-                  },
-                }).catch(() => null);
-              } else {
-                await prisma.prosecution.create({
-                  data: {
-                    name: item.name,
-                    governorate: item.governorate,
-                    type: "DISTRICT",
-                    parentId,
-                    active: true,
-                  },
-                }).catch(() => null);
-              }
-            }
-          }
-
-          await prisma.prosecution.updateMany({ data: { active: true } }).catch(() => {});
-          prosecutions = await prisma.prosecution.findMany({
-            where: all ? {} : { active: true },
-            orderBy: [{ governorate: "asc" }, { name: "asc" }],
-            include: { parent: { select: { id: true, name: true } } },
-          });
         }
+
+        await prisma.prosecution.updateMany({ data: { active: true } }).catch(() => {});
+        prosecutions = await prisma.prosecution.findMany({
+          where: all ? {} : { active: true },
+          orderBy: [{ governorate: "asc" }, { name: "asc" }],
+          include: { parent: { select: { id: true, name: true } } },
+        });
       } catch (innerErr) {
         console.warn("Auto-seed prosecutions error:", innerErr);
       }
