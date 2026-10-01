@@ -5,11 +5,14 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/rbac";
 import { writeAuditLog } from "@/lib/audit";
+import { isValidEgyptianPhone } from "@/lib/formatters";
 
 const partyItemSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "الاسم مطلوب"),
-  phone: z.string().optional().nullable(),
+  phone: z.string().trim().refine((val) => !val || isValidEgyptianPhone(val), {
+    message: "رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)",
+  }).optional().nullable(),
   nationalId: z.string().optional().nullable(),
   medicalProfession: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),

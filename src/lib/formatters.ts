@@ -97,3 +97,20 @@ export function toEnglishDigits(str: string | null | undefined): string {
   };
   return str.replace(/[٠-٩]/g, (w) => easternToWestern[w] || w);
 }
+
+/**
+ * التحقق من صحة رقم الهاتف المصري (11 رقماً تبدأ بـ 010 أو 011 أو 012 أو 015)
+ */
+export function isValidEgyptianPhone(phone: string | null | undefined): boolean {
+  if (!phone) return false;
+  const clean = toEnglishDigits(phone).trim().replace(/[\s-]/g, "");
+  return /^01[0125]\d{8}$/.test(clean);
+}
+
+/**
+ * تنظيف وتنسيق إدخال رقم الهاتف المصري ليقتصر على الأرقام وبحد أقصى 11 رقماً
+ */
+export function sanitizeEgyptianPhone(phone: string | null | undefined): string {
+  if (!phone) return "";
+  return toEnglishDigits(phone).replace(/\D/g, "").slice(0, 11);
+}

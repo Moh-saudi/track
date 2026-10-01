@@ -5,13 +5,16 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decryptOptionalField, encryptOptionalField } from "@/lib/crypto";
 import { writeAuditLog } from "@/lib/audit";
+import { isValidEgyptianPhone } from "@/lib/formatters";
 
 const doctorSchema = z.object({
   name: z.string().min(3, "يجب إدخال اسم الطبيب كاملاً"),
   title: z.string().optional(),
   employer: z.string().min(2, "يجب تحديد جهة عمل الطبيب / المستشفى لفحص تعارض المصالح"),
   specialtyId: z.string().optional(),
-  phone: z.string().optional(),
+  phone: z.string().trim().refine((val) => !val || isValidEgyptianPhone(val), {
+    message: "رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)",
+  }).optional(),
   notes: z.string().optional(),
   subCommitteeId: z.string().optional(),
   nationalId: z.string().regex(/^\d{14}$/, "الرقم القومي يجب أن يتكون من 14 رقماً").optional(),

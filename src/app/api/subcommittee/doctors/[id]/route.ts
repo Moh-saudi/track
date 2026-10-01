@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decryptOptionalField, encryptOptionalField } from "@/lib/crypto";
 import { writeAuditLog } from "@/lib/audit";
+import { isValidEgyptianPhone } from "@/lib/formatters";
 
 function canManageDoctor(role: string, doctorSubCommitteeId: string, userSubCommitteeId?: string | null) {
   if (role === "ADMIN") return true;
@@ -41,7 +42,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.title) updateData.title = String(body.title).trim();
   if (body.employer) updateData.employer = String(body.employer).trim();
   if (body.specialtyId !== undefined) updateData.specialtyId = body.specialtyId || null;
-  if (body.phone !== undefined) updateData.phone = body.phone ? String(body.phone).trim() : null;
+  if (body.phone !== undefined) {
+    if (body.phone && !isValidEgyptianPhone(body.phone)) {
+      return NextResponse.json({ error: "رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)" }, { status: 400 });
+    }
+    updateData.phone = body.phone ? String(body.phone).trim() : null;
+  }
   if (body.notes !== undefined) updateData.notes = body.notes ? String(body.notes).trim() : null;
   if (body.nationalId !== undefined) {
     if (body.nationalId && !/^\d{14}$/.test(String(body.nationalId))) {

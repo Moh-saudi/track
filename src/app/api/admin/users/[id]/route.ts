@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/rbac";
 import { writeAuditLog } from "@/lib/audit";
 import { getPasswordPolicyError } from "@/lib/password-policy";
+import { isValidEgyptianPhone } from "@/lib/formatters";
 
 const updateSchema = z.object({
   active:          z.boolean().optional(),
@@ -17,7 +18,9 @@ const updateSchema = z.object({
   role:            z.enum(["REGISTRATION_CLERK", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "FINANCE", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER"]).optional(),
   newPassword:     z.string().optional(),
   nationalId:      z.string().regex(/^\d{14}$/, "الرقم القومي يجب أن يتكون من 14 رقماً").nullable().optional(),
-  phone:           z.string().nullable().optional(),
+  phone:           z.string().trim().refine((val) => !val || isValidEgyptianPhone(val), {
+                     message: "رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)",
+                   }).nullable().optional(),
   initialPassword: z.string().nullable().optional(),
 });
 

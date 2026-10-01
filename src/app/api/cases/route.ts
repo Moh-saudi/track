@@ -6,10 +6,13 @@ import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/rbac";
 import { writeAuditLog } from "@/lib/audit";
 import { ensureSchemaMigrated } from "@/lib/db-migrate";
+import { isValidEgyptianPhone } from "@/lib/formatters";
 
 const partySchema = z.object({
   name: z.string().min(1, "الاسم مطلوب"),
-  phone: z.string().optional().nullable(),
+  phone: z.string().trim().refine((val) => !val || isValidEgyptianPhone(val), {
+    message: "رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)",
+  }).optional().nullable(),
   nationalId: z.string().optional().nullable(),
   medicalProfession: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
@@ -24,14 +27,18 @@ const createCaseSchema = z.object({
   attachmentsCount: z.number().int().min(0).default(0),
   hospitalName: z.string().optional().nullable(),
   respondentName: z.string().optional().nullable(),
-  respondentPhone: z.string().optional().nullable(),
+  respondentPhone: z.string().trim().refine((val) => !val || isValidEgyptianPhone(val), {
+    message: "رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)",
+  }).optional().nullable(),
   prosecution: z.string().optional().nullable(),
   prosecutionId: z.string().optional().nullable(),
   partialProsecution: z.string().optional().nullable(),
   partialProsecutionId: z.string().optional().nullable(),
   governorate: z.string().optional().nullable(),
   complainantName: z.string().optional().nullable(),
-  complainantPhone: z.string().optional().nullable(),
+  complainantPhone: z.string().trim().refine((val) => !val || isValidEgyptianPhone(val), {
+    message: "رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)",
+  }).optional().nullable(),
   complainants: z.array(partySchema).optional(),
   respondents: z.array(partySchema).optional(),
   description: z.string().min(1, "ملخص الواقعة / موضوع الشكوى مطلوب"),

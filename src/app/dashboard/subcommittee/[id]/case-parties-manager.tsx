@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { isValidEgyptianPhone, sanitizeEgyptianPhone } from "@/lib/formatters";
 
 export const MEDICAL_PROFESSIONS = [
   "طبيب بشري",
@@ -129,6 +130,28 @@ export function CasePartiesManager({
       const validComplainants = complainants.filter((c) => c.name && c.name.trim().length > 0);
       const validRespondents = respondents.filter((r) => r.name && r.name.trim().length > 0);
       const validAttendees = attendees.filter((a) => a.name && a.name.trim().length > 0);
+
+      for (const c of validComplainants) {
+        if (c.phone && !isValidEgyptianPhone(c.phone)) {
+          setErrorMessage(`رقم هاتف الشاكي (${c.name}) غير صالح. يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)`);
+          setIsSaving(false);
+          return;
+        }
+      }
+      for (const r of validRespondents) {
+        if (r.phone && !isValidEgyptianPhone(r.phone)) {
+          setErrorMessage(`رقم هاتف المشكو في حقه (${r.name}) غير صالح. يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)`);
+          setIsSaving(false);
+          return;
+        }
+      }
+      for (const a of validAttendees) {
+        if (a.phone && !isValidEgyptianPhone(a.phone)) {
+          setErrorMessage(`رقم هاتف المدعو للجلسة (${a.name}) غير صالح. يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)`);
+          setIsSaving(false);
+          return;
+        }
+      }
 
       const res = await fetch(`/api/cases/${caseId}`, {
         method: "PATCH",
@@ -250,10 +273,12 @@ export function CasePartiesManager({
                   <div className="relative">
                     <input
                       type="tel"
+                      inputMode="numeric"
+                      maxLength={11}
                       disabled={readOnly}
                       value={item.phone || ""}
-                      onChange={(e) => updateComplainant(idx, "phone", e.target.value)}
-                      placeholder="الهاتف..."
+                      onChange={(e) => updateComplainant(idx, "phone", sanitizeEgyptianPhone(e.target.value))}
+                      placeholder="01XXXXXXXXX"
                       className="form-input text-xs h-9 font-mono pl-7 bg-white"
                       dir="ltr"
                     />
@@ -361,10 +386,12 @@ export function CasePartiesManager({
                   <div className="relative">
                     <input
                       type="tel"
+                      inputMode="numeric"
+                      maxLength={11}
                       disabled={readOnly}
                       value={item.phone || ""}
-                      onChange={(e) => updateRespondent(idx, "phone", e.target.value)}
-                      placeholder="الهاتف..."
+                      onChange={(e) => updateRespondent(idx, "phone", sanitizeEgyptianPhone(e.target.value))}
+                      placeholder="01XXXXXXXXX"
                       className="form-input text-xs h-9 font-mono pl-7 bg-white"
                       dir="ltr"
                     />
@@ -508,10 +535,12 @@ export function CasePartiesManager({
                     <div className="relative">
                       <input
                         type="tel"
+                        inputMode="numeric"
+                        maxLength={11}
                         disabled={readOnly}
                         value={item.phone || ""}
-                        onChange={(e) => updateAttendee(idx, "phone", e.target.value)}
-                        placeholder="الهاتف..."
+                        onChange={(e) => updateAttendee(idx, "phone", sanitizeEgyptianPhone(e.target.value))}
+                        placeholder="01XXXXXXXXX"
                         className="form-input text-xs h-9 font-mono pl-7 bg-white"
                         dir="ltr"
                       />

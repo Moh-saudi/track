@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { isValidEgyptianPhone, sanitizeEgyptianPhone } from "@/lib/formatters";
 import {
   Table,
   TableHeader,
@@ -342,6 +343,11 @@ export function AdminUsersTable({
       return;
     }
 
+    if (formPhone && !isValidEgyptianPhone(formPhone)) {
+      setError("رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)");
+      return;
+    }
+
     startTransition(async () => {
       try {
         const payload = {
@@ -423,6 +429,11 @@ export function AdminUsersTable({
 
     if (formNationalId && !/^\d{14}$/.test(formNationalId)) {
       setError("الرقم القومي يجب أن يتكون من 14 رقماً بالضبط");
+      return;
+    }
+
+    if (formPhone && !isValidEgyptianPhone(formPhone)) {
+      setError("رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)");
       return;
     }
 
@@ -922,8 +933,9 @@ export function AdminUsersTable({
                     <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     رقم الواتساب (يُحفظ في البروفايل)
                   </label>
-                  <input type="tel" value={formPhone} onChange={(e) => setFormPhone(e.target.value)}
-                    placeholder="01012345678" dir="ltr" className="form-input text-xs font-mono" />
+                  <input type="tel" inputMode="numeric" maxLength={11} value={formPhone}
+                    onChange={(e) => setFormPhone(sanitizeEgyptianPhone(e.target.value))}
+                    placeholder="01XXXXXXXXX" dir="ltr" className="form-input text-xs font-mono" />
                 </div>
                 <label className="flex items-center gap-1.5 pb-1 text-[11px] text-emerald-800 font-semibold cursor-pointer shrink-0">
                   <input type="checkbox" checked={sendViaWhatsAppOnCreate}
@@ -1034,8 +1046,9 @@ export function AdminUsersTable({
                   <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   رقم الواتساب (يُحفظ في البروفايل)
                 </label>
-                <input type="tel" value={formPhone} onChange={(e) => setFormPhone(e.target.value)}
-                  placeholder="01012345678" dir="ltr" className="form-input text-xs font-mono" />
+                <input type="tel" inputMode="numeric" maxLength={11} value={formPhone}
+                  onChange={(e) => setFormPhone(sanitizeEgyptianPhone(e.target.value))}
+                  placeholder="01XXXXXXXXX" dir="ltr" className="form-input text-xs font-mono" />
               </div>
 
               {/* الأزرار */}
@@ -1165,8 +1178,9 @@ export function AdminUsersTable({
               {/* رقم الواتساب */}
               <div className="form-group">
                 <label className="form-label text-xs">رقم الواتساب</label>
-                <input type="tel" value={whatsappPhone} onChange={(e) => setWhatsappPhone(e.target.value)}
-                  placeholder="01012345678" dir="ltr"
+                <input type="tel" inputMode="numeric" maxLength={11} value={whatsappPhone}
+                  onChange={(e) => setWhatsappPhone(sanitizeEgyptianPhone(e.target.value))}
+                  placeholder="01XXXXXXXXX" dir="ltr"
                   className="form-input text-xs font-mono" />
               </div>
             </div>
@@ -1244,6 +1258,10 @@ export function AdminUsersTable({
               <Button type="button" variant="secondary" size="sm" onClick={() => setWhatsappModal(null)}>إغلاق</Button>
               <Button type="button" variant="primary" size="sm"
                 onClick={async () => {
+                  if (whatsappPhone && !isValidEgyptianPhone(whatsappPhone)) {
+                    alert("رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)");
+                    return;
+                  }
                   const targetPwd = whatsappPassword.trim() || generatePasswordString();
                   // حفظ كلمة المرور وتحديث الحساب في قاعدة البيانات فوراً إذا كانت جديدة أو معدلة
                   if (whatsappModal.id && (whatsappModal.needsPasswordSync || targetPwd !== whatsappModal.password)) {

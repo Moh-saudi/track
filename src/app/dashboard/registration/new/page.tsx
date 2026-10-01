@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { EGYPT_GOVERNORATES } from "@/lib/constants/governorates";
 import { OFFICIAL_PROSECUTIONS_LIST } from "@/lib/constants/prosecutions";
+import { isValidEgyptianPhone, sanitizeEgyptianPhone } from "@/lib/formatters";
 
 interface Prosecution {
   id: string;
@@ -453,6 +454,20 @@ export default function NewCasePage() {
       .filter((r) => r.name.trim().length > 0)
       .map((r) => ({ name: r.name.trim(), phone: r.phone.trim() || null }));
 
+    for (const c of cleanComplainants) {
+      if (c.phone && !isValidEgyptianPhone(c.phone)) {
+        setError(`رقم هاتف الشاكي (${c.name}) غير صالح. يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)`);
+        return;
+      }
+    }
+
+    for (const r of cleanRespondents) {
+      if (r.phone && !isValidEgyptianPhone(r.phone)) {
+        setError(`رقم هاتف المشكو في حقه (${r.name}) غير صالح. يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)`);
+        return;
+      }
+    }
+
     const selectedPlenary = mergedProsecutions.find((p) => p.id === selectedPlenaryId);
     const selectedDistrict = mergedProsecutions.find((p) => p.id === selectedDistrictId);
 
@@ -702,9 +717,11 @@ export default function NewCasePage() {
                     <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <input
                       type="tel"
+                      inputMode="numeric"
+                      maxLength={11}
                       value={item.phone}
-                      onChange={(e) => updateComplainant(idx, "phone", e.target.value)}
-                      placeholder="رقم الهاتف (اختياري)..."
+                      onChange={(e) => updateComplainant(idx, "phone", sanitizeEgyptianPhone(e.target.value))}
+                      placeholder="01XXXXXXXXX"
                       className="form-input text-xs font-mono h-9"
                       dir="ltr"
                     />
@@ -773,9 +790,11 @@ export default function NewCasePage() {
                     <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <input
                       type="tel"
+                      inputMode="numeric"
+                      maxLength={11}
                       value={item.phone}
-                      onChange={(e) => updateRespondent(idx, "phone", e.target.value)}
-                      placeholder="رقم الهاتف (اختياري)..."
+                      onChange={(e) => updateRespondent(idx, "phone", sanitizeEgyptianPhone(e.target.value))}
+                      placeholder="01XXXXXXXXX"
                       className="form-input text-xs font-mono h-9"
                       dir="ltr"
                     />

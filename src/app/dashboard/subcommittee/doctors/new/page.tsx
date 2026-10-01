@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, CreditCard, FileText, Save, User } from "lucide-react";
 import { PageHeader, Card, Button } from "@/components/ui";
+import { isValidEgyptianPhone, sanitizeEgyptianPhone } from "@/lib/formatters";
 
 interface Specialty {
   id: string;
@@ -65,6 +66,7 @@ export default function NewDoctorPage() {
     if (!name.trim()) return setError("يرجى إدخال اسم العضو كاملاً");
     if (!employer.trim()) return setError("يرجى إدخال جهة عمل العضو");
     if (nationalId && nationalId.length !== 14) return setError("الرقم القومي يجب أن يتكون من 14 رقماً");
+    if (phone && !isValidEgyptianPhone(phone)) return setError("رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)");
 
     if (nationalIdDocument) {
       if (nationalIdDocument.type !== "application/pdf") {
@@ -216,8 +218,17 @@ export default function NewDoctorPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">رقم الهاتف</label>
-                <input className="form-input text-xs font-mono" dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="01XXXXXXXXX" />
+                <label className="form-label">رقم الهاتف (11 رقماً مصرياً)</label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={11}
+                  className="form-input text-xs font-mono"
+                  dir="ltr"
+                  value={phone}
+                  onChange={(e) => setPhone(sanitizeEgyptianPhone(e.target.value))}
+                  placeholder="01XXXXXXXXX"
+                />
               </div>
             </div>
           </section>
