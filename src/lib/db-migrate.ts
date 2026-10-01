@@ -16,6 +16,8 @@ export async function ensureSchemaMigrated(): Promise<void> {
     await prisma.$executeRawUnsafe(`ALTER TABLE "Prosecution" ADD COLUMN IF NOT EXISTS "type" TEXT DEFAULT 'PLENARY';`).catch(() => {});
     await prisma.$executeRawUnsafe(`ALTER TABLE "Prosecution" ADD COLUMN IF NOT EXISTS "parentId" TEXT;`).catch(() => {});
     await prisma.$executeRawUnsafe(`UPDATE "Prosecution" SET "active" = true WHERE "active" IS NULL OR "active" = false;`).catch(() => {});
+    await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "sessionVersion" INTEGER NOT NULL DEFAULT 1;`).catch(() => {});
+    await prisma.$executeRawUnsafe(`UPDATE "User" SET "sessionVersion" = 1 WHERE "sessionVersion" IS NULL;`).catch(() => {});
 
     migrationDone = true;
   } catch (err) {

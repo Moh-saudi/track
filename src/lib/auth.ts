@@ -90,7 +90,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           role: user.role,
           employer: user.employer,
-          sessionVersion: user.sessionVersion,
+          sessionVersion: user.sessionVersion ?? 1,
           subCommitteeId: user.subCommitteeId,
           subCommitteeName: user.subCommittee?.name,
           subCommitteeActive: user.subCommittee ? user.subCommittee.active : true,
@@ -113,7 +113,7 @@ export const authOptions: NextAuthOptions = {
         token.id = (user as any).id;
         token.employer = (user as any).employer;
         token.specialtyId = (user as any).specialtyId;
-        token.sessionVersion = (user as any).sessionVersion;
+        token.sessionVersion = (user as any).sessionVersion ?? 1;
         token.authInvalid = false;
         return token;
       }
@@ -144,17 +144,28 @@ export const authOptions: NextAuthOptions = {
           !current.subCommittee.active &&
           current.subCommittee.deactivationMode === "LOCK_OUT";
 
+        const dbVersion = current?.sessionVersion ?? 1;
+        const tokenVersion = Number(token.sessionVersion ?? 1);
+        const versionMismatch =
+          token.sessionVersion !== undefined &&
+          token.sessionVersion !== null &&
+          current?.sessionVersion !== null &&
+          current?.sessionVersion !== undefined &&
+          !isNaN(tokenVersion) &&
+          tokenVersion !== dbVersion;
+
         if (
           !current ||
           !current.active ||
           lockedCommittee ||
-          current.sessionVersion !== Number(token.sessionVersion)
+          versionMismatch
         ) {
           token.authInvalid = true;
           return token;
         }
 
         token.authInvalid = false;
+        token.sessionVersion = dbVersion;
         token.role = current.role;
         token.employer = current.employer;
         token.subCommitteeId = current.subCommitteeId;

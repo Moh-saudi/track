@@ -501,8 +501,12 @@ export default function NewCasePage() {
           body: JSON.stringify(payload),
         });
 
+        if (res.redirected || res.url.includes("/login")) {
+          throw new Error("انتهت جلسة تسجيل الدخول، يرجى تسجيل الدخول مجدداً والمحاولة");
+        }
+
         if (!res.ok) {
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
           throw new Error(data.error || "تعذر قيد السجل، يرجى مراجعة البيانات");
         }
 

@@ -49,18 +49,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (parsed.data.active !== undefined && parsed.data.active !== before.active) {
     updateData.active = parsed.data.active;
-    securityContextChanged = true;
+    if (parsed.data.active === false) {
+      securityContextChanged = true; // deactivating account invalidates active session
+    }
   }
   if (parsed.data.fullName) updateData.fullName = parsed.data.fullName.trim();
   if (parsed.data.employer !== undefined) updateData.employer = parsed.data.employer?.trim() || null;
   if (parsed.data.subCommitteeId !== undefined) {
     updateData.subCommitteeId = parsed.data.subCommitteeId;
-    securityContextChanged = true;
   }
   if (parsed.data.specialtyId !== undefined) updateData.specialtyId = parsed.data.specialtyId;
   if (parsed.data.role && parsed.data.role !== before.role) {
     updateData.role = parsed.data.role;
-    securityContextChanged = true;
+    // Roles are refreshed dynamically in JWT callback on each request without kicking out the user
   }
   if (parsed.data.nationalId !== undefined) updateData.nationalId = parsed.data.nationalId?.trim() || null;
   if (parsed.data.phone !== undefined) updateData.phone = parsed.data.phone?.trim() || null;
@@ -72,7 +73,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     securityContextChanged = true;
   }
   if (securityContextChanged) {
-    updateData.sessionVersion = { increment: 1 };
+    updateData.sessionVersion = (before.sessionVersion ?? 1) + 1;
   }
 
   const updated = await prisma.user.update({

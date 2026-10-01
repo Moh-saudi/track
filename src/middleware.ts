@@ -36,6 +36,14 @@ export default withAuth(
         }
       }
     }
+
+    if (pathname.startsWith("/api/")) {
+      if (!token || (token as any)?.authInvalid) {
+        return NextResponse.json({ error: "انتهت صلاحية الجلسة، يرجى إعادة تسجيل الدخول" }, { status: 401 });
+      }
+      return NextResponse.next();
+    }
+
     const role = token?.role as string | undefined;
 
     if (token?.authInvalid) {
@@ -53,7 +61,13 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token && !(token as any)?.authInvalid,
+      authorized: ({ req, token }) => {
+        if (req.nextUrl.pathname.startsWith("/api/")) {
+          // Pass API requests to middleware handler to return JSON 401 instead of HTML redirect
+          return true;
+        }
+        return !!token && !(token as any)?.authInvalid;
+      },
     },
   }
 );
