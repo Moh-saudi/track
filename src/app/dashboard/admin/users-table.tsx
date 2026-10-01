@@ -227,17 +227,34 @@ export function AdminUsersTable({
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // توليد كلمة مرور قوية عشوائية
-  function generateRandomPassword(target: "create" | "reset") {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+  // دالة موحدة لتوليد كلمة مرور قوية
+  function generatePasswordString(): string {
+    const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const lowercase = "abcdefghijkmnpqrstuvwxyz";
+    const numbers = "23456789";
+    const symbols = "!@#$%";
     let pwd = "";
-    for (let i = 0; i < 12; i++) {
-      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    pwd += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
+    pwd += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
+    pwd += numbers.charAt(Math.floor(Math.random() * numbers.length));
+    pwd += symbols.charAt(Math.floor(Math.random() * symbols.length));
+    const all = uppercase + lowercase + numbers + symbols;
+    for (let i = 0; i < 8; i++) {
+      pwd += all.charAt(Math.floor(Math.random() * all.length));
     }
+    return pwd.split("").sort(() => 0.5 - Math.random()).join("");
+  }
+
+  // توليد كلمة مرور قوية عشوائية
+  function generateRandomPassword(target: "create" | "reset" | "whatsapp") {
+    const pwd = generatePasswordString();
     if (target === "create") {
       setFormPassword(pwd);
-    } else {
+    } else if (target === "reset") {
       setResetNewPassword(pwd);
+    } else {
+      setWhatsappPassword(pwd);
+      setWhatsappModal((prev) => (prev ? { ...prev, needsPasswordSync: true } : null));
     }
   }
 
@@ -247,12 +264,14 @@ export function AdminUsersTable({
   // ميزة مشاركة بيانات الحساب عبر واتساب
   const [sendViaWhatsAppOnCreate, setSendViaWhatsAppOnCreate] = useState(true);
   const [whatsappModal, setWhatsappModal] = useState<{
+    id?: string;
     fullName: string;
     email: string;
     password?: string;
     role: string;
     phone?: string;
     isNewAccount?: boolean;
+    needsPasswordSync?: boolean;
   } | null>(null);
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [whatsappPassword, setWhatsappPassword] = useState("");
@@ -278,9 +297,8 @@ export function AdminUsersTable({
     msg += `تحية طيبة وبعد،،\nيسعدنا إبلاغكم بأنه تم اعتماد وتفعيل حسابكم الرسمي على «منظومة تتبع قضايا المسؤولية الطبية» (اللجنة العليا للمسؤولية الطبية — جمهورية مصر العربية):\n\n`;
     msg += `🌐 رابط الدخول للمنظومة:\n${loginUrl}\n\n`;
     msg += `📧 البريد الإلكتروني:\n${email}\n`;
-    if (password && password.trim().length > 0) {
-      msg += `🔑 كلمة المرور الأولية:\n${password}\n`;
-    }
+    const pwd = password && password.trim().length > 0 ? password.trim() : "—";
+    msg += `🔑 كلمة المرور:\n${pwd}\n`;
     msg += `🛡️ الصلاحية والصفة:\n${roleLabel}\n\n`;
     msg += `⚠️ تنبيه أمني:\nهذه البيانات سرية وشخصية للغاية. يُرجى الدخول وتغيير كلمة المرور فور تسجيل الدخول من خلال صفحة الملف الشخصي.`;
     return msg;
@@ -355,7 +373,7 @@ export function AdminUsersTable({
         const createdRole = formRole;
         // استخدام رقم الهاتف المحفوظ وكلمة المرور المحفوظة من البيانات المُرجعة
         const savedPhone = data.phone || formPhone;
-        const savedPassword = data.initialPassword || formPassword;
+        const savedPassword = formPassword.trim() || data.initialPassword || generatePasswordString();
 
         setSuccessMsg(`تم إنشاء حساب المستخدم (${createdFullName}) بالصلاحية المحددة بنجاح.`);
         setIsCreateOpen(false);
@@ -374,12 +392,14 @@ export function AdminUsersTable({
         // فتح نافذة إرسال الواتساب بالبيانات المحفوظة مباشرة
         if (sendViaWhatsAppOnCreate) {
           setWhatsappModal({
+            id: data.id,
             fullName: createdFullName,
             email: createdEmail,
             password: savedPassword,
             role: createdRole,
             phone: savedPhone,
             isNewAccount: true,
+            needsPasswordSync: false,
           });
           setWhatsappPhone(savedPhone);
           setWhatsappPassword(savedPassword);
@@ -497,12 +517,14 @@ export function AdminUsersTable({
 
         // فتح نافذة إرسال كلمة المرور الجديدة عبر واتساب مع تعبئة الباسورد والهاتف تلقائياً
         setWhatsappModal({
+          id: targetUser.id,
           fullName: targetUser.fullName,
           email: targetUser.email,
           password: newPwd,
           role: targetUser.role,
           phone: targetUser.phone || "",
           isNewAccount: false,
+          needsPasswordSync: false,
         });
         setWhatsappPhone(targetUser.phone || "");
         setWhatsappPassword(newPwd);
@@ -598,7 +620,9 @@ export function AdminUsersTable({
                 setIsCreateOpen(true);
                 setFormFullName("");
                 setFormEmail("");
-                setFormPassword("");
+                setFormPassword(generatePasswordString());
+                setFormPhone("");
+                setFormNationalId("");
                 setFormRole("REGISTRATION_CLERK");
                 setFormEmployer("");
                 setFormSubCommitteeId("");
@@ -749,15 +773,21 @@ export function AdminUsersTable({
                         <button
                           type="button"
                           onClick={() => {
+                            const initialPwd = u.initialPassword?.trim();
+                            const pwd = initialPwd || generatePasswordString();
+                            const isAutoGenerated = !initialPwd;
                             setWhatsappModal({
+                              id: u.id,
                               fullName: u.fullName,
                               email: u.email,
                               role: u.role,
+                              phone: u.phone || "",
                               isNewAccount: false,
+                              needsPasswordSync: isAutoGenerated,
                             });
-                            // استخدام رقم الهاتف وكلمة المرور المحفوظين في ملف المستخدم مباشرة
+                            // استخدام رقم الهاتف وكلمة المرور المحفوظين أو المولدة فوراً
                             setWhatsappPhone(u.phone || "");
-                            setWhatsappPassword(u.initialPassword || "");
+                            setWhatsappPassword(pwd);
                             setShowPasswordInModal(true);
                             setError(null);
                           }}
@@ -1143,11 +1173,15 @@ export function AdminUsersTable({
               </div>
             </div>
 
-            {/* كلمة المرور — تُعرض تلقائياً ولا تطلب الكتابة يدوياً */}
+            {/* كلمة المرور — ظاهرة دائماً ومضمنة تلقائياً في الرسالة */}
             <div className="form-group">
               <div className="flex items-center justify-between mb-1">
-                <label className="form-label text-xs font-bold text-slate-700">كلمة المرور في الرسالة</label>
+                <label className="form-label text-xs font-bold text-slate-700">كلمة المرور المضمنة في الرسالة</label>
                 <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => generateRandomPassword("whatsapp")}
+                    className="text-[11px] text-teal-700 hover:text-teal-900 font-semibold flex items-center gap-0.5">
+                    ⚡ توليد أخرى
+                  </button>
                   <button type="button" onClick={() => setShowPasswordInModal(!showPasswordInModal)}
                     className="text-[11px] text-slate-400 hover:text-slate-600 flex items-center gap-0.5">
                     {showPasswordInModal ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
@@ -1165,25 +1199,17 @@ export function AdminUsersTable({
               <input
                 type={showPasswordInModal ? "text" : "password"}
                 value={whatsappPassword}
-                onChange={(e) => setWhatsappPassword(e.target.value)}
-                placeholder={whatsappPassword ? "" : "كلمة المرور غير محفوظة — أعد تعيينها أولاً"}
-                className={`form-input text-xs font-mono ${
-                  !whatsappPassword.trim()
-                    ? "border-amber-300 bg-amber-50 placeholder:text-amber-600"
-                    : "border-emerald-300 bg-emerald-50"
-                }`}
+                onChange={(e) => {
+                  setWhatsappPassword(e.target.value);
+                  setWhatsappModal((prev) => (prev ? { ...prev, needsPasswordSync: true } : null));
+                }}
+                placeholder="كلمة المرور..."
+                className="form-input text-xs font-mono border-emerald-300 bg-emerald-50"
               />
-              {!whatsappPassword.trim() ? (
-                <span className="text-[11px] text-amber-700 mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3 shrink-0" />
-                  كلمة المرور غير محفوظة في الملف — استخدم زر "كلمة المرور" في الجدول لإعادة تعيينها
-                </span>
-              ) : (
-                <span className="text-[11px] text-emerald-700 mt-1 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 shrink-0" />
-                  كلمة المرور محفوظة ومُضمَّنة في الرسالة تلقائياً
-                </span>
-              )}
+              <span className="text-[11px] text-emerald-700 mt-1 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 shrink-0" />
+                كلمة المرور ظاهرة ومُضمَّنة تلقائياً في نص الرسالة أدناه (تُعتمد تلقائياً للحساب)
+              </span>
             </div>
 
             {/* معاينة الرسالة */}
@@ -1219,11 +1245,30 @@ export function AdminUsersTable({
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200">
               <Button type="button" variant="secondary" size="sm" onClick={() => setWhatsappModal(null)}>إغلاق</Button>
               <Button type="button" variant="primary" size="sm"
-                onClick={() => {
+                onClick={async () => {
+                  const targetPwd = whatsappPassword.trim() || generatePasswordString();
+                  // حفظ كلمة المرور وتحديث الحساب في قاعدة البيانات فوراً إذا كانت جديدة أو معدلة
+                  if (whatsappModal.id && (whatsappModal.needsPasswordSync || targetPwd !== whatsappModal.password)) {
+                    try {
+                      await fetch(`/api/admin/users/${whatsappModal.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          newPassword: targetPwd,
+                          initialPassword: targetPwd,
+                          phone: whatsappPhone.trim() || undefined,
+                        }),
+                      });
+                      router.refresh();
+                    } catch (e) {
+                      console.error("Failed to sync password to user", e);
+                    }
+                  }
+
                   const origin = typeof window !== "undefined" ? window.location.origin : "https://trackcd.vercel.app";
                   const messageText = buildWhatsAppMessageText({
                     fullName: whatsappModal.fullName, email: whatsappModal.email,
-                    password: whatsappPassword,
+                    password: targetPwd,
                     roleLabel: ROLE_INFO[whatsappModal.role]?.label || whatsappModal.role,
                     loginUrl: `${origin}/login`,
                   });
