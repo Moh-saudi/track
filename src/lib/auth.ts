@@ -103,6 +103,8 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
+      const now = Date.now();
+
       if (user) {
         token.role = (user as any).role;
         token.subCommitteeId = (user as any).subCommitteeId;
@@ -115,65 +117,84 @@ export const authOptions: NextAuthOptions = {
         token.specialtyId = (user as any).specialtyId;
         token.sessionVersion = (user as any).sessionVersion ?? 1;
         token.authInvalid = false;
+        token.lastCheckedAt = now;
+        return token;
+      }
+
+      // ترشيد استعلامات Supabase: إذا تم التحقق خلال آخر 30 ثانية والجلسة صالحة، لا نعيد ضرب قاعدة البيانات
+      const lastCheck = Number((token as any).lastCheckedAt || 0);
+      if (token.id && now - lastCheck < 30_000 && !(token as any).authInvalid) {
         return token;
       }
 
       if (token.id) {
-        const current = await prisma.user.findUnique({
-          where: { id: String(token.id) },
-          select: {
-            active: true,
-            role: true,
-            employer: true,
-            subCommitteeId: true,
-            specialtyId: true,
-            sessionVersion: true,
-            subCommittee: {
-              select: {
-                name: true,
-                active: true,
-                deactivationMode: true,
-                deactivationReason: true,
+        try {
+          const current = await prisma.user.findUnique({
+            where: { id: String(token.id) },
+            select: {
+              active: true,
+              role: true,
+              employer: true,
+              subCommitteeId: true,
+              specialtyId: true,
+              sessionVersion: true,
+              subCommittee: {
+                select: {
+                  name: true,
+                  active: true,
+                  deactivationMode: true,
+                  deactivationReason: true,
+                },
               },
             },
-          },
-        });
+          });
 
-        const lockedCommittee =
-          !!current?.subCommittee &&
-          !current.subCommittee.active &&
-          current.subCommittee.deactivationMode === "LOCK_OUT";
+          // إذا تم حذف المستخدم نهائياً
+          if (!current) {
+            token.authInvalid = true;
+            return token;
+          }
 
-        const dbVersion = current?.sessionVersion ?? 1;
-        const tokenVersion = Number(token.sessionVersion ?? 1);
-        const versionMismatch =
-          token.sessionVersion !== undefined &&
-          token.sessionVersion !== null &&
-          current?.sessionVersion !== null &&
-          current?.sessionVersion !== undefined &&
-          !isNaN(tokenVersion) &&
-          tokenVersion !== dbVersion;
+          // إذا تم تعطيل حساب المستخدم إدارياً
+          if (!current.active) {
+            token.authInvalid = true;
+            return token;
+          }
 
-        if (
-          !current ||
-          !current.active ||
-          lockedCommittee ||
-          versionMismatch
-        ) {
-          token.authInvalid = true;
-          return token;
+          const lockedCommittee =
+            !!current.subCommittee &&
+            !current.subCommittee.active &&
+            current.subCommittee.deactivationMode === "LOCK_OUT";
+
+          const dbVersion = current.sessionVersion ?? 1;
+          const tokenVersion = Number(token.sessionVersion ?? 1);
+          const versionMismatch =
+            token.sessionVersion !== undefined &&
+            token.sessionVersion !== null &&
+            !isNaN(tokenVersion) &&
+            tokenVersion !== dbVersion;
+
+          if (lockedCommittee || versionMismatch) {
+            token.authInvalid = true;
+            return token;
+          }
+
+          token.authInvalid = false;
+          token.lastCheckedAt = now;
+          token.sessionVersion = dbVersion;
+          token.role = current.role;
+          token.employer = current.employer;
+          token.subCommitteeId = current.subCommitteeId;
+          token.specialtyId = current.specialtyId;
+          token.subCommitteeName = current.subCommittee?.name;
+          token.subCommitteeActive = current.subCommittee ? current.subCommittee.active : true;
+          token.subCommitteeDeactivationMode = current.subCommittee?.deactivationMode || null;
+          token.subCommitteeDeactivationReason = current.subCommittee?.deactivationReason || null;
+        } catch (dbErr) {
+          // حماية استقرار الجلسات: في حال حدوث بطء أو انقطاع لحظي في مسبح اتصالات Supabase،
+          // لا يتم إبطال الجلسة ولا طرد الموظف، بل يستمر بناءً على التوكن المشفر الصالح
+          console.warn("User session DB revalidation skipped due to transient connection blip:", dbErr);
         }
-
-        token.authInvalid = false;
-        token.sessionVersion = dbVersion;
-        token.role = current.role;
-        token.employer = current.employer;
-        token.subCommitteeId = current.subCommitteeId;
-        token.specialtyId = current.specialtyId;
-        token.subCommitteeName = current.subCommittee?.name;
-        token.subCommitteeActive = current.subCommittee ? current.subCommittee.active : true;
-        token.subCommitteeDeactivationMode = current.subCommittee?.deactivationMode || null;
-        token.subCommitteeDeactivationReason = current.subCommittee?.deactivationReason || null;
       }
 
       return token;
