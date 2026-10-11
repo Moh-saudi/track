@@ -10,6 +10,7 @@
 | كود المشكلة | عنوان المشكلة | مستوى الخطورة | تاريخ الرصد | الحالة الحالية | الملفات المعنية |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | **ISSUE-001** | انقطاع الجلسة المفاجئ وظهور خطأ `401 غير مصرح` في Heartbeat وتقارير القيد | **حرج (Critical)** | 2026-10-12 | 🟢 تم الحل والتطبيق | `src/lib/auth.ts`<br>`src/lib/prisma.ts`<br>`src/app/api/...` |
+| **ISSUE-002** | فشل فحص أمان الحزم في الـ CI/CD (`npm audit --audit-level=high`) بسبب ثغرات `sharp` و `source-map-js` | **عالي (High)** | 2026-10-12 | 🟢 تم الحل والتطبيق | `package.json`<br>`package-lock.json` |
 
 ---
 
@@ -65,9 +66,45 @@ page-8432348f0f56e50c.js:1 fetchReport error: Error: غير مصرح
 ---
 
 #### 4. حالة التنفيذ (Implementation Status):
-- **الحالة:** 🟢 **تم التطبيق البرمجي واجتياز الفحص البرمجي (TypeScript Check Passed)**.
-- **الملفات المعدلة:**
-  - `src/lib/prisma.ts`: تثبيت مسبح اتصالات قاعدة البيانات.
-  - `src/lib/auth.ts`: حماية الجلسة من انقطاع قاعدة البيانات ومنع انهيار الـ JWT.
-  - `docs/ISSUES_TRACKER.md`: توثيق الحالة والحل.
-- **الخطوة التالية:** رفع التعديلات لتحديث السيرفر الحي على Vercel لإنهاء ظهور خطأ 401 لدى المستخدمين بشكل نهائي.
+- **الحالة:** 🟢 **تم التطبيق واجتياز الفحص البرمجي والنشر بنجاح على Vercel**.
+
+---
+
+### 【ISSUE-002】فشل فحص أمان الحزم في الـ GitHub Actions CI بسبب ثغرات `sharp` و `source-map-js` و `next`
+
+#### 1. توصيف المشكلة والأعراض المسجلة (Reported Symptoms):
+أثناء تشغيل خط أنابيب التحقق الأمني الحكومي (Government Security CI) في GitHub Actions:
+```text
+Run npm audit --omit=dev --audit-level=high
+# npm audit report
+next 15.0.0 - 15.5.26  Severity: moderate
+sharp <0.35.5          Severity: high (GHSA-wq5f-xc86-pv6w)
+source-map-js 1.0.0 - 1.2.1  Severity: high (GHSA-68fv-2mgg-jv7q)
+3 vulnerabilities (1 moderate, 2 high)
+Error: Process completed with exit code 1.
+```
+تسبب ذلك في إيقاف واعتراض الـ CI/CD وفشل خطوة `Dependency vulnerability audit`.
+
+---
+
+#### 2. التحليل الجذري للسبب (Root Cause Analysis):
+1. حزمة `sharp` التابعة لمعالجة الصور كانت تحتوي على ثغرة أمنية في مكتبة `librsvg` (CVE-2026-96889) في الإصدارات الأقدم من `0.35.5`.
+2. حزمة `source-map-js` التي تعتمد عليها حزم معالجة الـ CSS (`postcss`) كانت متوقفة عند الإصدار `1.2.1` الذي يحتوي على ثغرة Event-loop denial of service (GHSA-68fv-2mgg-jv7q).
+3. إصدار Next.js الأساسي كان `15.5.24`، وتم إطلاق الإصدار المحصن `15.5.27` لسد ثغرات الـ SSG/ISR Cache Poisoning.
+
+---
+
+#### 3. خطة وطرق الحل المعتمدة (Proposed Solutions & Fixes):
+- [x] ترقية `next` إلى الإصدار المحصن الأحدث `15.5.27` في `package.json`.
+- [x] إضافة قواعد `overrides` صارمة في `package.json` تفرض استخدام النسخ الآمنة لجميع التبعيات الفرعية:
+  - `"source-map-js": "1.2.2"`
+  - `"sharp": "^0.35.5"`
+- [x] تحديث `package-lock.json` وتوليد Prisma Client بنجاح.
+- [x] إجراء الفحص المحلي بنفس أمر الـ CI: `npm audit --omit=dev --audit-level=high` والتأكد من إرجاع:
+  `found 0 vulnerabilities` (Exit Code 0).
+- [x] تشغيل اختبارات الأمان والـ Typecheck: `npm run typecheck` و `npm run test:security` وتأكيد النجاح (PASS).
+
+---
+
+#### 4. حالة التنفيذ (Implementation Status):
+- **الحالة:** 🟢 **تم الحل وتصفير الثغرات واجتياز الفحص الأمني بالكامل**.
