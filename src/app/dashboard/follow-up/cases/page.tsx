@@ -111,6 +111,8 @@ export default async function FollowUpCasesPage() {
     id: c.id,
     caseNumber: c.caseNumber,
     caseYear: c.caseYear,
+    prosecutionCaseNumber: c.prosecutionCaseNumber || null,
+    reportYear: c.reportYear || null,
     registrationType: c.registrationType,
     respondentName: c.respondentName,
     respondentPhone: c.respondentPhone,

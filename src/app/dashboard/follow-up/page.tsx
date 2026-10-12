@@ -136,6 +136,8 @@ export default async function FollowUpDashboard() {
     id: c.id,
     caseNumber: c.caseNumber,
     caseYear: c.caseYear,
+    prosecutionCaseNumber: c.prosecutionCaseNumber || null,
+    reportYear: c.reportYear || null,
     registrationType: c.registrationType || "COMPLAINT",
     respondentName: c.respondentName,
     respondentPhone: c.respondentPhone,

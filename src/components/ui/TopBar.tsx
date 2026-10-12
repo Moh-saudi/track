@@ -3,7 +3,8 @@
 import React from "react";
 import { CabinetLogo } from "@/components/CabinetLogo";
 import { UserMenu } from "@/components/ui/UserMenu";
-import { Search, Bell, Menu, Shield } from "lucide-react";
+import { GlobalSearchBar } from "@/components/ui/GlobalSearchBar";
+import { Bell, Menu, Shield } from "lucide-react";
 
 export interface TopBarProps {
   user: {
@@ -33,20 +34,9 @@ export function TopBar({ user, roleLabel, onMobileMenuToggle }: TopBarProps) {
         <CabinetLogo size="header" />
       </div>
 
-      {/* ─── المنتصف: شريط البحث الموحد (Global Search Placeholder) ─── */}
-      <div className="hidden lg:flex flex-1 max-w-md mx-4">
-        <div className="relative w-full">
-          <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
-            <Search className="w-4 h-4" />
-          </div>
-          <input
-            type="text"
-            readOnly
-            placeholder="ابحث برقم السجل، اسم الشاكي، النيابة..."
-            title="شريط البحث السريع"
-            className="w-full h-10 pr-10 pl-4 text-xs rounded-lg border border-slate-200 bg-slate-50/70 text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-600 focus:border-teal-600 cursor-default transition-colors font-body"
-          />
-        </div>
+      {/* ─── المنتصف: شريط البحث الفوري الشامل ─── */}
+      <div className="flex-1 max-w-md mx-2 sm:mx-4">
+        <GlobalSearchBar />
       </div>
 
       {/* ─── اليسار: حالة النظام + التنبيهات + المستخدم ─── */}

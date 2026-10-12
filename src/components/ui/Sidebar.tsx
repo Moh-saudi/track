@@ -44,6 +44,7 @@ export const NAV_ITEMS_BY_ROLE: Record<string, NavItemConfig[]> = {
   ],
   FOLLOW_UP_OFFICER: [
     { href: "/dashboard/follow-up", label: "لوحة قيادة ومؤشرات التوجيه", icon: LayoutDashboard, group: "المهام والعمليات", exact: true },
+    { href: "/dashboard/reports", label: "لوحة القيادة والتقارير الموحدة", icon: BarChart3, group: "المهام والعمليات" },
     { href: "/dashboard/follow-up/cases", label: "مرصد التوجيه ومتابعة المدد", icon: Scale, group: "المهام والعمليات" },
     { href: "/dashboard/registration/reports", label: "تقارير ومعدلات التسجيل", icon: BarChart3, group: "المهام والعمليات" },
     { href: "/dashboard/admin/prosecutions", label: "سجل جهات النيابة", icon: Building2, group: "الإدارة والتهيئة" },
@@ -57,6 +58,7 @@ export const NAV_ITEMS_BY_ROLE: Record<string, NavItemConfig[]> = {
   ],
   SUPREME_COMMITTEE: [
     { href: "/dashboard/supreme", label: "لوحة قيادة ومؤشرات الدائرة العليا", icon: LayoutDashboard, group: "أعمال الدائرة العليا والقرارات", exact: true },
+    { href: "/dashboard/reports", label: "لوحة القيادة والتقارير الموحدة", icon: BarChart3, group: "أعمال الدائرة العليا والقرارات" },
     { href: "/dashboard/supreme/cases", label: "مراجعة السجلات والقرارات", icon: FileCheck, group: "أعمال الدائرة العليا والقرارات" },
     { href: "/dashboard/supreme/schedule", label: "أجندة وخطة الانعقاد", icon: Calendar, group: "أعمال الدائرة العليا والقرارات" },
   ],
@@ -67,6 +69,7 @@ export const NAV_ITEMS_BY_ROLE: Record<string, NavItemConfig[]> = {
   ],
   ADMIN: [
     { href: "/dashboard/admin", label: "لوحة القيادة والتحول الرقمي", icon: LayoutDashboard, group: "القيادة والرقابة المركزية", exact: true },
+    { href: "/dashboard/reports", label: "لوحة القيادة والتقارير الموحدة", icon: BarChart3, group: "القيادة والرقابة المركزية" },
     { href: "/dashboard/admin/audit-logs", label: "سجل جلسات وتواجد المستخدمين", icon: Clock, group: "القيادة والرقابة المركزية" },
     { href: "/dashboard/admin/audit-actions", label: "سجل الحركات الرقابية الشامل", icon: History, group: "القيادة والرقابة المركزية" },
     { href: "/dashboard/admin/active-users", label: "المستخدمون المتصلون ومدة العمل", icon: Activity, group: "القيادة والرقابة المركزية" },
@@ -91,6 +94,7 @@ export const NAV_ITEMS_BY_ROLE: Record<string, NavItemConfig[]> = {
   ],
   RISK_OFFICER: [
     { href: "/dashboard/admin/risk-mode", label: "غرفة عمليات المخاطر وتصحيح المسار", icon: ShieldAlert, group: "إدارة المخاطر والأزمات", exact: true },
+    { href: "/dashboard/reports", label: "لوحة القيادة والتقارير الموحدة", icon: BarChart3, group: "الرقابة والمتابعة العامة" },
     { href: "/dashboard/admin/audit-logs", label: "سجل جلسات وتواجد المستخدمين", icon: Clock, group: "إدارة المخاطر والأزمات" },
     { href: "/dashboard/admin/audit-actions", label: "سجل الحركات الرقابية الشامل", icon: History, group: "إدارة المخاطر والأزمات" },
     { href: "/dashboard/follow-up", label: "مرصد التوجيه ومتابعة المدد", icon: Scale, group: "الرقابة والمتابعة العامة" },
