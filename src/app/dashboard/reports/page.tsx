@@ -14,6 +14,11 @@ import {
 
 export const revalidate = 0;
 
+export const metadata = {
+  title: "لوحة القيادة والتقارير الموحدة | اللجنة العليا للمسؤولية الطبية",
+  description: "المرصد التحليلي الشامل لكافة مراحل القضايا والشكاوى والمحاضر من القيد حتى صدور القرار النهائي",
+};
+
 export default async function UnifiedReportsPage() {
   const session = await getServerSession(authOptions);
   const userRole = (session?.user as any)?.role;
