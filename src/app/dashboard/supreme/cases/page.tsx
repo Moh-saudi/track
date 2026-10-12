@@ -19,47 +19,62 @@ export default async function SupremeCasesPage() {
     redirect("/dashboard");
   }
 
-  const rawCases = await prisma.case.findMany({
-    where: {
-      status: {
-        in: ["PENDING_SUPREME_REVIEW", "APPROVED", "REFERRED_FOR_REVIEW"],
-      },
-    },
-    orderBy: { updatedAt: "desc" },
-    include: {
-      subCommittee: { select: { id: true, name: true } },
-      specialties: {
-        include: { specialty: { select: { id: true, name: true } } },
-      },
-      supremeDecisions: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: { id: true, decisionType: true, createdAt: true },
-      },
-    },
-  });
+  function safeIsoDate(d: any): string | null {
+    if (!d) return null;
+    const date = new Date(d);
+    return isNaN(date.getTime()) ? null : date.toISOString();
+  }
 
-  const serializedCases: SupremeCaseItem[] = rawCases.map((c) => ({
+  let rawCases: any[] = [];
+  try {
+    rawCases = await prisma.case.findMany({
+      where: {
+        status: {
+          in: ["PENDING_SUPREME_REVIEW", "APPROVED", "REFERRED_FOR_REVIEW"],
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        subCommittee: { select: { id: true, name: true } },
+        specialties: {
+          include: { specialty: { select: { id: true, name: true } } },
+        },
+        supremeDecisions: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { id: true, decisionType: true, createdAt: true },
+        },
+      },
+    });
+  } catch (dbErr) {
+    console.error("SupremeCasesPage DB fetch error:", dbErr);
+  }
+
+  const serializedCases: SupremeCaseItem[] = (rawCases || []).map((c) => ({
     id: c.id,
-    caseNumber: c.caseNumber,
-    caseYear: c.caseYear,
-    registrationType: c.registrationType,
-    respondentName: c.respondentName,
-    hospitalName: c.hospitalName,
-    complainantName: c.complainantName,
-    prosecution: c.prosecution,
-    status: c.status,
-    createdAt: c.createdAt.toISOString(),
-    subCommittee: c.subCommittee,
-    specialties: c.specialties.map((s) => ({
-      id: s.id,
-      specialty: { id: s.specialty?.id || s.id, name: s.specialty?.name || "تخصص غير محدد" },
-    })),
-    supremeDecisions: c.supremeDecisions.map((d) => ({
-      id: d.id,
-      decisionType: d.decisionType,
-      createdAt: d.createdAt.toISOString(),
-    })),
+    caseNumber: c.caseNumber || "—",
+    caseYear: c.caseYear || new Date().getFullYear(),
+    registrationType: c.registrationType || "COMPLAINT",
+    respondentName: c.respondentName || null,
+    hospitalName: c.hospitalName || null,
+    complainantName: c.complainantName || null,
+    prosecution: c.prosecution || null,
+    status: c.status || "PENDING_SUPREME_REVIEW",
+    createdAt: safeIsoDate(c.createdAt) || new Date().toISOString(),
+    subCommittee: c.subCommittee || null,
+    specialties: Array.isArray(c.specialties)
+      ? c.specialties.map((s: any) => ({
+          id: s.id,
+          specialty: { id: s.specialty?.id || s.id, name: s.specialty?.name || "تخصص غير محدد" },
+        }))
+      : [],
+    supremeDecisions: Array.isArray(c.supremeDecisions)
+      ? c.supremeDecisions.map((d: any) => ({
+          id: d.id,
+          decisionType: d.decisionType,
+          createdAt: safeIsoDate(d.createdAt) || new Date().toISOString(),
+        }))
+      : [],
   }));
 
   const pendingCount = serializedCases.filter((c) => c.status === "PENDING_SUPREME_REVIEW").length;

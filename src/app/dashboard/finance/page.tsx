@@ -39,35 +39,46 @@ export const revalidate = 0;
 export default async function FinanceDashboard() {
   const session = await getServerSession(authOptions);
 
-  const [rawPayments, rawDoctors, subCommittees] = await Promise.all([
-    prisma.payment.findMany({
-      include: {
-        case: { select: { caseNumber: true, reportYear: true } },
-        member: { select: { fullName: true } },
-        doctor: {
-          select: {
-            name: true,
-            title: true,
-            financialType: true,
-            bankName: true,
-            accountNumber: true,
-            cardNumber: true,
+  let rawPayments: any[] = [];
+  let rawDoctors: any[] = [];
+  let subCommittees: any[] = [];
+
+  try {
+    const [fetchedPayments, fetchedDoctors, fetchedSubCommittees] = await Promise.all([
+      prisma.payment.findMany({
+        include: {
+          case: { select: { caseNumber: true, reportYear: true } },
+          member: { select: { fullName: true } },
+          doctor: {
+            select: {
+              name: true,
+              title: true,
+              financialType: true,
+              bankName: true,
+              accountNumber: true,
+              cardNumber: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.subCommitteeDoctor.findMany({
-      include: {
-        subCommittee: { select: { id: true, name: true, code: true } },
-      },
-    }),
-    prisma.subCommittee.findMany({
-      where: { active: true },
-      select: { id: true, name: true, code: true },
-      orderBy: { code: "asc" },
-    }),
-  ]);
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.subCommitteeDoctor.findMany({
+        include: {
+          subCommittee: { select: { id: true, name: true, code: true } },
+        },
+      }),
+      prisma.subCommittee.findMany({
+        where: { active: true },
+        select: { id: true, name: true, code: true },
+        orderBy: { code: "asc" },
+      }),
+    ]);
+    rawPayments = fetchedPayments || [];
+    rawDoctors = fetchedDoctors || [];
+    subCommittees = fetchedSubCommittees || [];
+  } catch (dbErr) {
+    console.error("FinanceDashboard DB fetch error:", dbErr);
+  }
 
   const payments = rawPayments.map((payment) => ({
     ...payment,

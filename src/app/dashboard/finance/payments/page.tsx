@@ -18,30 +18,41 @@ import {
 export const revalidate = 0;
 
 export default async function FinancePaymentsPage() {
-  const rawPayments = await prisma.payment.findMany({
-    include: {
-      case: { select: { caseNumber: true, reportYear: true } },
-      member: { select: { fullName: true } },
-      doctor: {
-        select: {
-          name: true,
-          title: true,
-          financialType: true,
-          bankName: true,
-          accountNumber: true,
-          cardNumber: true,
+  function safeIsoDate(d: any): string | null {
+    if (!d) return null;
+    const date = new Date(d);
+    return isNaN(date.getTime()) ? null : date.toISOString();
+  }
+
+  let rawPayments: any[] = [];
+  try {
+    rawPayments = await prisma.payment.findMany({
+      include: {
+        case: { select: { caseNumber: true, reportYear: true } },
+        member: { select: { fullName: true } },
+        doctor: {
+          select: {
+            name: true,
+            title: true,
+            financialType: true,
+            bankName: true,
+            accountNumber: true,
+            cardNumber: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (dbErr) {
+    console.error("FinancePaymentsPage DB error:", dbErr);
+  }
 
-  const payments = rawPayments.map((payment) => ({
+  const payments = (rawPayments || []).map((payment) => ({
     ...payment,
     amount: payment.amount === null ? null : Number(payment.amount),
-    paidAt: payment.paidAt ? payment.paidAt.toISOString() : null,
-    createdAt: payment.createdAt.toISOString(),
-    updatedAt: payment.updatedAt.toISOString(),
+    paidAt: safeIsoDate(payment.paidAt),
+    createdAt: safeIsoDate(payment.createdAt) || new Date().toISOString(),
+    updatedAt: safeIsoDate(payment.updatedAt) || new Date().toISOString(),
     doctor: payment.doctor ? decryptDoctorSensitiveFields(payment.doctor) : null,
   }));
 

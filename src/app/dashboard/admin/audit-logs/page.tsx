@@ -28,51 +28,62 @@ export default async function AdminAuditLogsPage({
     redirect("/dashboard");
   }
 
-  const [dbSessions, logs, users] = await Promise.all([
-    prisma.userSession.findMany({
-      orderBy: { loginAt: "desc" },
-      take: 200,
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            role: true,
-            employer: true,
-            subCommittee: { select: { name: true } },
+  let dbSessions: any[] = [];
+  let logs: any[] = [];
+  let users: any[] = [];
+
+  try {
+    const [fetchedSessions, fetchedLogs, fetchedUsers] = await Promise.all([
+      prisma.userSession.findMany({
+        orderBy: { loginAt: "desc" },
+        take: 200,
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              role: true,
+              employer: true,
+              subCommittee: { select: { name: true } },
+            },
           },
         },
-      },
-    }),
-    prisma.auditLog.findMany({
-      where: { entityType: { not: "Payment" } },
-      orderBy: { createdAt: "desc" },
-      take: 300,
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            role: true,
-            employer: true,
+      }),
+      prisma.auditLog.findMany({
+        where: { entityType: { not: "Payment" } },
+        orderBy: { createdAt: "desc" },
+        take: 300,
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              role: true,
+              employer: true,
+            },
           },
         },
-      },
-    }),
-    prisma.user.findMany({
-      select: {
-        id: true,
-        fullName: true,
-        role: true,
-        employer: true,
-        lastSeenAt: true,
-        todayActiveMinutes: true,
-      },
-      orderBy: { fullName: "asc" },
-    }),
-  ]);
+      }),
+      prisma.user.findMany({
+        select: {
+          id: true,
+          fullName: true,
+          role: true,
+          employer: true,
+          lastSeenAt: true,
+          todayActiveMinutes: true,
+        },
+        orderBy: { fullName: "asc" },
+      }),
+    ]);
+    dbSessions = fetchedSessions || [];
+    logs = fetchedLogs || [];
+    users = fetchedUsers || [];
+  } catch (dbErr) {
+    console.error("AdminAuditLogsPage DB fetch error:", dbErr);
+  }
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);

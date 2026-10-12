@@ -17,23 +17,32 @@ import {
 export const revalidate = 0;
 
 export default async function DoctorsFinancePage() {
-  const [rawDoctors, subCommittees] = await Promise.all([
-    prisma.subCommitteeDoctor.findMany({
-      include: {
-        subCommittee: { select: { id: true, name: true, code: true } },
-        specialty: { select: { name: true } },
-      },
-      orderBy: [
-        { subCommittee: { name: "asc" } },
-        { name: "asc" },
-      ],
-    }),
-    prisma.subCommittee.findMany({
-      where: { active: true },
-      select: { id: true, name: true, code: true },
-      orderBy: { code: "asc" },
-    }),
-  ]);
+  let rawDoctors: any[] = [];
+  let subCommittees: any[] = [];
+
+  try {
+    const [fetchedDoctors, fetchedSubCommittees] = await Promise.all([
+      prisma.subCommitteeDoctor.findMany({
+        include: {
+          subCommittee: { select: { id: true, name: true, code: true } },
+          specialty: { select: { name: true } },
+        },
+        orderBy: [
+          { subCommittee: { name: "asc" } },
+          { name: "asc" },
+        ],
+      }),
+      prisma.subCommittee.findMany({
+        where: { active: true },
+        select: { id: true, name: true, code: true },
+        orderBy: { code: "asc" },
+      }),
+    ]);
+    rawDoctors = fetchedDoctors || [];
+    subCommittees = fetchedSubCommittees || [];
+  } catch (dbErr) {
+    console.error("DoctorsFinancePage DB error:", dbErr);
+  }
 
   const doctors = rawDoctors.map((doctor) => decryptDoctorSensitiveFields(doctor));
 

@@ -31,61 +31,84 @@ export default async function SubCommitteeDashboard({
     whereClause.subCommitteeId = userSubCommitteeId;
   }
 
-  const [cases, subCommittee, doctorsCount] = await Promise.all([
-    prisma.case.findMany({
-      where: whereClause,
-      orderBy: { createdAt: "desc" },
-      include: {
-        subCommittee: true,
-        specialties: { include: { specialty: true } },
-        actions: {
-          orderBy: { createdAt: "desc" },
-        },
-        reviewers: {
-          include: {
-            doctor: { select: { name: true } },
-            user: { select: { fullName: true } },
+  function safeIsoDate(d: any): string | null {
+    if (!d) return null;
+    const date = new Date(d);
+    return isNaN(date.getTime()) ? null : date.toISOString();
+  }
+
+  let cases: any[] = [];
+  let subCommittee: any = null;
+  let doctorsCount = 0;
+
+  try {
+    const [fetchedCases, fetchedSubCommittee, fetchedDoctorsCount] = await Promise.all([
+      prisma.case.findMany({
+        where: whereClause,
+        orderBy: { createdAt: "desc" },
+        include: {
+          subCommittee: true,
+          specialties: { include: { specialty: true } },
+          actions: {
+            orderBy: { createdAt: "desc" },
+          },
+          reviewers: {
+            include: {
+              doctor: { select: { name: true } },
+              user: { select: { fullName: true } },
+            },
           },
         },
-      },
-    }),
-    userSubCommitteeId
-      ? prisma.subCommittee.findUnique({ where: { id: userSubCommitteeId } })
-      : null,
-    prisma.subCommitteeDoctor.count({
-      where: userSubCommitteeId ? { subCommitteeId: userSubCommitteeId } : {},
-    }),
-  ]);
+      }),
+      userSubCommitteeId
+        ? prisma.subCommittee.findUnique({ where: { id: userSubCommitteeId } })
+        : null,
+      prisma.subCommitteeDoctor.count({
+        where: userSubCommitteeId ? { subCommitteeId: userSubCommitteeId } : {},
+      }),
+    ]);
+    cases = fetchedCases || [];
+    subCommittee = fetchedSubCommittee;
+    doctorsCount = fetchedDoctorsCount || 0;
+  } catch (dbErr) {
+    console.error("SubCommitteeDashboard DB fetch error:", dbErr);
+  }
 
-  const serializedCases = cases.map((c) => ({
+  const serializedCases = (cases || []).map((c) => ({
     id: c.id,
-    caseNumber: c.caseNumber,
-    caseYear: c.caseYear,
-    registrationType: c.registrationType,
-    complainantName: c.complainantName,
-    respondentName: c.respondentName,
-    hospitalName: c.hospitalName,
-    prosecution: c.prosecution,
-    assignedAt: c.assignedAt ? c.assignedAt.toISOString() : null,
-    expectedDueDate: c.expectedDueDate ? c.expectedDueDate.toISOString() : null,
-    status: c.status,
-    createdAt: c.createdAt.toISOString(),
-    specialties: c.specialties.map((s) => ({
-      id: s.id,
-      specialty: { id: s.specialty?.id || s.id, name: s.specialty?.name || "تخصص غير محدد" },
-    })),
-    actions: c.actions.map((a) => ({
-      id: a.id,
-      receivedDate: a.receivedDate ? a.receivedDate.toISOString() : null,
-      meetingDate: a.meetingDate ? a.meetingDate.toISOString() : null,
-      reportDate: a.reportDate ? a.reportDate.toISOString() : null,
-      faultDescription: a.faultDescription,
-    })),
-    reviewers: c.reviewers.map((r) => ({
-      id: r.id,
-      doctor: r.doctor ? { name: r.doctor.name } : null,
-      user: r.user ? { fullName: r.user.fullName } : null,
-    })),
+    caseNumber: c.caseNumber || "—",
+    caseYear: c.caseYear || new Date().getFullYear(),
+    registrationType: c.registrationType || "COMPLAINT",
+    complainantName: c.complainantName || null,
+    respondentName: c.respondentName || null,
+    hospitalName: c.hospitalName || null,
+    prosecution: c.prosecution || null,
+    assignedAt: safeIsoDate(c.assignedAt),
+    expectedDueDate: safeIsoDate(c.expectedDueDate),
+    status: c.status || "UNDER_SUBCOMMITTEE_REVIEW",
+    createdAt: safeIsoDate(c.createdAt) || new Date().toISOString(),
+    specialties: Array.isArray(c.specialties)
+      ? c.specialties.map((s: any) => ({
+          id: s.id,
+          specialty: { id: s.specialty?.id || s.id, name: s.specialty?.name || "تخصص غير محدد" },
+        }))
+      : [],
+    actions: Array.isArray(c.actions)
+      ? c.actions.map((a: any) => ({
+          id: a.id,
+          receivedDate: safeIsoDate(a.receivedDate),
+          meetingDate: safeIsoDate(a.meetingDate),
+          reportDate: safeIsoDate(a.reportDate),
+          faultDescription: a.faultDescription,
+        }))
+      : [],
+    reviewers: Array.isArray(c.reviewers)
+      ? c.reviewers.map((r: any) => ({
+          id: r.id,
+          doctor: r.doctor ? { name: r.doctor.name } : null,
+          user: r.user ? { fullName: r.user.fullName } : null,
+        }))
+      : [],
   }));
 
   return (

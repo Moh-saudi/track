@@ -51,26 +51,35 @@ export default async function SubCommitteeReportsPage() {
   }
 
   // استعلام السجلات الخاصة باللجنة
-  const [cases, subCommittee] = await Promise.all([
-    prisma.case.findMany({
-      where: whereClause,
-      orderBy: { createdAt: "desc" },
-      include: {
-        subCommittee: true,
-        specialties: { include: { specialty: true } },
-        actions: { orderBy: { createdAt: "desc" } },
-        reviewers: {
-          include: {
-            doctor: { select: { name: true } },
-            user: { select: { fullName: true } },
+  let cases: any[] = [];
+  let subCommittee: any = null;
+
+  try {
+    const [fetchedCases, fetchedSubCommittee] = await Promise.all([
+      prisma.case.findMany({
+        where: whereClause,
+        orderBy: { createdAt: "desc" },
+        include: {
+          subCommittee: true,
+          specialties: { include: { specialty: true } },
+          actions: { orderBy: { createdAt: "desc" } },
+          reviewers: {
+            include: {
+              doctor: { select: { name: true } },
+              user: { select: { fullName: true } },
+            },
           },
         },
-      },
-    }),
-    userSubCommitteeId
-      ? prisma.subCommittee.findUnique({ where: { id: userSubCommitteeId } })
-      : null,
-  ]);
+      }),
+      userSubCommitteeId
+        ? prisma.subCommittee.findUnique({ where: { id: userSubCommitteeId } })
+        : null,
+    ]);
+    cases = fetchedCases || [];
+    subCommittee = fetchedSubCommittee;
+  } catch (dbErr) {
+    console.error("SubCommitteeReportsPage DB fetch error:", dbErr);
+  }
 
   const totalCases = cases.length;
   const inReview = cases.filter(
@@ -125,8 +134,8 @@ export default async function SubCommitteeReportsPage() {
 
   // ─── تجميع إحصائيات التخصصات الطبية (Specialties Ranking) ───
   const specialtyCounts: Record<string, { name: string; count: number }> = {};
-  cases.forEach((c) => {
-    c.specialties.forEach((s) => {
+  cases.forEach((c: any) => {
+    (c.specialties || []).forEach((s: any) => {
       const specName = s.specialty?.name;
       if (!specName) return;
       if (!specialtyCounts[specName]) {

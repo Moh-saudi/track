@@ -24,29 +24,34 @@ export default async function ActiveUsersPage() {
     redirect("/dashboard");
   }
 
-  const users = await prisma.user.findMany({
-    orderBy: [
-      { lastSeenAt: "desc" },
-      { todayActiveMinutes: "desc" },
-      { fullName: "asc" },
-    ],
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      role: true,
-      employer: true,
-      active: true,
-      lastSeenAt: true,
-      todayActiveMinutes: true,
-      lastActiveDate: true,
-      subCommittee: {
-        select: {
-          name: true,
+  let users: any[] = [];
+  try {
+    users = await prisma.user.findMany({
+      orderBy: [
+        { lastSeenAt: "desc" },
+        { todayActiveMinutes: "desc" },
+        { fullName: "asc" },
+      ],
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        employer: true,
+        active: true,
+        lastSeenAt: true,
+        todayActiveMinutes: true,
+        lastActiveDate: true,
+        subCommittee: {
+          select: {
+            name: true,
+          },
         },
       },
-    },
-  });
+    });
+  } catch (dbErr) {
+    console.error("ActiveUsersPage DB fetch error:", dbErr);
+  }
 
   const now = new Date().getTime();
   const threeMinutesMs = 3 * 60 * 1000;

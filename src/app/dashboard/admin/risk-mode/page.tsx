@@ -27,30 +27,35 @@ export default async function AdminRiskModePage() {
   }
 
   // جلب كافة السجلات بالمنظومة لتمكين غرفة إدارة المخاطر من المتابعة والتدخل الشامل
-  const cases = await prisma.case.findMany({
-    orderBy: [{ isRiskOverridden: "desc" }, { updatedAt: "desc" }],
-    include: {
-      subCommittee: { select: { id: true, name: true } },
-      actions: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: {
-          receivedDate: true,
-          meetingDate: true,
-          reportDate: true,
+  let cases: any[] = [];
+  try {
+    cases = await prisma.case.findMany({
+      orderBy: [{ isRiskOverridden: "desc" }, { updatedAt: "desc" }],
+      include: {
+        subCommittee: { select: { id: true, name: true } },
+        actions: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: {
+            receivedDate: true,
+            meetingDate: true,
+            reportDate: true,
+          },
+        },
+        supremeDecisions: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: {
+            decisionType: true,
+            meetingDate: true,
+            decisionDetails: true,
+          },
         },
       },
-      supremeDecisions: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: {
-          decisionType: true,
-          meetingDate: true,
-          decisionDetails: true,
-        },
-      },
-    },
-  });
+    });
+  } catch (dbErr) {
+    console.error("AdminRiskModePage DB fetch error:", dbErr);
+  }
 
   const now = new Date().getTime();
   const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
@@ -81,18 +86,22 @@ export default async function AdminRiskModePage() {
     assignedAt: c.assignedAt ? c.assignedAt.toISOString() : null,
     incomingDate: c.incomingDate ? c.incomingDate.toISOString() : null,
     riskOverriddenAt: c.riskOverriddenAt ? c.riskOverriddenAt.toISOString() : null,
-    createdAt: c.createdAt.toISOString(),
-    updatedAt: c.updatedAt.toISOString(),
-    supremeDecisions: c.supremeDecisions.map((d) => ({
-      ...d,
-      meetingDate: d.meetingDate ? d.meetingDate.toISOString() : d.meetingDate,
-    })),
-    actions: c.actions.map((a) => ({
-      ...a,
-      receivedDate: a.receivedDate ? a.receivedDate.toISOString() : null,
-      meetingDate: a.meetingDate ? a.meetingDate.toISOString() : null,
-      reportDate: a.reportDate ? a.reportDate.toISOString() : null,
-    })),
+    createdAt: c.createdAt ? new Date(c.createdAt).toISOString() : new Date().toISOString(),
+    updatedAt: c.updatedAt ? new Date(c.updatedAt).toISOString() : new Date().toISOString(),
+    supremeDecisions: Array.isArray(c.supremeDecisions)
+      ? c.supremeDecisions.map((d: any) => ({
+          ...d,
+          meetingDate: d.meetingDate ? new Date(d.meetingDate).toISOString() : d.meetingDate,
+        }))
+      : [],
+    actions: Array.isArray(c.actions)
+      ? c.actions.map((a: any) => ({
+          ...a,
+          receivedDate: a.receivedDate ? new Date(a.receivedDate).toISOString() : null,
+          meetingDate: a.meetingDate ? new Date(a.meetingDate).toISOString() : null,
+          reportDate: a.reportDate ? new Date(a.reportDate).toISOString() : null,
+        }))
+      : [],
   }));
 
   return (

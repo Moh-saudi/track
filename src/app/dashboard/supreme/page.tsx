@@ -74,31 +74,42 @@ export default async function SupremeDashboard({ searchParams }: SupremeDashboar
   }
 
   // ─── جلب البيانات من قاعدة البيانات ───
-  const [cases, allSubCommittees, allProsecutions] = await Promise.all([
-    prisma.case.findMany({
-      where: whereClause,
-      orderBy: { updatedAt: "desc" },
-      include: {
-        subCommittee: true,
-        prosecutionRel: { select: { id: true, name: true } },
-        specialties: { include: { specialty: true } },
-        actions: {
-          orderBy: { createdAt: "desc" },
-          select: { reportDate: true, receivedDate: true, createdAt: true, faultDescription: true },
+  let cases: any[] = [];
+  let allSubCommittees: any[] = [];
+  let allProsecutions: any[] = [];
+
+  try {
+    const [fetchedCases, fetchedSubCommittees, fetchedProsecutions] = await Promise.all([
+      prisma.case.findMany({
+        where: whereClause,
+        orderBy: { updatedAt: "desc" },
+        include: {
+          subCommittee: true,
+          prosecutionRel: { select: { id: true, name: true } },
+          specialties: { include: { specialty: true } },
+          actions: {
+            orderBy: { createdAt: "desc" },
+            select: { reportDate: true, receivedDate: true, createdAt: true, faultDescription: true },
+          },
+          supremeDecisions: { orderBy: { createdAt: "desc" }, take: 1 },
         },
-        supremeDecisions: { orderBy: { createdAt: "desc" }, take: 1 },
-      },
-    }),
-    prisma.subCommittee.findMany({
-      where: { active: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.prosecution.findMany({
-      where: { active: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-  ]);
+      }),
+      prisma.subCommittee.findMany({
+        where: { active: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.prosecution.findMany({
+        where: { active: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
+    ]);
+    cases = fetchedCases || [];
+    allSubCommittees = fetchedSubCommittees || [];
+    allProsecutions = fetchedProsecutions || [];
+  } catch (dbErr) {
+    console.error("SupremeDashboard DB fetch error:", dbErr);
+  }
 
   const totalCases = cases.length;
   const pendingCount = cases.filter((c) => c.status === "PENDING_SUPREME_REVIEW").length;
@@ -138,8 +149,8 @@ export default async function SupremeDashboard({ searchParams }: SupremeDashboar
 
   // ─── إحصائيات التخصصات الطبية المعروضة أمام اللجنة العليا ───
   const specialtyCounts: Record<string, { name: string; count: number }> = {};
-  cases.forEach((c) => {
-    c.specialties.forEach((s) => {
+  cases.forEach((c: any) => {
+    (c.specialties || []).forEach((s: any) => {
       const specName = s.specialty?.name;
       if (!specName) return;
       if (!specialtyCounts[specName]) {

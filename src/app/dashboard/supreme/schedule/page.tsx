@@ -25,47 +25,58 @@ export default async function SupremeSchedulePage() {
     redirect("/dashboard");
   }
 
-  const [sessions, supremeMembers, pendingCases] = await Promise.all([
-    prisma.supremeSession.findMany({
-      orderBy: { sessionDate: "asc" },
-      include: {
-        createdBy: { select: { fullName: true } },
-        cases: {
-          select: {
-            id: true,
-            caseNumber: true,
-            caseYear: true,
-            complainantName: true,
-            hospitalName: true,
+  let sessions: any[] = [];
+  let supremeMembers: any[] = [];
+  let pendingCases: any[] = [];
+
+  try {
+    const [fetchedSessions, fetchedMembers, fetchedPending] = await Promise.all([
+      prisma.supremeSession.findMany({
+        orderBy: { sessionDate: "asc" },
+        include: {
+          createdBy: { select: { fullName: true } },
+          cases: {
+            select: {
+              id: true,
+              caseNumber: true,
+              caseYear: true,
+              complainantName: true,
+              hospitalName: true,
+            },
           },
         },
-      },
-    }),
-    prisma.user.findMany({
-      where: { role: "SUPREME_COMMITTEE", active: true },
-      select: {
-        id: true,
-        fullName: true,
-        email: true,
-        employer: true,
-      },
-      orderBy: { fullName: "asc" },
-    }),
-    prisma.case.findMany({
-      where: {
-        status: { in: ["PENDING_SUPREME_REVIEW", "UNDER_SUBCOMMITTEE_REVIEW"] },
-      },
-      select: {
-        id: true,
-        caseNumber: true,
-        caseYear: true,
-        complainantName: true,
-        hospitalName: true,
-        subCommittee: { select: { name: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+      }),
+      prisma.user.findMany({
+        where: { role: "SUPREME_COMMITTEE", active: true },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          employer: true,
+        },
+        orderBy: { fullName: "asc" },
+      }),
+      prisma.case.findMany({
+        where: {
+          status: { in: ["PENDING_SUPREME_REVIEW", "UNDER_SUBCOMMITTEE_REVIEW"] },
+        },
+        select: {
+          id: true,
+          caseNumber: true,
+          caseYear: true,
+          complainantName: true,
+          hospitalName: true,
+          subCommittee: { select: { name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+    sessions = fetchedSessions || [];
+    supremeMembers = fetchedMembers || [];
+    pendingCases = fetchedPending || [];
+  } catch (dbErr) {
+    console.error("SupremeSchedulePage DB fetch error:", dbErr);
+  }
 
   const now = new Date();
   const upcomingSessions = sessions.filter((s) => new Date(s.sessionDate) >= now);

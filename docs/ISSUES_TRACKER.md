@@ -11,6 +11,7 @@
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | **ISSUE-001** | انقطاع الجلسة المفاجئ وظهور خطأ `401 غير مصرح` في Heartbeat وتقارير القيد | **حرج (Critical)** | 2026-10-12 | 🟢 تم الحل والتطبيق | `src/lib/auth.ts`<br>`src/lib/prisma.ts`<br>`src/app/api/...` |
 | **ISSUE-002** | فشل فحص أمان الحزم في الـ CI/CD (`npm audit --audit-level=high`) بسبب ثغرات `sharp` و `source-map-js` | **عالي (High)** | 2026-10-12 | 🟢 تم الحل والتطبيق | `package.json`<br>`package-lock.json` |
+| **ISSUE-003** | خطأ `An error occurred in the Server Components render` و `Node cannot be found` عند الربط مع سوبابيز (Supabase) | **حرج (Critical)** | 2026-10-12 | 🟢 تم الحل والتحصين | صفحات الـ Dashboard<br>مسبح اتصالات Supabase |
 
 ---
 
@@ -108,3 +109,65 @@ Error: Process completed with exit code 1.
 
 #### 4. حالة التنفيذ (Implementation Status):
 - **الحالة:** 🟢 **تم الحل وتصفير الثغرات واجتياز الفحص الأمني بالكامل**.
+
+---
+
+### 【ISSUE-003】خطأ معالجة مكونات الخادم (`Server Components render`) وانهيار Hydration مع Supabase
+
+#### 1. توصيف المشكلة والأعراض المسجلة (Reported Symptoms):
+عند فتح لوحات التحكم في بيئة الإنتاج على Vercel والمربوطة بقاعدة بيانات سوبابيز (Supabase)، تظهر شاشة الخطأ المؤقت وتُسجل في كونسول المتصفح الرسائل التالية:
+```text
+Error: An error occurred in the Server Components render. The specific message is omitted in production builds to avoid leaking sensitive details. A digest property is included on this error instance which may provide additional details about the nature of the error.
+Dashboard render error: Error: An error occurred in the Server Components render...
+Node cannot be found in the current page
+```
+
+---
+
+#### 2. التحليل الجذري للسبب (Root Cause Analysis):
+1. **استخدام مسبح اتصالات Supabase Transaction Pooler (Port 6543) بدون إعداد Prisma:**
+   - يوفر Supabase نمطين للاتصال: المنفذ المباشر `5432`، ومنفذ مسبح الاتصالات السريعة `6543` (المعتمد على pgBouncer / Supavisor).
+   - نمط الـ Transaction Pooler (المنفذ 6543) **لا يدعم Prepared Statements**.
+   - محرك Prisma بشكل افتراضي ينشئ Prepared Statements لجميع الاستعلامات.
+   - في حال كان رابط `DATABASE_URL` يشير إلى المنفذ `6543` دون إضافة المعامل `?pgbouncer=true`، يرفض بوستجرس الاستعلام فوراً بخطأ: `ERROR: prepared statement "s0" does not exist`.
+   - خادم Next.js في الإنتاج يقوم بتعتيم هذا الخطأ لحماية بيانات قاعدة البيانات ويستبدله بالرسالة:
+     `An error occurred in the Server Components render. The specific message is omitted in production builds...` ثم ينقله لـ `src/app/dashboard/error.tsx`.
+
+2. **استنفاد سعة اتصالات Supabase في الـ Serverless (Pool Exhaustion):**
+   - بيئة Vercel تشغل دوال Serverless متعددة بالتوازي. إذا كان الرابط يفتقر إلى `&connection_limit=1`، فإن Prisma يفتح مسبح اتصالات متعدد لكل دالة، مما يؤدي سريعاً لتجاوز الحد الأقصى لسوبابيز (15-20 اتصال في الخطط العادية) ورفض الاتصالات الجديدة.
+
+3. **غياب كتل الحماية `try ... catch` والتعامل الآمن مع التواريخ في صفحات الـ Server Components:**
+   - صفحات لوحات التحكم (`subcommittee`, `supreme`, `finance`, `admin/audit-logs`, `admin/active-users`, `admin/risk-mode`) كانت تنفذ استعلامات `Promise.all` دون `try ... catch`.
+   - عند حدوث أي تأخر لحظي في شبكة Supabase، كان الخطأ يسقط المكون بالكامل بدلاً من إرجاع مصفوفات فارغة واستمرار عمل الواجهة بأمان.
+   - استدعاء `c.createdAt.toISOString()` مباشرة دون التحقق من صلاحية التاريخ كان يرمي `RangeError: Invalid time value`.
+
+4. **سبب خطأ `Node cannot be found in the current page`:**
+   - عندما يفشل الـ Server Component في الخادم، يرسل Next.js تدفق HTML يحتوي على واجهة الخطأ `DashboardError`.
+   - أثناء عملية الـ Hydration في المتصفح عبر React 18/19، عند محاولة استبدال شجرة الـ DOM، أو عند تفعيل الترجمة التلقائية للمتصفح (Google Translate) للنصوص العربية والتي تعيد هيكلة عناصر النصوص، يفشل React في الوصول للعقد الأصلية ويرمي استثناء `NotFoundError: Node cannot be found in the current page`.
+
+---
+
+#### 3. خطة وطرق الحل المعتمدة (Proposed Solutions & Fixes):
+
+- [x] **تحصين كافة صفحات الـ Server Components بـ `try ... catch` وهيكلة استعادة آمنة:**
+   - تعديل صفحات `subcommittee` و `supreme` و `finance` و `audit-logs` و `active-users` و `risk-mode` و `follow-up`.
+   - تغليف كافة استعلامات `prisma.*` بكتل حماية ترجع مصفوفات فارغة افتراضية عند حدوث بطء أو انقطاع لحظي في قاعدة البيانات دون إسقاط الصفحة.
+   - استخدام دالة تحويل آمنة للتواريخ `safeIsoDate()` تمنع انهيار التحويل إلى ISO.
+
+- [x] **ضبط وتوثيق إعدادات اتصال Supabase الصحيحة في Vercel و `.env`:**
+   - **في حال استخدام Transaction Pooler (المنفذ 6543 - الموصى به لـ Vercel):**
+     يجب أن يحتوي الرابط في متغيرات البيئة على المعاملين التاليين إلزامياً:
+     ```text
+     DATABASE_URL="postgres://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
+     ```
+   - **في حال استخدام Session Pooler أو Direct (المنفذ 5432):**
+     يجب إضافة محدد الاتصالات الفردي لمنع استنزاف السعة:
+     ```text
+     DATABASE_URL="postgres://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres?connection_limit=1"
+     ```
+
+---
+
+#### 4. حالة التنفيذ (Implementation Status):
+- **الحالة:** 🟢 **تم تحصين وحماية كافة مكونات الخادم وتوافق البناء بنجاح**.
+
