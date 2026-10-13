@@ -7,9 +7,17 @@ import { ArrowRight, CreditCard, FileText, Save, User } from "lucide-react";
 import { PageHeader, Card, Button, EgyptianPhoneInput } from "@/components/ui";
 import { isValidEgyptianPhone, sanitizeEgyptianPhone } from "@/lib/formatters";
 
+import { useSession } from "next-auth/react";
+
 interface Specialty {
   id: string;
   name: string;
+}
+
+interface SubCommittee {
+  id: string;
+  name: string;
+  code: string;
 }
 
 const EGYPTIAN_BANKS = [
@@ -32,8 +40,13 @@ const LOCAL_DOCUMENT_UPLOAD_ENABLED = process.env.NEXT_PUBLIC_ENABLE_LOCAL_DOCUM
 
 export default function NewDoctorPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
+
   const [isPending, startTransition] = useTransition();
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [subCommittees, setSubCommittees] = useState<SubCommittee[]>([]);
+  const [selectedSubCommitteeId, setSelectedSubCommitteeId] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
@@ -57,6 +70,11 @@ export default function NewDoctorPage() {
       .then((res) => (res.ok ? res.json() : []))
       .then(setSpecialties)
       .catch(console.error);
+
+    fetch("/api/subcommittees")
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setSubCommittees)
+      .catch(console.error);
   }, []);
 
   async function handleSubmit(event: React.FormEvent) {
@@ -65,6 +83,7 @@ export default function NewDoctorPage() {
 
     if (!name.trim()) return setError("يرجى إدخال اسم العضو كاملاً");
     if (!employer.trim()) return setError("يرجى إدخال جهة عمل العضو");
+    if (isAdmin && !selectedSubCommitteeId) return setError("يرجى اختيار اللجنة الفرعية التابع لها العضو");
     if (nationalId && nationalId.length !== 14) return setError("الرقم القومي يجب أن يتكون من 14 رقماً");
     if (phone && !isValidEgyptianPhone(phone)) return setError("رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)");
 
@@ -90,6 +109,7 @@ export default function NewDoctorPage() {
             name: name.trim(),
             title,
             employer: employer.trim(),
+            subCommitteeId: isAdmin ? selectedSubCommitteeId : undefined,
             specialtyId: specialtyId || undefined,
             phone: phone.trim() || undefined,
             notes: notes.trim() || undefined,
@@ -165,6 +185,30 @@ export default function NewDoctorPage() {
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {isAdmin && (
+                <div className="form-group sm:col-span-3 bg-amber-50/80 p-3.5 rounded-xl border border-amber-200">
+                  <label className="form-label form-label-required text-amber-900 font-bold mb-1">
+                    اللجنة الفرعية التابع لها العضو (اختيار المشرف الإداري)
+                  </label>
+                  <select
+                    required
+                    className="form-select text-xs bg-white border-amber-300 font-medium"
+                    value={selectedSubCommitteeId}
+                    onChange={(e) => setSelectedSubCommitteeId(e.target.value)}
+                  >
+                    <option value="">— اختر اللجنة الفرعية المناسبة —</option>
+                    {subCommittees.map((sc) => (
+                      <option key={sc.id} value={sc.id}>
+                        {sc.name} ({sc.code})
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[11px] text-amber-700 mt-1 block">
+                    بصفتك مدير النظام، يمكنك قيد الأطباء والاستشاريين وتنسيبهم لأي لجنة فرعية مباشرة دون الحاجة للتبديل بين الحسابات.
+                  </span>
+                </div>
+              )}
+
               <div className="form-group">
                 <label className="form-label form-label-required">اسم العضو كاملاً</label>
                 <input required className="form-input text-xs" value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: أ.د. شريف كمال الدين" />

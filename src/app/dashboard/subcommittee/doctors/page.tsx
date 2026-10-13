@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { UserCheck, Plus, CreditCard, Building, Building2, Stethoscope, AlertTriangle, CheckCircle2, Pause, Play, Trash2, X } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { PageHeader, StatCard, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Badge } from "@/components/ui";
 
 interface Specialty {
@@ -10,11 +11,19 @@ interface Specialty {
   name: string;
 }
 
+interface SubCommittee {
+  id: string;
+  name: string;
+  code: string;
+}
+
 interface Doctor {
   id: string;
   name: string;
   title: string | null;
   employer: string;
+  subCommitteeId?: string;
+  subCommittee?: { id: string; name: string; code: string } | null;
   specialtyId: string | null;
   specialty?: Specialty | null;
   phone: string | null;
@@ -30,8 +39,13 @@ interface Doctor {
 }
 
 export default function SubcommitteeDoctorsPage() {
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
+
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [subCommittees, setSubCommittees] = useState<SubCommittee[]>([]);
+  const [selectedCommitteeFilter, setSelectedCommitteeFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -46,10 +60,15 @@ export default function SubcommitteeDoctorsPage() {
   const [editIban, setEditIban] = useState("");
   const [editCardNumber, setEditCardNumber] = useState("");
 
-  async function loadData() {
+  async function loadData(committeeFilter = selectedCommitteeFilter) {
     try {
+      setLoading(true);
+      const url = committeeFilter
+        ? `/api/subcommittee/doctors?subCommitteeId=${committeeFilter}`
+        : "/api/subcommittee/doctors";
+
       const [docsRes, specRes] = await Promise.all([
-        fetch("/api/subcommittee/doctors"),
+        fetch(url),
         fetch("/api/specialties"),
       ]);
 
@@ -71,6 +90,10 @@ export default function SubcommitteeDoctorsPage() {
 
   useEffect(() => {
     loadData();
+    fetch("/api/subcommittees")
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setSubCommittees)
+      .catch(console.error);
   }, []);
 
   function openFinanceModal(doc: Doctor) {
@@ -396,12 +419,32 @@ export default function SubcommitteeDoctorsPage() {
 
       {/* جدول أطباء واستشاريي اللجنة الفرعية */}
       <Card className="p-0 overflow-hidden">
-        <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-bold font-heading text-slate-800">قائمة الأطباء والاستشاريين والحسابات البنكية</h2>
             <p className="text-xs text-slate-500 mt-0.5 font-body">تُفحص جهة عمل الطبيب لمنع تعارض المصالح، وتُحال بياناته البنكية للشؤون المالية</p>
           </div>
-          <span className="text-xs text-slate-500 font-body">{doctors.length} طبيب مقيد</span>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {isAdmin && (
+              <select
+                className="form-select text-xs bg-white border-slate-300 py-1.5 font-medium"
+                value={selectedCommitteeFilter}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedCommitteeFilter(val);
+                  loadData(val);
+                }}
+              >
+                <option value="">— جميع اللجان الفرعية —</option>
+                {subCommittees.map((sc) => (
+                  <option key={sc.id} value={sc.id}>
+                    {sc.name} ({sc.code})
+                  </option>
+                ))}
+              </select>
+            )}
+            <span className="text-xs text-slate-500 font-body whitespace-nowrap">{doctors.length} طبيب مقيد</span>
+          </div>
         </div>
 
         {loading ? (
@@ -422,6 +465,7 @@ export default function SubcommitteeDoctorsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>اسم الطبيب / اللقب</TableHead>
+                {isAdmin && <TableHead>اللجنة الفرعية</TableHead>}
                 <TableHead>التخصص الطبي</TableHead>
                 <TableHead>جهة العمل / المستشفى</TableHead>
                 <TableHead>البيانات المالية وصرف المستحقات</TableHead>
@@ -442,6 +486,18 @@ export default function SubcommitteeDoctorsPage() {
                       </span>
                     )}
                   </TableCell>
+
+                  {isAdmin && (
+                    <TableCell className="text-xs font-body whitespace-nowrap">
+                      {doc.subCommittee ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 font-medium border border-teal-200">
+                          {doc.subCommittee.name}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </TableCell>
+                  )}
 
                   <TableCell>
                     {doc.specialty ? (
