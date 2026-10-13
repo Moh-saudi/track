@@ -9,8 +9,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── أنواع (Enums) ───────────────────────────────
@@ -227,6 +228,9 @@ model SubCommitteeDoctor {
 
   reviewAssignments CaseReviewer[]
   doctorPayments    Payment[]
+
+  @@index([subCommitteeId])
+  @@index([active])
 }
 
 // ─── جدول وسيط للقضايا متعددة التخصصات ────────────
@@ -326,6 +330,8 @@ model Case {
   @@unique([caseNumber, caseYear])
   @@index([status])
   @@index([subCommitteeId])
+  @@index([prosecutionId])
+  @@index([registrationType])
   @@index([createdAt])
 }
 
