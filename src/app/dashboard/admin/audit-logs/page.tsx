@@ -36,7 +36,7 @@ export default async function AdminAuditLogsPage({
     const [fetchedSessions, fetchedLogs, fetchedUsers] = await Promise.all([
       prisma.userSession.findMany({
         orderBy: { loginAt: "desc" },
-        take: 200,
+        take: 300,
         include: {
           user: {
             select: {
@@ -53,7 +53,7 @@ export default async function AdminAuditLogsPage({
       prisma.auditLog.findMany({
         where: { entityType: { not: "Payment" } },
         orderBy: { createdAt: "desc" },
-        take: 300,
+        take: 1000,
         include: {
           user: {
             select: {
@@ -127,24 +127,80 @@ export default async function AdminAuditLogsPage({
     });
   }
 
-  const todayLogs = logs.filter((l) => new Date(l.createdAt) >= todayStart);
-  const activeSessionsCount = effectiveSessions.filter((s) => s.isActive).length;
-  const totalSessionsCount = effectiveSessions.length;
+  const SENSITIVE_ACTIONS = new Set([
+    "DELETE",
+    "RECUSAL",
+    "ADMIN_RISK_OVERRIDE",
+    "LOCK_OUT",
+    "DEACTIVATE",
+    "CANCEL_ROUTING",
+    "OVERRIDE",
+    "REVISE_DECISION",
+    "REMOVE",
+  ]);
 
-  // Serialize dates to strings
-  const serializedSessions = effectiveSessions.map((s) => ({
-    ...s,
-    loginAt: s.loginAt instanceof Date ? s.loginAt.toISOString() : s.loginAt,
-    lastActiveAt: s.lastActiveAt instanceof Date ? s.lastActiveAt.toISOString() : s.lastActiveAt,
-    logoutAt: s.logoutAt instanceof Date ? s.logoutAt.toISOString() : s.logoutAt,
-    createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
-    updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : s.updatedAt,
-  }));
+  // Serialize dates to strings & correlate live audit logs
+  const serializedSessions = effectiveSessions.map((s) => {
+    // جلب الحركات الرقابية الخاصة بهذا المستخدم في يوم الجلسة أو خلال نافذتها
+    const sessionLogs = logs.filter((l) => {
+      if (l.userId !== s.userId) return false;
+      const logDate = new Date(l.createdAt).toISOString().split("T")[0];
+      if (logDate === s.sessionDate) return true;
+      const logTime = new Date(l.createdAt).getTime();
+      const loginTime = new Date(s.loginAt).getTime() - 15 * 60 * 1000;
+      const logoutTime = (s.logoutAt ? new Date(s.logoutAt).getTime() : Date.now()) + 30 * 60 * 1000;
+      return logTime >= loginTime && logTime <= logoutTime;
+    });
+
+    const realActionsCount = Math.max(Number(s.actionsCount || 0), sessionLogs.length);
+    const hasSensitiveAction = sessionLogs.some((l) => SENSITIVE_ACTIONS.has(String(l.action).toUpperCase()));
+    const lastAction = sessionLogs[0] || null;
+
+    return {
+      ...s,
+      actionsCount: realActionsCount,
+      hasSensitiveAction,
+      lastAction: lastAction
+        ? {
+            id: lastAction.id,
+            action: lastAction.action,
+            entityType: lastAction.entityType,
+            entityId: lastAction.entityId,
+            createdAt: lastAction.createdAt instanceof Date ? lastAction.createdAt.toISOString() : lastAction.createdAt,
+            isSensitive: SENSITIVE_ACTIONS.has(String(lastAction.action).toUpperCase()),
+          }
+        : null,
+      sessionLogs: sessionLogs.map((l) => ({
+        id: l.id,
+        action: l.action,
+        entityType: l.entityType,
+        entityId: l.entityId,
+        createdAt: l.createdAt instanceof Date ? l.createdAt.toISOString() : l.createdAt,
+        beforeData: l.beforeData,
+        afterData: l.afterData,
+        ipAddress: l.ipAddress || null,
+        userAgent: l.userAgent || null,
+        isSensitive: SENSITIVE_ACTIONS.has(String(l.action).toUpperCase()),
+      })),
+      ipAddress: s.ipAddress || sessionLogs.find((l) => l.ipAddress)?.ipAddress || null,
+      userAgent: s.userAgent || sessionLogs.find((l) => l.userAgent)?.userAgent || null,
+      loginAt: s.loginAt instanceof Date ? s.loginAt.toISOString() : s.loginAt,
+      lastActiveAt: s.lastActiveAt instanceof Date ? s.lastActiveAt.toISOString() : s.lastActiveAt,
+      logoutAt: s.logoutAt instanceof Date ? s.logoutAt.toISOString() : s.logoutAt,
+      createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
+      updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : s.updatedAt,
+    };
+  });
 
   const serializedLogs = logs.map((l) => ({
     ...l,
     createdAt: l.createdAt instanceof Date ? l.createdAt.toISOString() : l.createdAt,
+    isSensitive: SENSITIVE_ACTIONS.has(String(l.action).toUpperCase()),
   }));
+
+  const todayLogs = logs.filter((l) => new Date(l.createdAt) >= todayStart);
+  const activeSessionsCount = effectiveSessions.filter((s) => s.isActive).length;
+  const totalSessionsCount = effectiveSessions.length;
 
   return (
     <div className="space-y-6">

@@ -134,6 +134,8 @@ model UserSession {
   screenTimes         Json?     // e.g. {"/dashboard/registration": 15, "/dashboard/follow-up": 20}
   actionsCount        Int       @default(0)
   isActive            Boolean   @default(true)
+  ipAddress           String?
+  userAgent           String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
@@ -477,6 +479,8 @@ model AuditLog {
   user        User     @relation("UserAuditLogs", fields: [userId], references: [id])
   beforeData  Json?
   afterData   Json?
+  ipAddress   String?
+  userAgent   String?
   createdAt   DateTime @default(now())
 
   @@index([entityType, entityId])

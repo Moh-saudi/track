@@ -39,8 +39,10 @@ export async function writeAuditLog(params: {
   userId: string;
   beforeData?: unknown;
   afterData?: unknown;
+  ipAddress?: string;
+  userAgent?: string;
 }) {
-  await prisma.auditLog.create({
+  const created = await prisma.auditLog.create({
     data: {
       entityType: params.entityType,
       entityId: params.entityId,
@@ -48,6 +50,28 @@ export async function writeAuditLog(params: {
       userId: params.userId,
       beforeData: sanitizePayload(params.beforeData) as any,
       afterData: sanitizePayload(params.afterData) as any,
+      ipAddress: params.ipAddress,
+      userAgent: params.userAgent,
     },
   });
+
+  // تحديث عداد الحركات في الجلسة النشطة للمستخدم فوراً
+  try {
+    const todayStr = new Date().toISOString().split("T")[0];
+    await prisma.userSession.updateMany({
+      where: {
+        userId: params.userId,
+        sessionDate: todayStr,
+        isActive: true,
+      },
+      data: {
+        actionsCount: { increment: 1 },
+      },
+    });
+  } catch {
+    // non-fatal
+  }
+
+  return created;
 }
+

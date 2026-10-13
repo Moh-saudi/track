@@ -65,6 +65,10 @@ export async function POST(req: NextRequest) {
     orderBy: { updatedAt: "desc" },
   });
 
+  const forwarded = req.headers.get("x-forwarded-for");
+  const ip = forwarded ? forwarded.split(",")[0].trim() : req.headers.get("x-real-ip") || "127.0.0.1";
+  const userAgent = req.headers.get("user-agent") || null;
+
   if (activeSession) {
     // Increment existing active session
     const screenTimes = (activeSession.screenTimes as Record<string, number>) || {};
@@ -77,6 +81,8 @@ export async function POST(req: NextRequest) {
         logoutAt: now, // updated continuously as last seen
         totalMinutes: activeSession.totalMinutes + 1,
         screenTimes,
+        ipAddress: ip,
+        userAgent: userAgent,
       },
     });
   } else {
@@ -102,6 +108,8 @@ export async function POST(req: NextRequest) {
         totalMinutes: 1,
         screenTimes: { [clientPath]: 1 },
         isActive: true,
+        ipAddress: ip,
+        userAgent: userAgent,
       },
     });
   }
