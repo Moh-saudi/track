@@ -8,7 +8,10 @@ import { isValidEgyptianPhone } from "@/lib/formatters";
 
 function canManageDoctor(role: string, doctorSubCommitteeId: string, userSubCommitteeId?: string | null) {
   if (role === "ADMIN") return true;
-  return role === "SUBCOMMITTEE_MEMBER" && !!userSubCommitteeId && doctorSubCommitteeId === userSubCommitteeId;
+  if (role === "SUBCOMMITTEE_MEMBER") {
+    return !userSubCommitteeId || doctorSubCommitteeId === userSubCommitteeId;
+  }
+  return false;
 }
 
 function safeDoctorResponse(doctor: any) {

@@ -888,19 +888,27 @@ export function AdminUsersTable({
                     </TableCell>
 
                     <TableCell className="text-xs text-slate-600 whitespace-nowrap">
-                      {u.subCommittee?.name ? (
-                        <span className="text-slate-700 font-medium block">
-                          {u.subCommittee.name}
+                      {u.role === "SUBCOMMITTEE_MEMBER" && !u.subCommittee?.name ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200 font-bold text-[11px]">
+                          منسق عام لجميع اللجان (أمانة سر اللجان)
                         </span>
-                      ) : null}
-                      {u.specialty?.name ? (
-                        <span className="text-[11px] text-teal-700 block">
-                          {u.specialty.name}
-                        </span>
-                      ) : null}
-                      {!u.subCommittee?.name && !u.specialty?.name ? (
-                        <span className="text-slate-400">—</span>
-                      ) : null}
+                      ) : (
+                        <>
+                          {u.subCommittee?.name ? (
+                            <span className="text-slate-700 font-medium block">
+                              {u.subCommittee.name}
+                            </span>
+                          ) : null}
+                          {u.specialty?.name ? (
+                            <span className="text-[11px] text-teal-700 block">
+                              {u.specialty.name}
+                            </span>
+                          ) : null}
+                          {!u.subCommittee?.name && !u.specialty?.name ? (
+                            <span className="text-slate-400">—</span>
+                          ) : null}
+                        </>
+                      )}
                     </TableCell>
 
                     <TableCell className="text-center whitespace-nowrap">
@@ -1067,11 +1075,14 @@ export function AdminUsersTable({
               {/* اللجنة الفرعية (فقط لعضو اللجنة) */}
               {formRole === "SUBCOMMITTEE_MEMBER" && (
                 <div className="form-group">
-                  <label className="form-label form-label-required text-xs text-amber-900">اللجنة الفرعية</label>
-                  <select required value={formSubCommitteeId} onChange={(e) => setFormSubCommitteeId(e.target.value)} className="form-input text-xs bg-amber-50">
-                    <option value="">— اختر اللجنة الفرعية —</option>
+                  <label className="form-label text-xs text-amber-900 font-bold">اللجنة الفرعية / نطاق العمل</label>
+                  <select value={formSubCommitteeId} onChange={(e) => setFormSubCommitteeId(e.target.value)} className="form-input text-xs bg-amber-50">
+                    <option value="">— منسق عام لجميع اللجان (أمانة سر اللجان الـ 16) —</option>
                     {subCommittees.map((sc) => <option key={sc.id} value={sc.id}>{sc.name} ({sc.code})</option>)}
                   </select>
+                  <span className="text-[10px] text-amber-800 mt-1 block">
+                    إذا اخترت «منسق عام لجميع اللجان»، سيتمكن المستخدم من استعراض وإضافة وتعديل أطباء كافة اللجان الفرعية دون صلاحيات الأدمن.
+                  </span>
                 </div>
               )}
 
@@ -1183,9 +1194,9 @@ export function AdminUsersTable({
               {/* اللجنة الفرعية (فقط لعضو اللجنة) */}
               {formRole === "SUBCOMMITTEE_MEMBER" && (
                 <div className="form-group">
-                  <label className="form-label form-label-required text-xs text-amber-900">اللجنة الفرعية</label>
-                  <select required value={formSubCommitteeId} onChange={(e) => setFormSubCommitteeId(e.target.value)} className="form-input text-xs bg-amber-50">
-                    <option value="">— اختر اللجنة الفرعية —</option>
+                  <label className="form-label text-xs text-amber-900 font-bold">اللجنة الفرعية / نطاق العمل</label>
+                  <select value={formSubCommitteeId} onChange={(e) => setFormSubCommitteeId(e.target.value)} className="form-input text-xs bg-amber-50">
+                    <option value="">— منسق عام لجميع اللجان (أمانة سر اللجان الـ 16) —</option>
                     {subCommittees.map((sc) => <option key={sc.id} value={sc.id}>{sc.name} ({sc.code})</option>)}
                   </select>
                 </div>

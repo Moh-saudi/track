@@ -41,7 +41,9 @@ const LOCAL_DOCUMENT_UPLOAD_ENABLED = process.env.NEXT_PUBLIC_ENABLE_LOCAL_DOCUM
 export default function NewDoctorPage() {
   const router = useRouter();
   const { data: session } = useSession();
-  const isAdmin = (session?.user as any)?.role === "ADMIN";
+  const role = (session?.user as any)?.role;
+  const userSubCommitteeId = (session?.user as any)?.subCommitteeId;
+  const canManageAllCommittees = role === "ADMIN" || (role === "SUBCOMMITTEE_MEMBER" && !userSubCommitteeId);
 
   const [isPending, startTransition] = useTransition();
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
@@ -82,9 +84,9 @@ export default function NewDoctorPage() {
     setError(null);
 
     if (!name.trim()) return setError("يرجى إدخال اسم العضو كاملاً");
-    if (!employer.trim()) return setError("يرجى إدخال جهة عمل العضو");
-    if (isAdmin && !selectedSubCommitteeId) return setError("يرجى اختيار اللجنة الفرعية التابع لها العضو");
-    if (nationalId && nationalId.length !== 14) return setError("الرقم القومي يجب أن يتكون من 14 رقماً");
+    if (!nationalId.trim()) return setError("الرقم القومي مطلوب ويجب إدخاله");
+    if (nationalId.trim().length !== 14) return setError("الرقم القومي يجب أن يتكون من 14 رقماً");
+    if (canManageAllCommittees && !selectedSubCommitteeId) return setError("يرجى اختيار اللجنة الفرعية التابع لها العضو");
     if (phone && !isValidEgyptianPhone(phone)) return setError("رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)");
 
     if (nationalIdDocument) {
@@ -107,13 +109,13 @@ export default function NewDoctorPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: name.trim(),
-            title,
-            employer: employer.trim(),
-            subCommitteeId: isAdmin ? selectedSubCommitteeId : undefined,
+            nationalId: nationalId.trim(),
+            title: title || undefined,
+            employer: employer.trim() || undefined,
+            subCommitteeId: canManageAllCommittees ? selectedSubCommitteeId : undefined,
             specialtyId: specialtyId || undefined,
             phone: phone.trim() || undefined,
             notes: notes.trim() || undefined,
-            nationalId: nationalId.trim() || undefined,
             financialType,
             bankName: resolvedBankName || undefined,
             accountNumber: financialType === "BANK_ACCOUNT" ? accountNumber.trim() || undefined : undefined,
@@ -185,10 +187,10 @@ export default function NewDoctorPage() {
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {isAdmin && (
+              {canManageAllCommittees && (
                 <div className="form-group sm:col-span-3 bg-amber-50/80 p-3.5 rounded-xl border border-amber-200">
                   <label className="form-label form-label-required text-amber-900 font-bold mb-1">
-                    اللجنة الفرعية التابع لها العضو (اختيار المشرف الإداري)
+                    اللجنة الفرعية التابع لها العضو (اختيار منسق اللجان / المشرف)
                   </label>
                   <select
                     required
@@ -204,7 +206,7 @@ export default function NewDoctorPage() {
                     ))}
                   </select>
                   <span className="text-[11px] text-amber-700 mt-1 block">
-                    بصفتك مدير النظام، يمكنك قيد الأطباء والاستشاريين وتنسيبهم لأي لجنة فرعية مباشرة دون الحاجة للتبديل بين الحسابات.
+                    يمكنك قيد الأطباء والاستشاريين وتنسيبهم لأي لجنة فرعية مباشرة دون الحاجة للتبديل بين الحسابات.
                   </span>
                 </div>
               )}
@@ -215,7 +217,12 @@ export default function NewDoctorPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label form-label-required">الدرجة واللقب العلمي</label>
+                <label className="form-label form-label-required">الرقم القومي (14 رقماً)</label>
+                <input required className="form-input text-xs font-mono" dir="ltr" maxLength={14} value={nationalId} onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ""))} placeholder="2XXXXXXXXXXXXX" />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">الدرجة واللقب العلمي</label>
                 <select className="form-select text-xs" value={title} onChange={(e) => setTitle(e.target.value)}>
                   <option>أستاذ دكتور</option>
                   <option>أستاذ مساعد</option>
@@ -226,8 +233,8 @@ export default function NewDoctorPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label form-label-required">جهة العمل / المستشفى</label>
-                <input required className="form-input text-xs" value={employer} onChange={(e) => setEmployer(e.target.value)} placeholder="جهة عمل العضو" />
+                <label className="form-label">جهة العمل / المستشفى (اختياري)</label>
+                <input className="form-input text-xs" value={employer} onChange={(e) => setEmployer(e.target.value)} placeholder="جهة عمل العضو (اختياري)" />
               </div>
 
               <div className="form-group">
@@ -236,11 +243,6 @@ export default function NewDoctorPage() {
                   <option value="">— اختر التخصص —</option>
                   {specialties.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">الرقم القومي (14 رقماً)</label>
-                <input className="form-input text-xs font-mono" dir="ltr" maxLength={14} value={nationalId} onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ""))} placeholder="2XXXXXXXXXXXXX" />
               </div>
 
               <div className="form-group">

@@ -8,16 +8,16 @@ import { writeAuditLog } from "@/lib/audit";
 import { isValidEgyptianPhone } from "@/lib/formatters";
 
 const doctorSchema = z.object({
-  name: z.string().min(3, "يجب إدخال اسم الطبيب كاملاً"),
+  name: z.string().min(2, "يجب إدخال اسم العضو كاملاً"),
+  nationalId: z.string().regex(/^\d{14}$/, "الرقم القومي مطلوب ويجب أن يتكون من 14 رقماً"),
   title: z.string().optional(),
-  employer: z.string().min(2, "يجب تحديد جهة عمل الطبيب / المستشفى لفحص تعارض المصالح"),
+  employer: z.string().optional(),
   specialtyId: z.string().optional(),
   phone: z.string().trim().refine((val) => !val || isValidEgyptianPhone(val), {
     message: "رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)",
   }).optional(),
   notes: z.string().optional(),
   subCommitteeId: z.string().optional(),
-  nationalId: z.string().regex(/^\d{14}$/, "الرقم القومي يجب أن يتكون من 14 رقماً").optional(),
   financialType: z.enum(["PAYROLL_CARD", "BANK_ACCOUNT", "BANK_CARD"]).optional(),
   bankName: z.string().optional(),
   accountNumber: z.string().optional(),
@@ -54,8 +54,9 @@ export async function GET(req: NextRequest) {
   const requestedSubCommitteeId = searchParams.get("subCommitteeId");
   const whereClause: any = {};
 
-  if (role === "SUBCOMMITTEE_MEMBER") {
-    if (!userSubCommitteeId) return NextResponse.json({ error: "المستخدم غير مرتبط بلجنة فرعية" }, { status: 400 });
+  // إذا كان المستخدم عضواً مرتبطاً بلجنة محددة، يُقيد بها
+  // أما إذا كان منسقاً عاماً (بدون subCommitteeId) أو مديراً أو مالية، يرى الكل أو حسب الفلتر
+  if (role === "SUBCOMMITTEE_MEMBER" && userSubCommitteeId) {
     whereClause.subCommitteeId = userSubCommitteeId;
   } else if (requestedSubCommitteeId) {
     whereClause.subCommitteeId = requestedSubCommitteeId;
@@ -72,7 +73,7 @@ export async function GET(req: NextRequest) {
 
   const sanitizedDoctors = doctors.map((doc) => {
     const canViewBanking = role === "FINANCE" || role === "ADMIN" ||
-      (role === "SUBCOMMITTEE_MEMBER" && doc.subCommitteeId === userSubCommitteeId);
+      (role === "SUBCOMMITTEE_MEMBER" && (!userSubCommitteeId || doc.subCommitteeId === userSubCommitteeId));
     return sanitizeDoctorForRole(doc, canViewBanking);
   });
 
@@ -86,15 +87,17 @@ export async function POST(req: NextRequest) {
   const role = (session.user as any).role;
   const userSubCommitteeId = (session.user as any).subCommitteeId;
   if (role !== "SUBCOMMITTEE_MEMBER" && role !== "ADMIN") {
-    return NextResponse.json({ error: "صلاحية إدارة أطباء اللجنة مخصصة لمقرر اللجنة الفرعية أو المدير" }, { status: 403 });
+    return NextResponse.json({ error: "صلاحية إدارة أطباء اللجنة مخصصة لمقرر اللجنة الفرعية أو منسق اللجان أو المدير" }, { status: 403 });
   }
 
   const parsed = doctorSchema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const effectiveSubCommitteeId = role === "ADMIN" && parsed.data.subCommitteeId
+  const isGeneralCoordinator = role === "ADMIN" || (role === "SUBCOMMITTEE_MEMBER" && !userSubCommitteeId);
+  const effectiveSubCommitteeId = isGeneralCoordinator && parsed.data.subCommitteeId
     ? parsed.data.subCommitteeId
     : userSubCommitteeId;
+
   if (!effectiveSubCommitteeId) {
     return NextResponse.json({ error: "يجب تحديد اللجنة الفرعية التابع لها الطبيب" }, { status: 400 });
   }
@@ -103,12 +106,12 @@ export async function POST(req: NextRequest) {
     data: {
       subCommitteeId: effectiveSubCommitteeId,
       name: parsed.data.name.trim(),
+      nationalId: encryptOptionalField(parsed.data.nationalId),
       title: parsed.data.title?.trim() || "استشاري",
-      employer: parsed.data.employer.trim(),
+      employer: parsed.data.employer?.trim() || "غير محدد",
       specialtyId: parsed.data.specialtyId || null,
       phone: parsed.data.phone?.trim() || null,
       notes: parsed.data.notes?.trim() || null,
-      nationalId: encryptOptionalField(parsed.data.nationalId),
       financialType: parsed.data.financialType || null,
       bankName: parsed.data.bankName?.trim() || null,
       accountNumber: encryptOptionalField(parsed.data.accountNumber),

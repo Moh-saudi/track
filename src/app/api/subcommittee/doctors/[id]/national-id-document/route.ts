@@ -33,7 +33,7 @@ async function authorizeDoctorAccess(doctorId: string, user: any, write = false)
     return { error: "غير مصرح بالاطلاع على مستند بطاقة الرقم القومي", status: 403 as const };
   }
 
-  if (role === "SUBCOMMITTEE_MEMBER" && doctor.subCommitteeId !== user.subCommitteeId) {
+  if (role === "SUBCOMMITTEE_MEMBER" && user.subCommitteeId && doctor.subCommitteeId !== user.subCommitteeId) {
     return { error: "غير مصرح بالوصول إلى بيانات عضو خارج لجنتك", status: 403 as const };
   }
 

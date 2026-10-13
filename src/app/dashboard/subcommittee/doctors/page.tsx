@@ -40,7 +40,9 @@ interface Doctor {
 
 export default function SubcommitteeDoctorsPage() {
   const { data: session } = useSession();
-  const isAdmin = (session?.user as any)?.role === "ADMIN";
+  const role = (session?.user as any)?.role;
+  const userSubCommitteeId = (session?.user as any)?.subCommitteeId;
+  const canManageAllCommittees = role === "ADMIN" || (role === "SUBCOMMITTEE_MEMBER" && !userSubCommitteeId);
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
@@ -425,7 +427,7 @@ export default function SubcommitteeDoctorsPage() {
             <p className="text-xs text-slate-500 mt-0.5 font-body">تُفحص جهة عمل الطبيب لمنع تعارض المصالح، وتُحال بياناته البنكية للشؤون المالية</p>
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            {isAdmin && (
+            {canManageAllCommittees && (
               <select
                 className="form-select text-xs bg-white border-slate-300 py-1.5 font-medium"
                 value={selectedCommitteeFilter}
@@ -465,7 +467,7 @@ export default function SubcommitteeDoctorsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>اسم الطبيب / اللقب</TableHead>
-                {isAdmin && <TableHead>اللجنة الفرعية</TableHead>}
+                {canManageAllCommittees && <TableHead>اللجنة الفرعية</TableHead>}
                 <TableHead>التخصص الطبي</TableHead>
                 <TableHead>جهة العمل / المستشفى</TableHead>
                 <TableHead>البيانات المالية وصرف المستحقات</TableHead>
@@ -487,7 +489,7 @@ export default function SubcommitteeDoctorsPage() {
                     )}
                   </TableCell>
 
-                  {isAdmin && (
+                  {canManageAllCommittees && (
                     <TableCell className="text-xs font-body whitespace-nowrap">
                       {doc.subCommittee ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 font-medium border border-teal-200">

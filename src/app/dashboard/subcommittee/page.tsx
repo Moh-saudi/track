@@ -22,11 +22,7 @@ export default async function SubCommitteeDashboard({
   const whereClause: any = {};
   if (userRole !== "ADMIN") {
     if (!userSubCommitteeId) {
-      return (
-        <div className="p-8 text-center text-slate-500 font-body">
-          حسابك غير مرتبط بأي لجنة فرعية حالياً. يرجى مراجعة إدارة النظام.
-        </div>
-      );
+      redirect("/dashboard/subcommittee/doctors");
     }
     whereClause.subCommitteeId = userSubCommitteeId;
   }
