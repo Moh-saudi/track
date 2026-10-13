@@ -49,6 +49,7 @@ export interface UnifiedCase {
   complainantName: string | null;
   respondentName: string | null;
   prosecution: string | null;
+  partialProsecution?: string | null;
   subCommitteeId: string | null;
   subCommittee: { id: string; name: string } | null;
   specialties: Array<{ id: string; name: string }>;
@@ -192,6 +193,76 @@ export function UnifiedReportsClient({
       };
     });
   }, [subCommitteesList, filteredCases]);
+
+  // ─── إحصائيات التخصصات الطبية الديناميكية المتأثرة بالفلاتر ───
+  const dynamicSpecialties = useMemo(() => {
+    const specialtyCounts: Record<string, { id: string; name: string; count: number }> = {};
+    let casesWithSpecialty = 0;
+
+    filteredCases.forEach((c) => {
+      const specs = c.specialties || [];
+      if (specs.length > 0) {
+        casesWithSpecialty++;
+        specs.forEach((s) => {
+          if (!s.name || s.name === "غير محدد") return;
+          if (!specialtyCounts[s.name]) {
+            specialtyCounts[s.name] = { id: s.id, name: s.name, count: 0 };
+          }
+          specialtyCounts[s.name].count++;
+        });
+      }
+    });
+
+    const totalSpecialtyReferences = Object.values(specialtyCounts).reduce(
+      (sum, cur) => sum + cur.count,
+      0
+    );
+
+    const sorted = Object.values(specialtyCounts).sort((a, b) => b.count - a.count);
+
+    return {
+      list: sorted.map((item) => ({
+        id: item.id,
+        name: item.name,
+        count: item.count,
+        percentage:
+          totalSpecialtyReferences > 0
+            ? Math.round((item.count / totalSpecialtyReferences) * 100)
+            : 0,
+      })),
+      totalClassifiedCases: casesWithSpecialty,
+      unclassifiedCases: filteredCases.length - casesWithSpecialty,
+    };
+  }, [filteredCases]);
+
+  // ─── إحصائيات جهات النيابة العامة الديناميكية المتأثرة بالفلاتر ───
+  const dynamicProsecutions = useMemo(() => {
+    const prosCounts: Record<string, { name: string; count: number }> = {};
+    let casesWithPros = 0;
+
+    filteredCases.forEach((c) => {
+      const pName = c.prosecution || (c.partialProsecution ? `نيابة ${c.partialProsecution}` : null);
+      if (!pName) return;
+      casesWithPros++;
+      if (!prosCounts[pName]) {
+        prosCounts[pName] = { name: pName, count: 0 };
+      }
+      prosCounts[pName].count++;
+    });
+
+    const totalProsCases = casesWithPros;
+    const sorted = Object.values(prosCounts).sort((a, b) => b.count - a.count);
+
+    return {
+      list: sorted.map((item) => ({
+        name: item.name,
+        count: item.count,
+        percentage: totalProsCases > 0 ? Math.round((item.count / totalProsCases) * 100) : 0,
+      })),
+      totalProsCases,
+      casesWithoutPros: filteredCases.length - casesWithPros,
+    };
+  }, [filteredCases]);
 
   // تصدير CSV
   function handleExportCSV() {
@@ -558,7 +629,9 @@ export function UnifiedReportsClient({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
           <SpecialtiesDistributionChart
-            specialties={specialtiesList}
+            specialties={dynamicSpecialties.list}
+            totalClassifiedCases={dynamicSpecialties.totalClassifiedCases}
+            unclassifiedCases={dynamicSpecialties.unclassifiedCases}
             title="التوزيع التخصصي الطبي"
             subtitle="أعلى التخصصات طلباً في القضايا والشكاوى على مستوى الجمهورية"
           />
@@ -574,13 +647,13 @@ export function UnifiedReportsClient({
       </div>
 
       {/* ─── توزيع جهات النيابة العامة ─── */}
-      {prosecutionsList.length > 0 && (
-        <ProsecutionsDistributionChart
-          prosecutions={prosecutionsList}
-          title="توزيع القضايا حسب جهات النيابة العامة"
-          subtitle="النيابات الأكثر إحالةً للقضايا والمحاضر الطبية"
-        />
-      )}
+      <ProsecutionsDistributionChart
+        prosecutions={dynamicProsecutions.list}
+        totalCasesCount={filteredCases.length}
+        casesWithoutProsCount={dynamicProsecutions.casesWithoutPros}
+        title="توزيع القضايا حسب جهات النيابة العامة"
+        subtitle="حصر كافة النيابات الكلية والجزئية الأكثر إحالة للقضايا ونسبتها المئوية"
+      />
 
       {/* ─── جدول استعراض السجلات المطابقة ─── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">

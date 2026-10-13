@@ -175,6 +175,7 @@ export default async function UnifiedReportsPage() {
       complainantName: c.complainantName || null,
       respondentName: c.respondentName || null,
       prosecution: c.prosecution || null,
+      partialProsecution: c.partialProsecution || null,
       subCommitteeId: c.subCommitteeId || null,
       subCommittee: c.subCommittee ? { id: c.subCommittee.id, name: c.subCommittee.name } : null,
       specialties: (c.specialties || []).map((s: any) => ({
