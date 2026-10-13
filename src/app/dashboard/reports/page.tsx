@@ -39,6 +39,8 @@ export default async function UnifiedReportsPage() {
         include: {
           subCommittee: { select: { id: true, name: true } },
           specialties: { include: { specialty: true } },
+          prosecutionRel: { select: { id: true, name: true } },
+          partialProsecutionRel: { select: { id: true, name: true } },
           actions: {
             select: {
               reportDate: true,
@@ -114,7 +116,11 @@ export default async function UnifiedReportsPage() {
   // ─── إحصائيات جهات النيابة العامة ───
   const prosCounts: Record<string, { name: string; count: number }> = {};
   cases.forEach((c) => {
-    const pName = c.prosecution;
+    const pName =
+      c.prosecutionRel?.name ||
+      c.prosecution ||
+      c.partialProsecutionRel?.name ||
+      (c.partialProsecution ? `نيابة ${c.partialProsecution}` : null);
     if (!pName) return;
     if (!prosCounts[pName]) {
       prosCounts[pName] = { name: pName, count: 0 };
@@ -126,7 +132,7 @@ export default async function UnifiedReportsPage() {
 
   const prosecutionsList: ProsecutionStat[] = Object.values(prosCounts)
     .sort((a, b) => b.count - a.count)
-    .slice(0, 6)
+    .slice(0, 8)
     .map((item) => ({
       name: item.name,
       count: item.count,
@@ -163,6 +169,17 @@ export default async function UnifiedReportsPage() {
       }
     }
 
+    const resolvedProsName =
+      c.prosecutionRel?.name ||
+      c.prosecution ||
+      (c.partialProsecution ? `نيابة ${c.partialProsecution}` : null) ||
+      null;
+
+    const resolvedPartialProsName =
+      c.partialProsecutionRel?.name ||
+      c.partialProsecution ||
+      null;
+
     return {
       id: c.id,
       caseNumber: c.caseNumber,
@@ -174,8 +191,8 @@ export default async function UnifiedReportsPage() {
       hospitalName: c.hospitalName || null,
       complainantName: c.complainantName || null,
       respondentName: c.respondentName || null,
-      prosecution: c.prosecution || null,
-      partialProsecution: c.partialProsecution || null,
+      prosecution: resolvedProsName,
+      partialProsecution: resolvedPartialProsName,
       subCommitteeId: c.subCommitteeId || null,
       subCommittee: c.subCommittee ? { id: c.subCommittee.id, name: c.subCommittee.name } : null,
       specialties: (c.specialties || []).map((s: any) => ({

@@ -548,6 +548,30 @@ export function SubCommitteesWorkloadTable({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {/* أداة الترتيب والفرز */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2 h-8">
+              <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">الترتيب:</span>
+              <select
+                value={sortField}
+                onChange={(e) => setSortField(e.target.value as SubCommitteeSortField)}
+                className="bg-transparent text-xs font-bold text-slate-800 focus:outline-hidden cursor-pointer"
+              >
+                <option value="totalCases">الأعلى وارداً (إجمالي القضايا)</option>
+                <option value="completedCases">الأعلى إنجازاً</option>
+                <option value="inReviewCases">الأعلى قيد الفحص</option>
+                <option value="overdueCases">الأعلى متأخرات</option>
+                <option value="name">أبجدياً (اسم اللجنة)</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+                title={sortOrder === "desc" ? "تنازلي (اضغط للتبديل إلى تصاعدي)" : "تصاعدي (اضغط للتبديل إلى تنازلي)"}
+                className="text-xs font-bold text-teal-700 hover:text-teal-900 px-1 py-0.5 rounded transition-colors"
+              >
+                {sortOrder === "desc" ? "↓ تنازلي" : "↑ تصاعدي"}
+              </button>
+            </div>
+
             {/* فلتر اللجان النشطة فقط */}
             <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer select-none">
               <input
@@ -556,11 +580,11 @@ export function SubCommitteesWorkloadTable({
                 onChange={(e) => setActiveOnly(e.target.checked)}
                 className="rounded text-teal-600 focus:ring-teal-500 h-3.5 w-3.5 border-slate-300"
               />
-              <span>اللجان النشطة فقط ({activeCommitteesCount})</span>
+              <span>النشطة فقط ({activeCommitteesCount})</span>
             </label>
 
             {/* حقل بحث بالاسم */}
-            <div className="relative min-w-[180px]">
+            <div className="relative min-w-[160px]">
               <Search className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
@@ -617,28 +641,28 @@ export function SubCommitteesWorkloadTable({
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap font-mono">
-                      <span className="text-xs sm:text-sm font-extrabold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-md">
-                        {sc.totalCases} سجل وارد
+                      <span className="text-sm sm:text-base font-black text-slate-900 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
+                        {sc.totalCases} <span className="text-xs font-bold text-slate-600">سجل وارد</span>
                       </span>
                       {sc.inReviewCases > 0 && (
-                        <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                          {sc.inReviewCases} قيد الفحص
+                        <span className="text-xs sm:text-sm font-black text-amber-900 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-300">
+                          {sc.inReviewCases} <span className="text-[11px] font-bold text-amber-700">قيد الفحص</span>
                         </span>
                       )}
                       {sc.completedCases > 0 && (
-                        <span className="text-xs font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
-                          {sc.completedCases} تم الإنجاز
+                        <span className="text-xs sm:text-sm font-black text-teal-900 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-300">
+                          {sc.completedCases} <span className="text-[11px] font-bold text-teal-700">تم الإنجاز</span>
                         </span>
                       )}
                       {sc.overdueCases > 0 && (
-                        <span className="text-xs font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-md border border-red-200 flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3 text-red-600" />
-                          <span>{sc.overdueCases} متأخر</span>
+                        <span className="text-xs sm:text-sm font-black text-red-900 bg-red-50 px-2.5 py-1 rounded-lg border border-red-300 flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                          <span>{sc.overdueCases} <span className="text-[11px] font-bold text-red-700">متأخر</span></span>
                         </span>
                       )}
                       {sc.avgTurnaroundDays > 0 && (
-                        <span className="text-xs font-semibold text-slate-600 bg-slate-50 px-2 py-0.5 rounded-md">
-                          ⏱ {sc.avgTurnaroundDays} يوم
+                        <span className="text-xs sm:text-sm font-black text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                          ⏱ {sc.avgTurnaroundDays} <span className="text-[11px] font-bold text-slate-600">يوم</span>
                         </span>
                       )}
                     </div>
