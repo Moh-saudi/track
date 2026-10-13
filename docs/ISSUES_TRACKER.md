@@ -14,6 +14,9 @@
 | **ISSUE-003** | خطأ `An error occurred in the Server Components render` و `Node cannot be found` عند الربط مع سوبابيز (Supabase) | **حرج (Critical)** | 2026-10-12 | 🟢 تم الحل والتحصين | صفحات الـ Dashboard<br>مسبح اتصالات Supabase |
 | **FEATURE-004** | تمييز أرقام القضايا والمحاضر عن رقم السجل الداخلي في صفحة التوجيه + لوحة التقارير الموحدة + البحث الفوري بالهيدر | **تطوير وتحديث إجرائي** | 2026-10-12 | 🟢 تم الإنجاز والنشر | `follow-up/page.tsx`<br>`reports/page.tsx`<br>`GlobalSearchBar.tsx`<br>`TopBar.tsx`<br>`Sidebar.tsx` |
 | **ISSUE-005** | خطأ `Minified React error #306` وتعذر تصيير واجهة الداشبورد من حين لآخر بعد التحديثات | **متوسط (Medium)** | 2026-10-13 | 🟢 تم الحل والتحصين التلقائي | `src/app/dashboard/error.tsx`<br>كاش المتصفح وحزم الـ Chunks |
+| **ISSUE-006** | تعذر تعديل أسماء المستخدمين وتحديثها في الهيدر فوراً من حساب الأدمن | **متوسط (Medium)** | 2026-10-13 | 🟢 تم الحل والتطبيق | `admin/users/[id]/route.ts`<br>`src/lib/auth.ts` |
+| **FEATURE-007**| تطوير جرافات لوحة التقارير والنيابات وتوزيع اللجان الـ 16 والفرز | **تطوير وتحديث إجرائي** | 2026-10-13 | 🟢 تم الإنجاز والنشر | `AnalyticsCharts.tsx`<br>`reports/page.tsx` |
+| **ISSUE-008** | خطأ `Cannot destructure property 'data' of useSession` في سجل أعضاء اللجان | **عالي (High)** | 2026-10-13 | 🟢 تم الحل والتحصين | `NextAuthProvider.tsx`<br>`dashboard/layout.tsx`<br>`subcommittee/doctors/` |
 
 ---
 
@@ -344,6 +347,31 @@ Dashboard render error: Error: Minified React error #306...
 #### 4. حالة التنفيذ (Implementation Status):
 - **الحالة:** 🟢 **تم التطوير بنجاح، واجتياز اختبار TypeScript و `npm run build` بنجاح تام.**
 
+---
 
+### 【ISSUE-008】خطأ `Cannot destructure property 'data' of '(0 , v.useSession)(...)' as it is undefined`
 
+#### 1. توصيف المشكلة (Reported Error):
+أثناء تصفح شاشات سجل أعضاء اللجان الفرعية في بيئة الإنتاج، ظهر خطأ بالكونسول تسبب في انهيار الواجهة:
+```text
+TypeError: Cannot destructure property 'data' of '(0 , v.useSession)(...)' as it is undefined.
+    at X (page-79f2a54f75ef5252.js:1:5629)
+Dashboard render error: TypeError: Cannot destructure property 'data' of '(0 , v.useSession)(...)' as it is undefined.
+```
 
+#### 2. التحليل الجذري (Root Cause):
+1. دالة `useSession()` من حزمة `next-auth/react` تعتمد إلزامياً على وجود سياق React Context يُوفره المكون `<SessionProvider>`.
+2. ملف `src/app/dashboard/layout.tsx` لم يكن يغلف واجهات لوحة التحكم بمزود الجلسة `<SessionProvider>`، مما أدى إلى إرجاع `undefined` عند استدعاء `useSession()` وانهيار التفكيك المباشر `{ data: session }`.
+
+#### 3. الحل المعتمد والتنفيذ (Solution & Fix):
+1. **إنشاء مزود الجلسة العميل (`src/components/providers/NextAuthProvider.tsx`):**
+   - تم إنشاء مكون عميل يغلف الأطفال بـ `<SessionProvider session={session}>`.
+2. **تغليف لوحة التحكم (`src/app/dashboard/layout.tsx`):**
+   - تم تمرير الجلسة من خادم NextAuth إلى `<NextAuthProvider session={session}>` ليتاح `useSession()` لكافة المكونات بأمان وسلاسة.
+3. **الوصول الآمن والـ Fallback المزدوج في الشاشات المعنية:**
+   - في `doctors/page.tsx` و `doctors/new/page.tsx`، تم التحول إلى الوصول الآمن غير القابل للانهيار:
+     `const sessionResult = useSession(); const session = sessionResult?.data;`
+   - إضافة استعلام احتياطي متزامن مع جلب بيانات الجلسة عبر `fetch("/api/auth/session")` في `useEffect` لضمان معرفة الدور والصلاحيات حتى قبل اكتمال تهيئة سياق الجلسة.
+
+#### 4. حالة التنفيذ (Implementation Status):
+- **الحالة:** 🟢 **تم الحل الشامل، واجتياز فحص الأنماط `npm run typecheck` ورفع التحديثات لـ `main`.**
