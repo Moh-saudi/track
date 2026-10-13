@@ -6,6 +6,7 @@ import { DashboardShell } from "@/components/ui/DashboardShell";
 
 import { PresenceTracker } from "@/components/analytics/PresenceTracker";
 import { RiskModeBanner } from "@/components/admin/RiskModeBanner";
+import { NextAuthProvider } from "@/components/providers/NextAuthProvider";
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "مدير المنظومة",
@@ -28,19 +29,21 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const roleLabel = ROLE_LABELS[role] ?? role;
 
   return (
-    <DashboardShell
-      user={{
-        name: session.user.name,
-        email: session.user.email,
-        role: role,
-        employer: employer,
-      }}
-      roleLabel={roleLabel}
-      role={role}
-    >
-      <PresenceTracker />
-      <RiskModeBanner />
-      {children}
-    </DashboardShell>
+    <NextAuthProvider session={session}>
+      <DashboardShell
+        user={{
+          name: session.user.name,
+          email: session.user.email,
+          role: role,
+          employer: employer,
+        }}
+        roleLabel={roleLabel}
+        role={role}
+      >
+        <PresenceTracker />
+        <RiskModeBanner />
+        {children}
+      </DashboardShell>
+    </NextAuthProvider>
   );
 }

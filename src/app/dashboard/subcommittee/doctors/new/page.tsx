@@ -40,9 +40,12 @@ const LOCAL_DOCUMENT_UPLOAD_ENABLED = process.env.NEXT_PUBLIC_ENABLE_LOCAL_DOCUM
 
 export default function NewDoctorPage() {
   const router = useRouter();
-  const { data: session } = useSession();
-  const role = (session?.user as any)?.role;
-  const userSubCommitteeId = (session?.user as any)?.subCommitteeId;
+  const sessionResult = useSession();
+  const session = sessionResult?.data;
+  const [currentUser, setCurrentUser] = useState<{ role?: string; subCommitteeId?: string | null } | null>(null);
+
+  const role = currentUser?.role || (session?.user as any)?.role;
+  const userSubCommitteeId = currentUser !== null ? currentUser.subCommitteeId : (session?.user as any)?.subCommitteeId;
   const canManageAllCommittees = role === "ADMIN" || (role === "SUBCOMMITTEE_MEMBER" && !userSubCommitteeId);
 
   const [isPending, startTransition] = useTransition();
@@ -77,6 +80,15 @@ export default function NewDoctorPage() {
       .then((res) => (res.ok ? res.json() : []))
       .then(setSubCommittees)
       .catch(console.error);
+
+    fetch("/api/auth/session")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((s) => {
+        if (s?.user) {
+          setCurrentUser({ role: s.user.role, subCommitteeId: s.user.subCommitteeId });
+        }
+      })
+      .catch(() => undefined);
   }, []);
 
   async function handleSubmit(event: React.FormEvent) {
