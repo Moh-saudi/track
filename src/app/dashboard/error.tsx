@@ -15,6 +15,22 @@ export default function DashboardError({
 
   useEffect(() => {
     console.error("Dashboard render error:", error);
+
+    // معالجة ذكية لأخطاء تعارض الكاش والملفات القديمة بعد النشر (Stale Chunks / React #306)
+    // عند نشر تحديث جديد على Vercel، تتغير هاشات الملفات فيطلب المتصفح ملفاً قديماً يرمي 306.
+    // إجراء تحديث فوري لمرة واحدة يجلب الملفات المحدثة تلقائياً دون إشعار المستخدم بالخطأ.
+    const isChunkOr306 =
+      error?.message?.includes("306") ||
+      error?.message?.includes("Loading chunk") ||
+      error?.name === "ChunkLoadError";
+
+    if (isChunkOr306 && typeof window !== "undefined") {
+      const reloadKey = "app_chunk_reload_" + (error.digest || "last");
+      if (!sessionStorage.getItem(reloadKey)) {
+        sessionStorage.setItem(reloadKey, "true");
+        window.location.reload();
+      }
+    }
   }, [error]);
 
   async function copyReference() {

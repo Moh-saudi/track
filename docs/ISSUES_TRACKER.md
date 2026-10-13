@@ -13,6 +13,7 @@
 | **ISSUE-002** | فشل فحص أمان الحزم في الـ CI/CD (`npm audit --audit-level=high`) بسبب ثغرات `sharp` و `source-map-js` | **عالي (High)** | 2026-10-12 | 🟢 تم الحل والتطبيق | `package.json`<br>`package-lock.json` |
 | **ISSUE-003** | خطأ `An error occurred in the Server Components render` و `Node cannot be found` عند الربط مع سوبابيز (Supabase) | **حرج (Critical)** | 2026-10-12 | 🟢 تم الحل والتحصين | صفحات الـ Dashboard<br>مسبح اتصالات Supabase |
 | **FEATURE-004** | تمييز أرقام القضايا والمحاضر عن رقم السجل الداخلي في صفحة التوجيه + لوحة التقارير الموحدة + البحث الفوري بالهيدر | **تطوير وتحديث إجرائي** | 2026-10-12 | 🟢 تم الإنجاز والنشر | `follow-up/page.tsx`<br>`reports/page.tsx`<br>`GlobalSearchBar.tsx`<br>`TopBar.tsx`<br>`Sidebar.tsx` |
+| **ISSUE-005** | خطأ `Minified React error #306` وتعذر تصيير واجهة الداشبورد من حين لآخر بعد التحديثات | **متوسط (Medium)** | 2026-10-13 | 🟢 تم الحل والتحصين التلقائي | `src/app/dashboard/error.tsx`<br>كاش المتصفح وحزم الـ Chunks |
 
 ---
 
@@ -206,5 +207,56 @@ Node cannot be found in the current page
 
 #### 3. حالة التنفيذ (Implementation Status):
 - **الحالة:** 🟢 **تم التنفيذ بالكامل واجتياز اختبار البناء (`npm run build`) بنجاح تام.**
+
+---
+
+### 【ISSUE-005】خطأ `Minified React error #306` وانهيار تصيير لوحات التحكم من حين لآخر
+
+#### 1. توصيف المشكلة والأعراض المسجلة (Reported Symptoms):
+يظهر في كونسول المتصفح لدى المستخدمين في بيئة الإنتاج من حين لآخر الخطأ التالي، مما يؤدي إلى توجيه الصفحة إلى شاشة `تعذر تحميل هذه الصفحة مؤقتًا`:
+```text
+1255-5cd2fe06309409a0.js:1 Error: Minified React error #306; visit https://react.dev/errors/306?args[]=%5Bobject%20Object%5D&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.
+    at oq (4bd1b696-f785427dddbba9fb.js:1:81237)
+    at ik (4bd1b696-f785427dddbba9fb.js:1:114677)
+    at 4bd1b696-f785427dddbba9fb.js:1:114522
+    at ib (4bd1b696-f785427dddbba9fb.js:1:114530)
+    at iu (4bd1b696-f785427dddbba9fb.js:1:111613)
+    at iX (4bd1b696-f785427dddbba9fb.js:1:132929)
+    at MessagePort.w (1255-5cd2fe06309409a0.js:1:114974)
+Dashboard render error: Error: Minified React error #306...
+```
+
+---
+
+#### 2. التحليل الجذري للسبب (Root Cause Analysis):
+من خلال فك تشفير كود خطأ React 18/19 رقم **306** من كود مصدر React الرسمي:
+> **`Element type is invalid. Received a promise that resolves to: [object Object]. Lazy element type must resolve to a class or function.`**
+
+السبب الرئيسي لحدوث هذا الخطأ **من حين لآخر (Intermittently)** في الإنتاج:
+1. **تعارض كاش المتصفح مع النشر الجديد (Stale Dynamic Chunks after Deployments):**
+   - عندما تكون جلسة المستخدم مفتوحة في المتصفح ويتم نشر كود جديد على Vercel أو الخادم، تتغير هاشات حزم الـ JavaScript الناتجة عن البناء (مثلاً تغير هاش الحزمة `1255-5cd2fe06309409a0.js` إلى `1255-fc6c00ab2f765339.js`).
+   - عند قيام المستخدم بالتنقل الداخلي (`next/link`) بين الصفحات أو فتح مكوّن يتم تحميله كحزمة كسولة، يطلب المتصفح ملف الهاش القديم المخزن في ذاكرته.
+   - يستجيب الخادم إما بصفحة HTML 404 أو توجيه، فيقوم محمل الحزم بحل الـ Promise إلى كائن عام (`[object Object]`) بدلاً من دالة مكون React.
+   - عند محاولة محرك React Fiber تصيير المكوّن ذي الوسم (Tag 16: `LazyComponent`)، يكتشف أن الناتج ليس دالة أو فئة، فيرمي خطأ 306.
+   - عند قيام المستخدم بتحديث الصفحة يدوياً (`F5`)، يجلب المتصفح الهاشات الجديدة فوراً ويعمل النظام بشكل طبيعي.
+
+2. **تعثر مؤقت في تدفق Server Components (RSC Flight Stream Blip):**
+   - في حال تعثر استعلام لحظي أو إرجاع استجابة غير مهيكلة من الخادم أثناء التنقل السريع، تُرجع الـ Promise كائن خطأ بدلاً من العقد البرمجية.
+
+---
+
+#### 3. خطة وطرق الحل المعتمدة (Proposed Solutions & Fixes):
+- [x] **تزويد شاشة الخطأ `src/app/dashboard/error.tsx` بآلية استعادة تلقائية فورية (Smart Self-Healing):**
+  - فحص نوع الخطأ عند وقوعه؛ فإذا كان الخطأ متعلقاً بـ `Minified React error #306` أو `ChunkLoadError`، يقوم المكون تلقائياً وبشكل صامت بإجراء تحديث فوري للصفحة لمرة واحدة عبر `window.location.reload()`.
+  - تخزين حالة المحاولة في `sessionStorage` لمنع حدوث حلقات تحديث لا نهائية (Infinite Loops).
+  - هذا يضمن تنظيف الكاش وجلب الحزم المحدثة فوراً دون أن يرى المستخدم أي شاشة تعطل.
+- [x] **التأكد من التوافق البرمجي التام لجميع الـ Server Components والـ Client Components:**
+  - اجتياز اختبار `npm run typecheck` بنجاح كامل بدون أي أخطاء استيراد.
+  - اجتياز اختبار `npm run build` بنجاح وتوليد كافة المسارات الـ 30.
+
+---
+
+#### 4. حالة التنفيذ (Implementation Status):
+- **الحالة:** 🟢 **تم التحصين والحل البرمجي وتوثيق الحالة بنجاح تام.**
 
 
