@@ -11,13 +11,15 @@ import { isValidEgyptianPhone } from "@/lib/formatters";
 
 const updateSchema = z.object({
   active:          z.boolean().optional(),
-  fullName:        z.string().min(2).optional(),
+  fullName:        z.string().trim().min(2, "الاسم الكامل يجب أن يتكون من حرفين على الأقل").optional(),
   employer:        z.string().nullable().optional(),
   subCommitteeId:  z.string().nullable().optional(),
   specialtyId:     z.string().nullable().optional(),
   role:            z.enum(["REGISTRATION_CLERK", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "FINANCE", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER"]).optional(),
   newPassword:     z.string().optional(),
-  nationalId:      z.string().regex(/^\d{14}$/, "الرقم القومي يجب أن يتكون من 14 رقماً").nullable().optional(),
+  nationalId:      z.string().trim().refine((val) => !val || /^\d{14}$/.test(val), {
+                     message: "الرقم القومي يجب أن يتكون من 14 رقماً",
+                   }).nullable().optional(),
   phone:           z.string().trim().refine((val) => !val || isValidEgyptianPhone(val), {
                      message: "رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)",
                    }).nullable().optional(),
@@ -31,12 +33,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
 
-  if ((session.user as any).id === id) {
-    return NextResponse.json({ error: "لا يمكن تعديل حسابك الشخصي من هنا" }, { status: 400 });
-  }
+  const isSelf = (session.user as any).id === id;
 
   const parsed = updateSchema.safeParse(await req.json());
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const firstErrorMessage =
+      Object.values(fieldErrors)[0]?.[0] ||
+      parsed.error.flatten().formErrors[0] ||
+      "البيانات المدخلة غير صحيحة";
+    return NextResponse.json({ error: firstErrorMessage }, { status: 400 });
+  }
+
+  if (isSelf) {
+    if (parsed.data.active === false) {
+      return NextResponse.json({ error: "لا يمكن تعطيل حسابك الشخصي من هنا" }, { status: 400 });
+    }
+    if (parsed.data.role && parsed.data.role !== "ADMIN") {
+      return NextResponse.json({ error: "لا يمكن سحب صلاحية مدير المنظومة عن حسابك الشخصي" }, { status: 400 });
+    }
+  }
 
   const before = await prisma.user.findUnique({
     where: { id: id },

@@ -133,6 +133,7 @@ export const authOptions: NextAuthOptions = {
             where: { id: String(token.id) },
             select: {
               active: true,
+              fullName: true,
               role: true,
               employer: true,
               subCommitteeId: true,
@@ -183,6 +184,7 @@ export const authOptions: NextAuthOptions = {
           token.lastCheckedAt = now;
           token.sessionVersion = dbVersion;
           token.role = current.role;
+          if (current.fullName) token.name = current.fullName;
           token.employer = current.employer;
           token.subCommitteeId = current.subCommitteeId;
           token.specialtyId = current.specialtyId;
@@ -208,6 +210,7 @@ export const authOptions: NextAuthOptions = {
 
       if (session.user) {
         (session.user as any).id = token.id;
+        if (token.name) (session.user as any).name = token.name;
         (session.user as any).role = token.role;
         (session.user as any).subCommitteeId = token.subCommitteeId;
         (session.user as any).subCommitteeName = token.subCommitteeName;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { isValidEgyptianPhone, sanitizeEgyptianPhone, formatDate, formatDateTime } from "@/lib/formatters";
 import {
@@ -211,6 +211,13 @@ export function AdminUsersTable({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
+  // الحالة التفاعلية لقائمة المستخدمين لضمان التحديث الفوري في الواجهة
+  const [usersList, setUsersList] = useState<UserItem[]>(users);
+
+  useEffect(() => {
+    setUsersList(users);
+  }, [users]);
+
   // فلاتر البحث والفرز
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>("ALL");
@@ -376,7 +383,7 @@ export function AdminUsersTable({
 
   // تصفية المستخدمين
   const filteredUsers = useMemo(() => {
-    return users.filter((u) => {
+    return usersList.filter((u) => {
       const matchesSearch =
         !searchTerm.trim() ||
         u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -394,7 +401,7 @@ export function AdminUsersTable({
 
       return matchesSearch && matchesRole && matchesStatus;
     });
-  }, [users, searchTerm, selectedRoleFilter, selectedStatusFilter]);
+  }, [usersList, searchTerm, selectedRoleFilter, selectedStatusFilter]);
 
   // إرسال إنشاء مستخدم جديد
   async function handleCreateUser(e: React.FormEvent) {
@@ -453,6 +460,35 @@ export function AdminUsersTable({
         setSuccessMsg(`تم إنشاء حساب المستخدم (${createdFullName}) بالصلاحية المحددة بنجاح.`);
         setIsCreateOpen(false);
 
+        // إضافة المستخدم الجديد للحالة التفاعلية فوراً
+        if (data.id) {
+          const matchedSubCommittee = formSubCommitteeId
+            ? subCommittees.find((s) => s.id === formSubCommitteeId)
+            : null;
+          const matchedSpecialty = formSpecialtyId
+            ? specialties.find((s) => s.id === formSpecialtyId)
+            : null;
+          setUsersList((prev) => [
+            {
+              id: data.id,
+              fullName: createdFullName,
+              email: createdEmail,
+              role: createdRole,
+              employer: formEmployer || null,
+              subCommitteeId: formSubCommitteeId || null,
+              specialtyId: formSpecialtyId || null,
+              nationalId: formNationalId || null,
+              phone: savedPhone || null,
+              active: true,
+              createdAt: new Date().toISOString(),
+              subCommittee: matchedSubCommittee || null,
+              specialty: matchedSpecialty || null,
+              initialPassword: savedPassword,
+            },
+            ...prev,
+          ]);
+        }
+
         // تصفير الحقول
         setFormFullName("");
         setFormEmail("");
@@ -509,13 +545,13 @@ export function AdminUsersTable({
     startTransition(async () => {
       try {
         const payload = {
-          fullName: formFullName,
+          fullName: formFullName.trim(),
           role: formRole,
-          employer: formEmployer || null,
+          employer: formEmployer ? formEmployer.trim() : null,
           subCommitteeId: formRole === "SUBCOMMITTEE_MEMBER" ? formSubCommitteeId || null : null,
           specialtyId: formSpecialtyId || null,
-          nationalId: formNationalId || null,
-          phone: formPhone || null,
+          nationalId: formNationalId ? formNationalId.trim() : null,
+          phone: formPhone ? formPhone.trim() : null,
         };
 
         const res = await fetch(`/api/admin/users/${editUser.id}`, {
@@ -525,9 +561,44 @@ export function AdminUsersTable({
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "تعذر تعديل بيانات المستخدم");
+        if (!res.ok) {
+          const errMsg =
+            typeof data.error === "string"
+              ? data.error
+              : data.error?.message ||
+                (typeof data.error === "object" ? JSON.stringify(data.error) : "تعذر تعديل بيانات المستخدم");
+          throw new Error(errMsg);
+        }
 
-        setSuccessMsg(`تم تحديث بيانات وصلاحيات (${data.fullName}) بنجاح.`);
+        const updatedFullName = data.fullName || formFullName.trim();
+        const matchedSubCommittee = formSubCommitteeId
+          ? subCommittees.find((s) => s.id === formSubCommitteeId)
+          : null;
+        const matchedSpecialty = formSpecialtyId
+          ? specialties.find((s) => s.id === formSpecialtyId)
+          : null;
+
+        // تحديث القائمة التفاعلية محلياً وفورياً
+        setUsersList((prev) =>
+          prev.map((u) => {
+            if (u.id !== editUser.id) return u;
+            return {
+              ...u,
+              ...data,
+              fullName: updatedFullName,
+              role: formRole as any,
+              employer: payload.employer,
+              subCommitteeId: payload.subCommitteeId,
+              specialtyId: payload.specialtyId,
+              nationalId: payload.nationalId,
+              phone: payload.phone,
+              subCommittee: matchedSubCommittee || null,
+              specialty: matchedSpecialty || null,
+            };
+          })
+        );
+
+        setSuccessMsg(`تم تحديث بيانات وصلاحيات (${updatedFullName}) بنجاح.`);
         setEditUser(null);
         router.refresh();
       } catch (err: any) {
@@ -550,7 +621,18 @@ export function AdminUsersTable({
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "تعذر تغيير حالة الحساب");
+        if (!res.ok) {
+          const errMsg =
+            typeof data.error === "string"
+              ? data.error
+              : data.error?.message ||
+                (typeof data.error === "object" ? JSON.stringify(data.error) : "تعذر تغيير حالة الحساب");
+          throw new Error(errMsg);
+        }
+
+        setUsersList((prev) =>
+          prev.map((u) => (u.id === user.id ? { ...u, active: !user.active } : u))
+        );
 
         setSuccessMsg(
           `تم ${!user.active ? "تفعيل" : "تعطيل"} حساب المستخدم (${user.fullName}) بنجاح.`
@@ -587,10 +669,20 @@ export function AdminUsersTable({
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "تعذر تعيين كلمة المرور");
+        if (!res.ok) {
+          const errMsg =
+            typeof data.error === "string"
+              ? data.error
+              : data.error?.message ||
+                (typeof data.error === "object" ? JSON.stringify(data.error) : "تعذر تعيين كلمة المرور");
+          throw new Error(errMsg);
+        }
 
         const targetUser = passwordUser;
         const newPwd = resetNewPassword;
+        setUsersList((prev) =>
+          prev.map((u) => (u.id === targetUser.id ? { ...u, initialPassword: newPwd } : u))
+        );
         setSuccessMsg(`تم تعيين كلمة مرور جديدة للمستخدم (${targetUser.fullName}) بنجاح.`);
         setPasswordUser(null);
         setResetNewPassword("");
@@ -730,7 +822,7 @@ export function AdminUsersTable({
             </p>
           </div>
           <span className="text-xs font-semibold text-slate-500 font-body">
-            عرض {filteredUsers.length} من أصل {users.length} مستخدم
+            عرض {filteredUsers.length} من أصل {usersList.length} مستخدم
           </span>
         </div>
 
