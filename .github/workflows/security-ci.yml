@@ -36,6 +36,7 @@ jobs:
     env:
       NODE_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/security_ci?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/security_ci?schema=public
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: ci-only-nextauth-secret-please-never-use-in-production-2026
       FIELD_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
