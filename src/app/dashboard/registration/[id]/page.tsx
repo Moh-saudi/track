@@ -148,9 +148,9 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
       {/* ─── بطاقة هوية السجل والقيد والمسجّل ─── */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* رقم السجل والنوع */}
+          {/* رقم سجل الوارد والنوع */}
           <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1">
-            <span className="text-[11px] font-semibold text-slate-500 block">رقم وتصنيف السجل</span>
+            <span className="text-[11px] font-semibold text-slate-500 block">رقم سجل الوارد والنوع</span>
             <div className="flex items-center gap-2">
               <span className="text-base font-bold font-mono text-slate-900 font-heading">
                 {caseRecord.caseNumber} / {caseRecord.caseYear}

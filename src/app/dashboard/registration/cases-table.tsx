@@ -108,7 +108,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="بحث برقم السجل، رقم القضية أو المحضر، اسم الشاكي، النيابة، المشكو في حقه..."
+            placeholder="بحث برقم سجل الوارد، رقم القضية أو المحضر، اسم الشاكي، النيابة، المشكو في حقه، الجهة..."
             icon={<Search className="w-4 h-4 text-slate-400" />}
             className="h-10 text-xs"
           />
@@ -188,7 +188,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>رقم السجل والنوع</TableHead>
+                <TableHead>رقم سجل الوارد والنوع</TableHead>
                 <TableHead>رقم القضية / محضر النيابة</TableHead>
                 <TableHead>الشاكي والجهة / النيابة</TableHead>
                 <TableHead>المشكو في حقه</TableHead>

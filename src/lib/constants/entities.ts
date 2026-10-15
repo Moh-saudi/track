@@ -3,7 +3,7 @@ export interface EntityTypeConfig {
   id: string;
   label: string;
   placeholder: string;
-  badgeVariant: "teal" | "purple" | "amber" | "blue" | "slate";
+  badgeVariant: "teal" | "purple" | "amber" | "blue" | "slate" | "emerald";
   bgClass: string;
   textClass: string;
   borderClass: string;
@@ -13,11 +13,20 @@ export const ENTITY_TYPES: readonly EntityTypeConfig[] = [
   {
     id: "مستشفى حكومي",
     label: "مستشفى حكومي",
-    placeholder: "مثال: مستشفى قصر العيني / مستشفى الدمرداش / مستشفى المنيرة العام",
+    placeholder: "مثال: مستشفى المنيرة العام / مستشفى أحمد ماهر التعليمي / مستشفى شبين الكوم التعليمي",
     badgeVariant: "teal",
     bgClass: "bg-teal-50",
     textClass: "text-teal-800",
     borderClass: "border-teal-200",
+  },
+  {
+    id: "مستشفى جامعي",
+    label: "مستشفى جامعي",
+    placeholder: "مثال: مستشفيات جامعة القاهرة (قصر العيني) / مستشفيات جامعة عين شمس (الدمرداش) / مستشفيات جامعة أسيوط",
+    badgeVariant: "emerald",
+    bgClass: "bg-emerald-50",
+    textClass: "text-emerald-800",
+    borderClass: "border-emerald-200",
   },
   {
     id: "مستشفى خاص",

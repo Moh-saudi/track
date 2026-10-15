@@ -430,7 +430,7 @@ export default function NewCasePage() {
     setError(null);
 
     if (!caseNumber.trim()) {
-      setError("يرجى إدخال رقم السجل بشكل صحيح");
+      setError("يرجى إدخال رقم سجل الوارد بشكل صحيح");
       return;
     }
 
@@ -609,7 +609,7 @@ export default function NewCasePage() {
             </div>
 
             <div className="form-group">
-              <label className="form-label form-label-required">رقم السجل</label>
+              <label className="form-label form-label-required">رقم سجل الوارد</label>
               <input
                 type="text"
                 required
@@ -845,7 +845,7 @@ export default function NewCasePage() {
               {/* اختيار نوع الجهة */}
               <div className="form-group">
                 <label className="form-label">نوع الجهة</label>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                   {ENTITY_TYPES.map((et) => {
                     const isSelected = entityType === et.id;
                     return (
