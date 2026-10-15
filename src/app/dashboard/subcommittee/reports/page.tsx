@@ -312,8 +312,22 @@ export default async function SubCommitteeReportsPage() {
                       <td className="p-3.5 font-bold font-mono text-slate-900">
                         {c.caseNumber} / {c.caseYear}
                       </td>
-                      <td className="p-3.5 font-semibold text-slate-900 max-w-[180px] truncate" title={respondent || ""}>
-                        {respondent || "—"}
+                      <td className="p-3.5">
+                        <div className="font-semibold text-slate-900 max-w-[180px] truncate" title={c.respondentName || ""}>
+                          {c.respondentName || "—"}
+                        </div>
+                        {(c.entityName || c.hospitalName) && (
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {c.entityType && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
+                                {c.entityType}
+                              </span>
+                            )}
+                            <span className="text-[11px] text-slate-500 font-mono truncate max-w-[140px]" title={c.entityName || c.hospitalName || ""}>
+                              {c.entityName || c.hospitalName}
+                            </span>
+                          </div>
+                        )}
                       </td>
                       <td className="p-3.5 text-slate-700 max-w-[160px] truncate" title={c.complainantName || ""}>
                         {c.complainantName || "—"}

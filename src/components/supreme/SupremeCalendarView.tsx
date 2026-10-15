@@ -33,6 +33,8 @@ export interface SupremeSessionItem {
     caseYear: number;
     complainantName: string | null;
     hospitalName: string | null;
+    entityType?: string | null;
+    entityName?: string | null;
   }>;
 }
 
@@ -412,22 +414,30 @@ export function SupremeCalendarView({
                     {/* قائمة السجلات المعروضة في الجلسة */}
                     {s.cases.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
-                        {s.cases.map((c) => (
-                          <span
-                            key={c.id}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 text-[11px] font-mono border border-slate-200"
-                          >
-                            <FileText className="w-3 h-3 text-slate-500" />
-                            <span>
-                              {c.caseNumber}/{c.caseYear}
-                            </span>
-                            {c.complainantName && (
-                              <span className="text-slate-500 font-sans">
-                                ({c.complainantName})
+                        {s.cases.map((c) => {
+                          const ent = c.entityName || c.hospitalName;
+                          return (
+                            <span
+                              key={c.id}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 text-[11px] font-mono border border-slate-200"
+                            >
+                              <FileText className="w-3 h-3 text-slate-500" />
+                              <span>
+                                {c.caseNumber}/{c.caseYear}
                               </span>
-                            )}
-                          </span>
-                        ))}
+                              {c.complainantName && (
+                                <span className="text-slate-500 font-sans">
+                                  ({c.complainantName})
+                                </span>
+                              )}
+                              {ent && (
+                                <span className="text-indigo-700 bg-indigo-50 px-1 py-0.2 rounded font-sans text-[10px]">
+                                  {ent}
+                                </span>
+                              )}
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
 

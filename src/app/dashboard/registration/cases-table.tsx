@@ -58,6 +58,8 @@ export interface SerializedCase {
   respondentName: string | null;
   respondents?: Array<{ name: string; phone?: string | null; profession?: string | null }>;
   complainants?: Array<{ name: string; phone?: string | null }>;
+  entityType?: string | null;
+  entityName?: string | null;
   hospitalName?: string | null;
   incomingDate?: string | null;
   attachmentsCount: number;
@@ -91,7 +93,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
       const matchProsCaseNum = c.prosecutionCaseNumber?.toLowerCase().includes(term);
       const matchComplainant = c.complainantName?.toLowerCase().includes(term);
       const matchProsecution = c.prosecution?.toLowerCase().includes(term);
-      const matchRespondent = (c.respondentName || c.hospitalName)?.toLowerCase().includes(term);
+      const matchRespondent = (c.respondentName || c.entityName || c.hospitalName || c.entityType)?.toLowerCase().includes(term);
 
       return Boolean(matchNum || matchProsCaseNum || matchComplainant || matchProsecution || matchRespondent);
     });
@@ -190,6 +192,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                 <TableHead>رقم القضية / محضر النيابة</TableHead>
                 <TableHead>الشاكي والجهة / النيابة</TableHead>
                 <TableHead>المشكو في حقه</TableHead>
+                <TableHead>الجهة / المنشأة</TableHead>
                 <TableHead>تاريخ الوارد</TableHead>
                 <TableHead>المرفقات</TableHead>
                 <TableHead>تاريخ القيد</TableHead>
@@ -237,7 +240,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                           {c.complainantName || "—"}
                         </p>
                         <p className="text-[11px] text-slate-500 truncate" title={c.prosecution || ""}>
-                          {c.prosecution || "—"}
+                          {c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة (بدون نيابة)" : "—")}
                         </p>
                       </div>
                     </TableCell>
@@ -245,7 +248,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                     {/* المشكو في حقه */}
                     <TableCell>
                       {c.respondents && c.respondents.length > 0 ? (
-                        <div className="flex flex-col gap-0.5 max-w-[200px]">
+                        <div className="flex flex-col gap-0.5 max-w-[180px]">
                           <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 truncate" title={c.respondents.map(r => r.name).join(" - ")}>
                             <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                             <span className="truncate">{c.respondents[0].name}</span>
@@ -261,11 +264,30 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                             </span>
                           )}
                         </div>
-                      ) : c.respondentName || c.hospitalName ? (
-                        <span className="flex items-center gap-1.5 text-xs font-medium text-slate-800 max-w-[180px] truncate" title={(c.respondentName || c.hospitalName)!}>
+                      ) : c.respondentName ? (
+                        <span className="flex items-center gap-1.5 text-xs font-medium text-slate-800 max-w-[180px] truncate" title={c.respondentName}>
                           <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate">{c.respondentName || c.hospitalName}</span>
+                          <span className="truncate">{c.respondentName}</span>
                         </span>
+                      ) : (
+                        <span className="text-slate-400 text-xs">—</span>
+                      )}
+                    </TableCell>
+
+                    {/* الجهة المشكو في حقها */}
+                    <TableCell>
+                      {c.entityType || c.entityName || c.hospitalName ? (
+                        <div className="flex flex-col gap-1 max-w-[180px]">
+                          <span className="font-semibold text-slate-800 text-xs truncate" title={c.entityName || c.hospitalName || ""}>
+                            {c.entityName || c.hospitalName || "—"}
+                          </span>
+                          {c.entityType && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.2 rounded w-fit">
+                              <Building2 className="w-2.5 h-2.5 text-teal-600" />
+                              <span>{c.entityType}</span>
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-slate-400 text-xs">—</span>
                       )}
@@ -387,14 +409,28 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                   <div className="flex items-start justify-between">
                     <span className="text-slate-500">الشاكي / الجهة:</span>
                     <span className="font-semibold text-slate-800 text-left">
-                      {c.complainantName || "—"} {c.prosecution ? `(${c.prosecution})` : ""}
+                      {c.complainantName || "—"} {c.prosecution ? `(${c.prosecution})` : c.registrationType === "COMPLAINT" ? "(شكوى مباشرة)" : ""}
                     </span>
                   </div>
 
-                  {(c.respondentName || c.hospitalName) && (
+                  {c.respondentName && (
                     <div className="flex items-start justify-between">
                       <span className="text-slate-500">المشكو في حقه:</span>
-                      <span className="font-semibold text-slate-800">{c.respondentName || c.hospitalName}</span>
+                      <span className="font-semibold text-slate-800">{c.respondentName}</span>
+                    </div>
+                  )}
+
+                  {(c.entityType || c.entityName || c.hospitalName) && (
+                    <div className="flex items-start justify-between">
+                      <span className="text-slate-500">الجهة / المنشأة:</span>
+                      <div className="text-left font-semibold text-slate-800 flex items-center gap-1.5 flex-wrap justify-end">
+                        {c.entityType && (
+                          <span className="text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.2 rounded">
+                            {c.entityType}
+                          </span>
+                        )}
+                        <span>{c.entityName || c.hospitalName}</span>
+                      </div>
                     </div>
                   )}
 

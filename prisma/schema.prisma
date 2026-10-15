@@ -261,7 +261,9 @@ model Case {
   prosecutionCaseNumber String?                          // رقم القضية / رقم محضر النيابة
   incomingDate          DateTime?                        // تاريخ الوارد (تاريخ استلام الشكوى / ورود كتاب النيابة)
   attachmentsCount      Int              @default(0)     // عدد المرفقات المسلمة
-  hospitalName          String?                          // اسم المنشأة الطبية المشكو في حقها (المستشفى / المركز الطبي)
+  entityType            String?                          // نوع الجهة: مستشفى حكومي / مستشفى خاص / قوات مسلحة / داخلية / أخرى
+  entityName            String?                          // اسم الجهة المشكو في حقها
+  hospitalName          String?                          // اسم المنشأة الطبية المشكو في حقها (المستشفى / المركز الطبي للتوافق)
   respondentName        String?                          // اسم المشكو في حقه الرئيسي (للتوافق الرجعي)
   respondentPhone       String?                          // رقم هاتف المشكو في حقه الرئيسي
 

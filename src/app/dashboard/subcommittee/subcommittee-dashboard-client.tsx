@@ -40,6 +40,8 @@ export interface SerializedSubCommitteeCase {
   complainantName: string;
   respondentName?: string | null;
   hospitalName?: string | null;
+  entityType?: string | null;
+  entityName?: string | null;
   prosecution?: string | null;
   assignedAt?: string | null;
   expectedDueDate?: string | null;
@@ -142,7 +144,15 @@ export function SubCommitteeDashboardClient({
       const num = `${c.caseNumber}/${c.caseYear}`.toLowerCase();
       const complainant = (c.complainantName || "").toLowerCase();
       const respondent = (c.respondentName || c.hospitalName || "").toLowerCase();
-      return num.includes(q) || complainant.includes(q) || respondent.includes(q);
+      const entName = (c.entityName || "").toLowerCase();
+      const entType = (c.entityType || "").toLowerCase();
+      return (
+        num.includes(q) ||
+        complainant.includes(q) ||
+        respondent.includes(q) ||
+        entName.includes(q) ||
+        entType.includes(q)
+      );
     }
     return true;
   });
@@ -434,7 +444,21 @@ export function SubCommitteeDashboardClient({
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium text-slate-800 text-xs">
-                          {c.respondentName || c.hospitalName || "—"}
+                          <div>
+                            <span className="font-semibold text-slate-900">{c.respondentName || "—"}</span>
+                            {(c.entityName || c.hospitalName) && (
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                {c.entityType && (
+                                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
+                                    {c.entityType}
+                                  </span>
+                                )}
+                                <span className="text-[11px] text-slate-500 font-mono truncate max-w-[140px]" title={c.entityName || c.hospitalName || ""}>
+                                  {c.entityName || c.hospitalName}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-xs font-mono text-slate-600 whitespace-nowrap">
                           {c.assignedAt ? formatDate(c.assignedAt) : "—"}
@@ -530,7 +554,27 @@ export function SubCommitteeDashboardClient({
                           <Badge variant="slate" size="sm">{c.registrationType === "COMPLAINT" ? "شكوى" : c.registrationType === "CASE" ? "قضية" : "محضر"}</Badge>
                         </TableCell>
                         <TableCell className="font-medium text-slate-800 text-xs">
-                          {respondent ? <span className="font-semibold text-slate-900 truncate block max-w-[180px]" title={respondent}>{respondent}</span> : <span className="text-slate-400">—</span>}
+                          <div>
+                            {c.respondentName ? (
+                              <span className="font-semibold text-slate-900 truncate block max-w-[180px]" title={c.respondentName}>
+                                {c.respondentName}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                            {(c.entityName || c.hospitalName) && (
+                              <div className="flex items-center gap-1.5 mt-1">
+                                {c.entityType && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100 shrink-0">
+                                    {c.entityType}
+                                  </span>
+                                )}
+                                <span className="text-[11px] text-slate-500 font-mono truncate max-w-[150px]" title={c.entityName || c.hospitalName || ""}>
+                                  {c.entityName || c.hospitalName}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1 max-w-[160px]">

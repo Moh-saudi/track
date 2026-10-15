@@ -32,6 +32,8 @@ export interface SupremeCaseItem {
   registrationType: string;
   respondentName: string | null;
   hospitalName: string | null;
+  entityType?: string | null;
+  entityName?: string | null;
   complainantName: string | null;
   prosecution: string | null;
   status: string;
@@ -75,10 +77,11 @@ export function SupremeCasesTable({ initialCases }: SupremeCasesTableProps) {
       const matchNum = `${c.caseNumber}/${c.caseYear}`.includes(term);
       const matchComplainant = c.complainantName?.toLowerCase().includes(term);
       const matchRespondent = (c.respondentName || c.hospitalName)?.toLowerCase().includes(term);
+      const matchEntity = c.entityName?.toLowerCase().includes(term) || c.entityType?.toLowerCase().includes(term);
       const matchProsecution = c.prosecution?.toLowerCase().includes(term);
       const matchCommittee = c.subCommittee?.name.toLowerCase().includes(term);
 
-      return matchNum || matchComplainant || matchRespondent || matchProsecution || matchCommittee;
+      return matchNum || matchComplainant || matchRespondent || matchEntity || matchProsecution || matchCommittee;
     });
   }, [initialCases, activeTab, searchTerm]);
 
@@ -204,16 +207,33 @@ export function SupremeCasesTable({ initialCases }: SupremeCasesTableProps) {
                       </TableCell>
 
                       <TableCell className="font-medium text-slate-800 text-xs">
-                        {respondent ? (
-                          <span
-                            className="font-semibold text-slate-900 truncate block max-w-[170px]"
-                            title={respondent}
-                          >
-                            {respondent}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
+                        <div>
+                          {c.respondentName ? (
+                            <span
+                              className="font-semibold text-slate-900 truncate block max-w-[170px]"
+                              title={c.respondentName}
+                            >
+                              {c.respondentName}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                          {(c.entityName || c.hospitalName) && (
+                            <div className="flex items-center gap-1.5 mt-1">
+                              {c.entityType && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100 shrink-0">
+                                  {c.entityType}
+                                </span>
+                              )}
+                              <span
+                                className="text-[11px] text-slate-500 font-mono truncate max-w-[140px]"
+                                title={c.entityName || c.hospitalName || ""}
+                              >
+                                {c.entityName || c.hospitalName}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
 
                       <TableCell className="text-xs">

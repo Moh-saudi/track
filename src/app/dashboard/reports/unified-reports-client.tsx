@@ -45,6 +45,8 @@ export interface UnifiedCase {
   reportYear: number | null;
   registrationType: "COMPLAINT" | "CASE" | "REPORT";
   status: string;
+  entityType?: string | null;
+  entityName?: string | null;
   hospitalName: string | null;
   complainantName: string | null;
   respondentName: string | null;
@@ -266,7 +268,20 @@ export function UnifiedReportsClient({
 
   // تصدير CSV
   function handleExportCSV() {
-    const headers = ["رقم السجل الداخلي", "سنة السجل", "رقم القضية / المحضر", "النوع", "الحالة", "الشاكي", "المشكو في حقه", "النيابة", "اللجنة الفرعية", "تاريخ القيد"];
+    const headers = [
+      "رقم السجل الداخلي",
+      "سنة السجل",
+      "رقم القضية / المحضر",
+      "النوع",
+      "الحالة",
+      "الشاكي",
+      "المشكو في حقه",
+      "نوع الجهة",
+      "اسم الجهة / المنشأة",
+      "النيابة",
+      "اللجنة الفرعية",
+      "تاريخ القيد",
+    ];
     const rows = filteredCases.map((c) => [
       c.caseNumber,
       c.caseYear,
@@ -274,8 +289,10 @@ export function UnifiedReportsClient({
       c.registrationType === "COMPLAINT" ? "شكوى" : c.registrationType === "CASE" ? "قضية" : "محضر",
       STATUS_CONFIG[c.status]?.label || c.status,
       c.complainantName || "—",
-      c.respondentName || c.hospitalName || "—",
-      c.prosecution || "—",
+      c.respondentName || "—",
+      c.entityType || "—",
+      c.entityName || c.hospitalName || "—",
+      c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة (بدون نيابة)" : "—"),
       c.subCommittee?.name || "—",
       formatDate(c.createdAt),
     ]);
@@ -683,6 +700,7 @@ export function UnifiedReportsClient({
                   <th className="p-3.5 whitespace-nowrap">المرحلة الإجرائية</th>
                   <th className="p-3.5 whitespace-nowrap">الشاكي</th>
                   <th className="p-3.5 whitespace-nowrap">المشكو في حقه</th>
+                  <th className="p-3.5 whitespace-nowrap">الجهة / المنشأة</th>
                   <th className="p-3.5 whitespace-nowrap">اللجنة الفرعية</th>
                   <th className="p-3.5 whitespace-nowrap">تاريخ القيد</th>
                   <th className="p-3.5 text-center whitespace-nowrap">الملف</th>
@@ -730,8 +748,23 @@ export function UnifiedReportsClient({
                         {c.complainantName || "—"}
                       </td>
 
-                      <td className="p-3.5 font-medium text-slate-700 max-w-[150px] truncate" title={c.respondentName || c.hospitalName || ""}>
-                        {c.respondentName || c.hospitalName || "—"}
+                      <td className="p-3.5 font-medium text-slate-700 max-w-[150px] truncate" title={c.respondentName || ""}>
+                        {c.respondentName || "—"}
+                      </td>
+
+                      <td className="p-3.5 text-xs text-slate-700 max-w-[150px] truncate" title={c.entityName || c.hospitalName || ""}>
+                        {c.entityType || c.entityName || c.hospitalName ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-semibold text-slate-800 truncate">{c.entityName || c.hospitalName || "—"}</span>
+                            {c.entityType && (
+                              <span className="text-[10px] text-teal-800 bg-teal-50 px-1 rounded border border-teal-200 font-bold w-fit">
+                                {c.entityType}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
 
                       <td className="p-3.5 text-slate-700 max-w-[140px] truncate" title={c.subCommittee?.name || ""}>

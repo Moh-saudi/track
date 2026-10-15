@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { EGYPT_GOVERNORATES } from "@/lib/constants/governorates";
 import { OFFICIAL_PROSECUTIONS_LIST } from "@/lib/constants/prosecutions";
+import { ENTITY_TYPES, getEntityPlaceholder } from "@/lib/constants/entities";
 import { isValidEgyptianPhone, sanitizeEgyptianPhone } from "@/lib/formatters";
 
 interface Prosecution {
@@ -210,6 +211,8 @@ export default function NewCasePage() {
   const [caseYear, setCaseYear] = useState<number>(new Date().getFullYear());
   const [incomingDate, setIncomingDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [governorate, setGovernorate] = useState("");
+  const [entityType, setEntityType] = useState<string>("");
+  const [entityName, setEntityName] = useState<string>("");
   const [description, setDescription] = useState("");
   const [attachmentsCount, setAttachmentsCount] = useState<number>(0);
 
@@ -474,8 +477,8 @@ export default function NewCasePage() {
     const selectedPlenary = mergedProsecutions.find((p) => p.id === selectedPlenaryId);
     const selectedDistrict = mergedProsecutions.find((p) => p.id === selectedDistrictId);
 
-    if (!selectedPlenaryId || !selectedPlenary) {
-      setError("يرجى اختيار النيابة العامة الكلية المختصة (حقل إلزامي)");
+    if (registrationType !== "COMPLAINT" && (!selectedPlenaryId || !selectedPlenary)) {
+      setError("يرجى اختيار النيابة العامة الكلية المختصة (حقل إلزامي للقضايا ومحاضر النيابة)");
       return;
     }
 
@@ -493,9 +496,12 @@ export default function NewCasePage() {
           respondentPhone: cleanRespondents[0]?.phone || undefined,
           complainants: cleanComplainants,
           respondents: cleanRespondents,
-          prosecutionId: selectedPlenaryId.startsWith("official_") ? undefined : selectedPlenaryId || undefined,
+          entityType: entityType.trim() || undefined,
+          entityName: entityName.trim() || undefined,
+          hospitalName: entityName.trim() || undefined,
+          prosecutionId: selectedPlenaryId ? (selectedPlenaryId.startsWith("official_") ? undefined : selectedPlenaryId) : undefined,
           prosecution: selectedPlenary?.name || undefined,
-          partialProsecutionId: selectedDistrictId.startsWith("official_") ? undefined : selectedDistrictId || undefined,
+          partialProsecutionId: selectedDistrictId ? (selectedDistrictId.startsWith("official_") ? undefined : selectedDistrictId) : undefined,
           partialProsecution: selectedDistrict?.name || undefined,
           governorate: governorate.trim() || undefined,
           description: description.trim(),
@@ -816,7 +822,69 @@ export default function NewCasePage() {
             </div>
           </div>
 
-          {/* 5. النيابات المختصة (المحافظة + النيابة الكلية + النيابة الجزئية متجاورة في صف واحد مع بحث مدمج) */}
+          {/* 5. الجهة المشكو في حقها (نوع الجهة واسم المنشأة الطبية) */}
+          <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-xl space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-teal-700" />
+                <span className="text-xs font-bold text-slate-900 font-heading">
+                  الجهة / المنشأة الطبية المشكو في حقها
+                </span>
+                {entityType && (
+                  <Badge variant="teal" size="sm">
+                    {entityType}
+                  </Badge>
+                )}
+              </div>
+              <span className="text-[11px] text-slate-500 font-body">
+                اختر تصنيف الجهة واكتب اسمها
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {/* اختيار نوع الجهة */}
+              <div className="form-group">
+                <label className="form-label">نوع الجهة</label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {ENTITY_TYPES.map((et) => {
+                    const isSelected = entityType === et.id;
+                    return (
+                      <button
+                        key={et.id}
+                        type="button"
+                        onClick={() => {
+                          setEntityType(isSelected ? "" : et.id);
+                        }}
+                        className={`px-3 py-2.5 rounded-lg border text-center transition-all flex flex-col items-center justify-center gap-0.5 font-body text-xs ${
+                          isSelected
+                            ? "border-teal-600 bg-teal-50 text-teal-900 font-bold shadow-xs ring-1 ring-teal-600/30"
+                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span className="font-heading">{et.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* حقل اسم الجهة */}
+              <div className="form-group">
+                <label className="form-label">
+                  اسم الجهة {entityType ? `(${entityType})` : ""}
+                </label>
+                <input
+                  type="text"
+                  value={entityName}
+                  onChange={(e) => setEntityName(e.target.value)}
+                  placeholder={getEntityPlaceholder(entityType)}
+                  className="form-input text-xs h-10 bg-white font-medium"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 6. النيابات المختصة (المحافظة + النيابة الكلية + النيابة الجزئية متجاورة في صف واحد مع بحث مدمج) */}
           <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-xl space-y-3">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
               <div className="flex items-center gap-2">
@@ -824,9 +892,20 @@ export default function NewCasePage() {
                 <span className="form-label font-bold text-slate-900 m-0">
                   النيابة العامة المختصة
                 </span>
+                {registrationType === "COMPLAINT" ? (
+                  <Badge variant="sky" size="sm">
+                    اختياري للشكاوى
+                  </Badge>
+                ) : (
+                  <Badge variant="amber" size="sm">
+                    إلزامي
+                  </Badge>
+                )}
               </div>
               <span className="text-[11px] text-slate-500 font-body">
-                ابحث مباشرة داخل القائمة عند فتحها
+                {registrationType === "COMPLAINT"
+                  ? "يمكن تركها غير محددة إذا كانت الشكوى مباشرة بدون نيابة"
+                  : "ابحث مباشرة داخل القائمة عند فتحها"}
               </span>
             </div>
 
@@ -851,12 +930,16 @@ export default function NewCasePage() {
 
               {/* 2. النيابة الكلية (قائمة منسدلة ذكية ببحث مدمج بداخلها) */}
               <SearchableSelect
-                label="النيابة الكلية"
-                required
-                isInvalid={!selectedPlenaryId && !!error && error.includes("النيابة")}
+                label={registrationType === "COMPLAINT" ? "النيابة الكلية (اختياري للشكاوى)" : "النيابة الكلية"}
+                required={registrationType !== "COMPLAINT"}
+                isInvalid={registrationType !== "COMPLAINT" && !selectedPlenaryId && !!error && error.includes("النيابة")}
                 value={selectedPlenaryId}
                 options={filteredPlenaryOptions}
-                placeholder={`-- حدد النيابة الكلية (${filteredPlenaryOptions.length}) --`}
+                placeholder={
+                  registrationType === "COMPLAINT"
+                    ? `-- بدون نيابة محددة أو اختر النيابة (${filteredPlenaryOptions.length}) --`
+                    : `-- حدد النيابة الكلية (${filteredPlenaryOptions.length}) --`
+                }
                 emptyMessage="لا توجد نيابة كلية مطابقة"
                 onChange={(id) => handlePlenarySelect(id)}
               />

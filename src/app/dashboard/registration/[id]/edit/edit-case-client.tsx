@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { EGYPT_GOVERNORATES } from "@/lib/constants/governorates";
 import { OFFICIAL_PROSECUTIONS_LIST } from "@/lib/constants/prosecutions";
+import { ENTITY_TYPES, getEntityPlaceholder } from "@/lib/constants/entities";
 import { isValidEgyptianPhone } from "@/lib/formatters";
 
 interface Prosecution {
@@ -203,6 +204,9 @@ interface EditCaseClientProps {
     prosecutionCaseNumber?: string;
     incomingDate?: string;
     attachmentsCount?: number;
+    entityType?: string;
+    entityName?: string;
+    hospitalName?: string;
     governorate?: string;
     prosecution?: string;
     prosecutionId?: string;
@@ -232,6 +236,8 @@ export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
   );
   const [caseYear, setCaseYear] = useState<number>(initialCase.caseYear || new Date().getFullYear());
   const [incomingDate, setIncomingDate] = useState<string>(initialCase.incomingDate || "");
+  const [entityType, setEntityType] = useState<string>(initialCase.entityType || "");
+  const [entityName, setEntityName] = useState<string>(initialCase.entityName || initialCase.hospitalName || "");
   const [governorate, setGovernorate] = useState(initialCase.governorate || "");
   const [description, setDescription] = useState(initialCase.description || "");
   const [attachmentsCount, setAttachmentsCount] = useState<number>(
@@ -489,12 +495,12 @@ export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
       return;
     }
 
-    // التحقق الصارم من النيابة الكلية
+    // التحقق من النيابة الكلية (إلزامي للقضايا والمحاضر فقط)
     const selectedPlenary = mergedProsecutions.find((p) => p.id === selectedPlenaryId);
     const selectedDistrict = mergedProsecutions.find((p) => p.id === selectedDistrictId);
 
-    if (!selectedPlenaryId || !selectedPlenary) {
-      setError("يرجى اختيار النيابة العامة الكلية المختصة (حقل إلزامي)");
+    if (registrationType !== "COMPLAINT" && (!selectedPlenaryId || !selectedPlenary)) {
+      setError("يرجى اختيار النيابة العامة الكلية المختصة (حقل إلزامي للقضايا ومحاضر النيابة)");
       return;
     }
 
@@ -542,9 +548,12 @@ export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
           incomingDate: incomingDate || null,
           complainants: cleanComplainants,
           respondents: cleanRespondents,
-          prosecutionId: selectedPlenaryId.startsWith("official_") ? null : selectedPlenaryId || null,
+          entityType: entityType.trim() || null,
+          entityName: entityName.trim() || null,
+          hospitalName: entityName.trim() || null,
+          prosecutionId: selectedPlenaryId ? (selectedPlenaryId.startsWith("official_") ? null : selectedPlenaryId) : null,
           prosecution: selectedPlenary?.name || null,
-          partialProsecutionId: selectedDistrictId.startsWith("official_") ? null : selectedDistrictId || null,
+          partialProsecutionId: selectedDistrictId ? (selectedDistrictId.startsWith("official_") ? null : selectedDistrictId) : null,
           partialProsecution: selectedDistrict?.name || null,
           governorate: governorate.trim() || null,
           description: description.trim(),
@@ -872,7 +881,69 @@ export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
             </div>
           </div>
 
-          {/* 5. النيابات المختصة */}
+          {/* 5. الجهة المشكو في حقها (نوع الجهة واسم المنشأة الطبية) */}
+          <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-xl space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-teal-700" />
+                <span className="text-xs font-bold text-slate-900 font-heading">
+                  الجهة / المنشأة الطبية المشكو في حقها
+                </span>
+                {entityType && (
+                  <Badge variant="teal" size="sm">
+                    {entityType}
+                  </Badge>
+                )}
+              </div>
+              <span className="text-[11px] text-slate-500 font-body">
+                اختر تصنيف الجهة واكتب اسمها
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {/* اختيار نوع الجهة */}
+              <div className="form-group">
+                <label className="form-label">نوع الجهة</label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {ENTITY_TYPES.map((et) => {
+                    const isSelected = entityType === et.id;
+                    return (
+                      <button
+                        key={et.id}
+                        type="button"
+                        onClick={() => {
+                          setEntityType(isSelected ? "" : et.id);
+                        }}
+                        className={`px-3 py-2.5 rounded-lg border text-center transition-all flex flex-col items-center justify-center gap-0.5 font-body text-xs ${
+                          isSelected
+                            ? "border-teal-600 bg-teal-50 text-teal-900 font-bold shadow-xs ring-1 ring-teal-600/30"
+                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span className="font-heading">{et.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* حقل اسم الجهة */}
+              <div className="form-group">
+                <label className="form-label">
+                  اسم الجهة {entityType ? `(${entityType})` : ""}
+                </label>
+                <input
+                  type="text"
+                  value={entityName}
+                  onChange={(e) => setEntityName(e.target.value)}
+                  placeholder={getEntityPlaceholder(entityType)}
+                  className="form-input text-xs h-10 bg-white font-medium"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 6. النيابات المختصة */}
           <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-xl space-y-3">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
               <div className="flex items-center gap-2">
@@ -880,9 +951,20 @@ export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
                 <span className="form-label font-bold text-slate-900 m-0">
                   النيابة العامة المختصة
                 </span>
+                {registrationType === "COMPLAINT" ? (
+                  <Badge variant="sky" size="sm">
+                    اختياري للشكاوى
+                  </Badge>
+                ) : (
+                  <Badge variant="amber" size="sm">
+                    إلزامي
+                  </Badge>
+                )}
               </div>
               <span className="text-[11px] text-slate-500 font-body">
-                تحديد النيابة الكلية إلزامي لحفظ السجل
+                {registrationType === "COMPLAINT"
+                  ? "يمكن تركها غير محددة إذا كانت الشكوى مباشرة بدون نيابة"
+                  : "تحديد النيابة الكلية إلزامي للقضايا والمحاضر"}
               </span>
             </div>
 
@@ -906,12 +988,16 @@ export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
 
               {/* 2. النيابة الكلية */}
               <SearchableSelect
-                label="النيابة الكلية"
-                required
-                isInvalid={!selectedPlenaryId && !!error && error.includes("النيابة")}
+                label={registrationType === "COMPLAINT" ? "النيابة الكلية (اختياري للشكاوى)" : "النيابة الكلية"}
+                required={registrationType !== "COMPLAINT"}
+                isInvalid={registrationType !== "COMPLAINT" && !selectedPlenaryId && !!error && error.includes("النيابة")}
                 value={selectedPlenaryId}
                 options={filteredPlenaryOptions}
-                placeholder={`-- حدد النيابة الكلية (${filteredPlenaryOptions.length}) --`}
+                placeholder={
+                  registrationType === "COMPLAINT"
+                    ? `-- بدون نيابة محددة أو اختر النيابة (${filteredPlenaryOptions.length}) --`
+                    : `-- حدد النيابة الكلية (${filteredPlenaryOptions.length}) --`
+                }
                 emptyMessage="لا توجد نيابة كلية مطابقة"
                 onChange={(id) => handlePlenarySelect(id)}
               />

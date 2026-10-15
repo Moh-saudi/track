@@ -57,6 +57,8 @@ export default async function SupremeCasesPage() {
     registrationType: c.registrationType || "COMPLAINT",
     respondentName: c.respondentName || null,
     hospitalName: c.hospitalName || null,
+    entityType: c.entityType || null,
+    entityName: c.entityName || c.hospitalName || null,
     complainantName: c.complainantName || null,
     prosecution: c.prosecution || null,
     status: c.status || "PENDING_SUPREME_REVIEW",

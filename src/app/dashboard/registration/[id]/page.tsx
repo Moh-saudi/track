@@ -254,7 +254,7 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
               <div className="space-y-1">
                 <span className="text-slate-500 font-medium">جهة النيابة العامة الوارد منها:</span>
                 <p className="font-bold text-slate-900 text-sm font-heading">
-                  {caseRecord.prosecution || "غير محدد"}
+                  {caseRecord.prosecution || (caseRecord.registrationType === "COMPLAINT" ? "شكوى مباشرة (بدون نيابة)" : "غير محدد")}
                 </p>
               </div>
 
@@ -266,10 +266,17 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
               </div>
 
               <div className="space-y-1">
-                <span className="text-slate-500 font-medium">المنشأة الطبية / المستشفى:</span>
-                <p className="font-bold text-slate-900 text-sm font-heading">
-                  {caseRecord.hospitalName || "غير محدد"}
-                </p>
+                <span className="text-slate-500 font-medium">الجهة / المنشأة الطبية المشكو في حقها:</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {caseRecord.entityType && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                      {caseRecord.entityType}
+                    </span>
+                  )}
+                  <p className="font-bold text-slate-900 text-sm font-heading">
+                    {caseRecord.entityName || caseRecord.hospitalName || "غير محدد"}
+                  </p>
+                </div>
               </div>
 
               {caseRecord.governorate && (

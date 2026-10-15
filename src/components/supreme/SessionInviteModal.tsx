@@ -30,6 +30,8 @@ interface Props {
       caseYear: number;
       complainantName: string | null;
       hospitalName: string | null;
+      entityType?: string | null;
+      entityName?: string | null;
     }>;
   };
   supremeMembers: Array<{
@@ -59,12 +61,13 @@ export function SessionInviteModal({ session, supremeMembers, onClose }: Props) 
   const casesListText =
     session.cases.length > 0
       ? session.cases
-          .map(
-            (c, idx) =>
-              `  ${idx + 1}. سجل رقم ${c.caseNumber}/${c.caseYear} ${
-                c.complainantName ? `(الشاكي: ${c.complainantName})` : ""
-              }`
-          )
+          .map((c, idx) => {
+            const entityStr = c.entityName || c.hospitalName;
+            const entityPart = entityStr ? ` - الجهة: ${entityStr}` : "";
+            return `  ${idx + 1}. سجل رقم ${c.caseNumber}/${c.caseYear} ${
+              c.complainantName ? `(الشاكي: ${c.complainantName})` : ""
+            }${entityPart}`;
+          })
           .join("\n")
       : "  لا توجد سجلات مدرجة بعد";
 

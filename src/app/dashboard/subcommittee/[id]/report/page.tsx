@@ -208,7 +208,14 @@ export default async function SubCommitteeReportPage({ params }: { params: Promi
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                 <span className="text-slate-500 block font-medium">المشكو في حقه:</span>
                 <span className="font-bold text-slate-900 truncate block">
-                  {caseRecord.respondentName || caseRecord.hospitalName || "غير محدد"}
+                  {caseRecord.respondentName || "—"}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-slate-500 block font-medium">الجهة / المنشأة المشكو في حقها:</span>
+                <span className="font-bold text-slate-900 truncate block" title={caseRecord.entityName || caseRecord.hospitalName || ""}>
+                  {caseRecord.entityType ? `[${caseRecord.entityType}] ` : ""}{caseRecord.entityName || caseRecord.hospitalName || "—"}
                 </span>
               </div>
 
@@ -246,8 +253,9 @@ export default async function SubCommitteeReportPage({ params }: { params: Promi
               <SubCommitteeReportForm
                 caseId={caseRecord.id}
                 meetingDate={caseRecord.meetingDate}
-                respondentName={caseRecord.respondentName || caseRecord.hospitalName}
-                hospitalName={caseRecord.respondentName || caseRecord.hospitalName}
+                respondentName={caseRecord.respondentName}
+                hospitalName={caseRecord.entityName || caseRecord.hospitalName}
+                entityType={caseRecord.entityType}
                 complainantName={caseRecord.complainantName}
               />
             </div>

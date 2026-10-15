@@ -35,6 +35,8 @@ interface CaseItem {
   registrationType: "COMPLAINT" | "CASE" | "REPORT";
   complainantName: string | null;
   respondentName: string | null;
+  entityType?: string | null;
+  entityName?: string | null;
   hospitalName?: string | null;
   prosecution: string | null;
   prosecutionRel: { id: string; name: string } | null;
@@ -179,6 +181,8 @@ export default function RegistrationReportsPage() {
       "النوع",
       "اسم الشاكي",
       "المشكو في حقه",
+      "نوع الجهة",
+      "اسم الجهة / المنشأة",
       "النيابة",
       "الموظف المسجل",
       "تاريخ القيد",
@@ -191,8 +195,10 @@ export default function RegistrationReportsPage() {
       `"${c.caseYear}"`,
       `"${TYPE_CONFIG[c.registrationType]?.label || c.registrationType}"`,
       `"${c.complainantName || ""}"`,
-      `"${c.respondentName || c.hospitalName || ""}"`,
-      `"${c.prosecutionRel?.name || c.prosecution || ""}"`,
+      `"${c.respondentName || ""}"`,
+      `"${c.entityType || ""}"`,
+      `"${c.entityName || c.hospitalName || ""}"`,
+      `"${c.prosecutionRel?.name || c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة" : "")}"`,
       `"${c.createdBy?.fullName || ""}"`,
       `"${formatDate(c.createdAt)}"`,
       `"${c.attachmentsCount}"`,
@@ -542,6 +548,7 @@ export default function RegistrationReportsPage() {
                       <th>النوع</th>
                       <th>الشاكي</th>
                       <th>المشكو في حقه</th>
+                      <th>الجهة / المنشأة</th>
                       <th>النيابة</th>
                       <th>الموظف المسجل</th>
                       <th>تاريخ القيد</th>
@@ -569,10 +576,24 @@ export default function RegistrationReportsPage() {
                             {c.complainantName || "—"}
                           </td>
                           <td className="font-medium text-slate-800 text-xs">
-                            {c.respondentName || c.hospitalName || "—"}
+                            {c.respondentName || "—"}
+                          </td>
+                          <td className="text-xs">
+                            {c.entityType || c.entityName || c.hospitalName ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-semibold text-slate-800">{c.entityName || c.hospitalName || "—"}</span>
+                                {c.entityType && (
+                                  <span className="text-[10px] text-teal-800 bg-teal-50 px-1 rounded border border-teal-200 font-bold w-fit">
+                                    {c.entityType}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
                           </td>
                           <td className="text-xs text-slate-700">
-                            {c.prosecutionRel?.name || c.prosecution || "—"}
+                            {c.prosecutionRel?.name || c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة (بدون نيابة)" : "—")}
                           </td>
                           <td className="text-xs font-bold text-slate-800 whitespace-nowrap">
                             {c.createdBy?.fullName || "—"}

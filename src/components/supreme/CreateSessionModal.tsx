@@ -22,6 +22,8 @@ interface Props {
     caseYear: number;
     complainantName: string | null;
     hospitalName: string | null;
+    entityType?: string | null;
+    entityName?: string | null;
     subCommittee?: { name: string } | null;
   }>;
   onClose: () => void;
@@ -227,6 +229,11 @@ export function CreateSessionModal({
                         {c.complainantName && (
                           <span className="text-slate-500 font-normal">
                             — الشاكي: {c.complainantName}
+                          </span>
+                        )}
+                        {(c.entityName || c.hospitalName) && (
+                          <span className="text-indigo-700 font-medium bg-indigo-50 px-1.5 py-0.5 rounded text-[10px]">
+                            {c.entityName || c.hospitalName}
                           </span>
                         )}
                       </div>

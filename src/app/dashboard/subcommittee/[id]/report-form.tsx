@@ -22,6 +22,8 @@ interface SubCommitteeReportFormProps {
   meetingDate?: Date | string | null;
   respondentName?: string | null;
   hospitalName?: string | null;
+  entityType?: string | null;
+  entityName?: string | null;
   complainantName?: string | null;
 }
 
@@ -32,6 +34,8 @@ export function SubCommitteeReportForm({
   meetingDate,
   respondentName,
   hospitalName,
+  entityType,
+  entityName,
   complainantName,
 }: SubCommitteeReportFormProps) {
   const router = useRouter();
@@ -66,7 +70,7 @@ export function SubCommitteeReportForm({
 
   // وظيفة المساعد الذكي لتوليد مسودة فنية استناداً للمعطيات
   function generateSmartDraft(status: FaultStatus) {
-    const target = respondentName || hospitalName;
+    const target = respondentName || entityName || hospitalName;
     const respondentText = target ? `لدى المشكو في حقه (${target})` : "لدى المشكو في حقه";
     const patient = complainantName ? `للحالة / ${complainantName}` : "للمريض موضوع الفحص";
 

@@ -25,6 +25,8 @@ const createCaseSchema = z.object({
   prosecutionCaseNumber: z.string().optional().nullable(),
   incomingDate: z.string().optional().nullable(),
   attachmentsCount: z.number().int().min(0).default(0),
+  entityType: z.string().optional().nullable(),
+  entityName: z.string().optional().nullable(),
   hospitalName: z.string().optional().nullable(),
   respondentName: z.string().optional().nullable(),
   respondentPhone: z.string().trim().refine((val) => !val || isValidEgyptianPhone(val), {
@@ -116,9 +118,9 @@ export async function POST(req: NextRequest) {
     prosecutionName = p.name;
   }
 
-  if (!prosecutionName && !data.prosecutionId) {
+  if (data.registrationType !== "COMPLAINT" && !prosecutionName && !data.prosecutionId) {
     return NextResponse.json(
-      { error: "النيابة العامة المختصة حقل إلزامي، يرجى اختيار النيابة الكلية" },
+      { error: "النيابة العامة المختصة حقل إلزامي عند قيد قضية أو محضر نيابة، يرجى اختيار النيابة الكلية" },
       { status: 400 }
     );
   }
@@ -138,6 +140,8 @@ export async function POST(req: NextRequest) {
   const primaryRespondent = data.respondents?.[0]?.name || data.respondentName || null;
   const primaryRespondentPhone = data.respondents?.[0]?.phone || data.respondentPhone || null;
 
+  const resolvedEntityName = (data.entityName || data.hospitalName)?.trim() || null;
+
   const existingCase = await prisma.case.findFirst({
     where: {
       registrationType: data.registrationType,
@@ -148,7 +152,7 @@ export async function POST(req: NextRequest) {
   });
   if (existingCase) {
     return NextResponse.json({
-      error: `يوجد سجل مسجل مسبقاً بنفس رقم السجل (${data.caseNumber}) لسنة (${data.caseYear}) لذات النيابة/الجهة. يرجى مراجعة السجلات لتفادي التكرار.`,
+      error: `يوجد سجل مسجل مسبقاً بنفس رقم السجل (${data.caseNumber}) لسنة (${data.caseYear})${prosecutionName ? ` لذات النيابة (${prosecutionName})` : ""}. يرجى مراجعة السجلات لتفادي التكرار.`,
     }, { status: 409 });
   }
 
@@ -160,7 +164,9 @@ export async function POST(req: NextRequest) {
       prosecutionCaseNumber: data.prosecutionCaseNumber?.trim() || null,
       incomingDate: data.incomingDate ? new Date(data.incomingDate) : new Date(),
       attachmentsCount: data.attachmentsCount || 0,
-      hospitalName: data.hospitalName?.trim() || null,
+      entityType: data.entityType?.trim() || null,
+      entityName: resolvedEntityName,
+      hospitalName: resolvedEntityName,
       respondentName: primaryRespondent ? primaryRespondent.trim() : null,
       respondentPhone: primaryRespondentPhone ? primaryRespondentPhone.trim() : null,
       prosecution: prosecutionName,

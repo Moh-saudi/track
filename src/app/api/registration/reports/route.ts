@@ -63,6 +63,8 @@ export async function GET(req: NextRequest) {
       where.OR = [
         ...(where.OR || []),
         { respondentName: { contains: respondentName.trim(), mode: "insensitive" } },
+        { entityName: { contains: respondentName.trim(), mode: "insensitive" } },
+        { entityType: { contains: respondentName.trim(), mode: "insensitive" } },
         { hospitalName: { contains: respondentName.trim(), mode: "insensitive" } },
       ];
     }

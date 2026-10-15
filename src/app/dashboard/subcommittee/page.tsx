@@ -78,6 +78,8 @@ export default async function SubCommitteeDashboard({
     complainantName: c.complainantName || null,
     respondentName: c.respondentName || null,
     hospitalName: c.hospitalName || null,
+    entityType: c.entityType || null,
+    entityName: c.entityName || c.hospitalName || null,
     prosecution: c.prosecution || null,
     assignedAt: safeIsoDate(c.assignedAt),
     expectedDueDate: safeIsoDate(c.expectedDueDate),

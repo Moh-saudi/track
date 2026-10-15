@@ -61,6 +61,8 @@ export interface SerializedFollowUpCase {
     nationalId?: string | null;
   }>;
   hospitalName?: string | null;
+  entityType?: string | null;
+  entityName?: string | null;
   complainantName?: string | null;
   complainantPhone?: string | null;
   complainants?: Array<{
@@ -503,11 +505,11 @@ export function FollowUpDashboardClient({
                               </div>
                             ))}
                           </div>
-                        ) : c.respondentName || c.hospitalName ? (
+                        ) : c.respondentName ? (
                           <div className="flex flex-col gap-0.5">
-                            <span className="truncate flex items-center gap-1 max-w-[180px] font-semibold text-slate-900" title={c.respondentName || c.hospitalName || ""}>
+                            <span className="truncate flex items-center gap-1 max-w-[180px] font-semibold text-slate-900" title={c.respondentName}>
                               <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                              <span>{c.respondentName || c.hospitalName}</span>
+                              <span>{c.respondentName}</span>
                             </span>
                             {c.respondentPhone && (
                               <span className="text-[10px] text-slate-500 font-mono mr-4" dir="ltr">
@@ -515,7 +517,17 @@ export function FollowUpDashboardClient({
                               </span>
                             )}
                           </div>
-                        ) : (
+                        ) : null}
+
+                        {(c.entityType || c.entityName || c.hospitalName) && (
+                          <div className="flex items-center gap-1 text-[10px] text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 mt-1 max-w-[190px] truncate" title={c.entityName || c.hospitalName || ""}>
+                            <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
+                            {c.entityType && <span className="font-bold text-teal-800">[{c.entityType}]</span>}
+                            <span className="truncate">{c.entityName || c.hospitalName}</span>
+                          </div>
+                        )}
+
+                        {!c.respondentName && !c.entityType && !c.entityName && !c.hospitalName && (
                           <span className="text-slate-400">—</span>
                         )}
                       </TableCell>

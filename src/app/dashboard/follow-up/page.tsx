@@ -141,12 +141,14 @@ export default async function FollowUpDashboard() {
     registrationType: c.registrationType || "COMPLAINT",
     respondentName: c.respondentName,
     respondentPhone: c.respondentPhone,
+    entityType: c.entityType || null,
+    entityName: c.entityName || c.hospitalName || null,
+    hospitalName: c.entityName || c.hospitalName || null,
     respondents: Array.isArray(c.respondents) && c.respondents.length > 0
       ? (c.respondents as any)
       : c.respondentName
       ? [{ name: c.respondentName, phone: c.respondentPhone }]
       : [],
-    hospitalName: c.hospitalName,
     complainantName: c.complainantName,
     complainantPhone: c.complainantPhone,
     complainants: Array.isArray(c.complainants) && c.complainants.length > 0

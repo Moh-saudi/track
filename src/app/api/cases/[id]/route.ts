@@ -34,6 +34,8 @@ const patchCaseSchema = z.object({
   prosecutionCaseNumber: z.string().optional().nullable(),
   incomingDate: z.string().optional().nullable(),
   attachmentsCount: z.number().int().min(0).optional(),
+  entityType: z.string().optional().nullable(),
+  entityName: z.string().optional().nullable(),
   hospitalName: z.string().optional().nullable(),
   prosecution: z.string().optional().nullable(),
   prosecutionId: z.string().optional().nullable(),
@@ -196,7 +198,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (data.prosecutionCaseNumber !== undefined) updateData.prosecutionCaseNumber = data.prosecutionCaseNumber?.trim() || null;
   if (data.incomingDate !== undefined) updateData.incomingDate = data.incomingDate ? new Date(data.incomingDate) : null;
   if (data.attachmentsCount !== undefined) updateData.attachmentsCount = data.attachmentsCount;
-  if (data.hospitalName !== undefined) updateData.hospitalName = data.hospitalName?.trim() || null;
+  if (data.entityType !== undefined) updateData.entityType = data.entityType?.trim() || null;
+  if (data.entityName !== undefined) {
+    updateData.entityName = data.entityName?.trim() || null;
+    updateData.hospitalName = data.entityName?.trim() || null;
+  } else if (data.hospitalName !== undefined) {
+    updateData.hospitalName = data.hospitalName?.trim() || null;
+    updateData.entityName = data.hospitalName?.trim() || null;
+  }
   if (data.governorate !== undefined) updateData.governorate = data.governorate?.trim() || null;
   if (data.description) updateData.description = data.description.trim();
 

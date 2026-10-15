@@ -18,6 +18,8 @@ interface Props {
     caseYear: number;
     complainantName: string | null;
     hospitalName: string | null;
+    entityType?: string | null;
+    entityName?: string | null;
     subCommittee?: { name: string } | null;
   }>;
 }

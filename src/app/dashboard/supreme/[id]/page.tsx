@@ -68,11 +68,46 @@ export default async function SupremeCaseDetail({ params }: { params: Promise<{ 
         {/* المحتوى الرئيسي */}
         <div className="lg:col-span-2 space-y-6">
 
+          {/* أطراف الواقعة والجهة */}
+          <div className="card">
+            <h2 className="section-title">أطراف السجل والجهة المعنية</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-body">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 block mb-1">الشاكي / المريض:</span>
+                <span className="font-bold text-slate-800 text-sm">{caseRecord.complainantName || "—"}</span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 block mb-1">المشكو في حقه:</span>
+                <span className="font-bold text-slate-800 text-sm">{caseRecord.respondentName || "—"}</span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 block mb-1">الجهة / المنشأة الطبية:</span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {caseRecord.entityType && (
+                    <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold border border-indigo-200 text-xs">
+                      {caseRecord.entityType}
+                    </span>
+                  )}
+                  <span className="font-bold text-slate-900 text-sm">
+                    {caseRecord.entityName || caseRecord.hospitalName || "—"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 block mb-1">النيابة المختصة:</span>
+                <span className="font-bold text-slate-800 text-sm">{caseRecord.prosecution || "غير محددة (شكوى مباشرة)"}</span>
+              </div>
+            </div>
+          </div>
+
           {/* وصف القضية */}
           <div className="card">
             <h2 className="section-title">وصف القضية</h2>
             <p className="text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-4 text-sm">
-              {caseRecord.description}
+              {caseRecord.description || "لا يوجد وصف مدون"}
             </p>
           </div>
 

@@ -16,6 +16,8 @@ interface SearchCaseResult {
   complainantName: string | null;
   respondentName: string | null;
   hospitalName: string | null;
+  entityType?: string | null;
+  entityName?: string | null;
   prosecution: string | null;
   createdAt: string;
   subCommittee: { name: string } | null;
@@ -248,12 +250,17 @@ export function GlobalSearchBar() {
                             <span className="font-medium text-slate-800 truncate">{item.complainantName}</span>
                           </div>
                         )}
-                        {(item.respondentName || item.hospitalName) && (
+                        {(item.respondentName || item.hospitalName || item.entityName) && (
                           <div className="flex items-center gap-1.5 truncate text-[11px]">
                             <span className="text-slate-400">المشكو في حقه:</span>
                             <span className="font-medium text-slate-700 truncate">
-                              {item.respondentName || item.hospitalName}
+                              {item.respondentName || item.hospitalName || item.entityName}
                             </span>
+                            {item.entityType && (
+                              <span className="px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 text-[10px] font-semibold shrink-0">
+                                {item.entityType}
+                              </span>
+                            )}
                           </div>
                         )}
                         {item.prosecution && (

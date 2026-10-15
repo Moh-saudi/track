@@ -327,9 +327,9 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
                   رقم القضية / المحضر: {caseRecord.prosecutionCaseNumber}
                 </Badge>
               )}
-              {caseRecord.hospitalName && (
-                <Badge variant="slate" size="sm">
-                  المنشأة: {caseRecord.hospitalName}
+              {(caseRecord.entityType || caseRecord.entityName || caseRecord.hospitalName) && (
+                <Badge variant="teal" size="sm">
+                  الجهة: {caseRecord.entityType ? `[${caseRecord.entityType}] ` : ""}{caseRecord.entityName || caseRecord.hospitalName}
                 </Badge>
               )}
             </div>

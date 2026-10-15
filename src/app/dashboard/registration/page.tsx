@@ -119,7 +119,10 @@ export default async function RegistrationDashboard() {
         ? [{ name: c.complainantName, phone: c.complainantPhone }]
         : [],
       prosecution: c.prosecution || null,
-      respondentName: c.respondentName || c.hospitalName || null,
+      respondentName: c.respondentName || null,
+      entityType: c.entityType || null,
+      entityName: c.entityName || c.hospitalName || null,
+      hospitalName: c.entityName || c.hospitalName || null,
       respondents: Array.isArray(c.respondents) && c.respondents.length > 0
         ? (c.respondents as any)
         : c.respondentName
