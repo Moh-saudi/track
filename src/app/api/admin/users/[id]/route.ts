@@ -8,6 +8,7 @@ import { can } from "@/lib/rbac";
 import { writeAuditLog } from "@/lib/audit";
 import { getPasswordPolicyError } from "@/lib/password-policy";
 import { isValidEgyptianPhone } from "@/lib/formatters";
+import { ensureSchemaMigrated } from "@/lib/db-migrate";
 
 const updateSchema = z.object({
   active:          z.boolean().optional(),
@@ -34,6 +35,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const isSelf = (session.user as any).id === id;
+
+  await ensureSchemaMigrated();
 
   const parsed = updateSchema.safeParse(await req.json());
   if (!parsed.success) {

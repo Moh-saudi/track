@@ -8,6 +8,7 @@ import { can } from "@/lib/rbac";
 import { writeAuditLog } from "@/lib/audit";
 import { getPasswordPolicyError } from "@/lib/password-policy";
 import { isValidEgyptianPhone } from "@/lib/formatters";
+import { ensureSchemaMigrated } from "@/lib/db-migrate";
 
 const createUserSchema = z.object({
   email:           z.string().email("بريد إلكتروني غير صحيح"),
@@ -30,20 +31,27 @@ export async function GET() {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
 
-  const users = await prisma.user.findMany({
-    orderBy: { fullName: "asc" },
-    select: {
-      id: true, email: true, fullName: true, role: true,
-      employer: true, active: true, createdAt: true, subCommitteeId: true,
-      subCommittee: { select: { name: true, code: true } },
-      specialty: { select: { name: true } },
-      phone: true,
-      nationalId: true,
-      initialPassword: true,
-    },
-  });
+  await ensureSchemaMigrated();
 
-  return NextResponse.json(users);
+  try {
+    const users = await prisma.user.findMany({
+      orderBy: { fullName: "asc" },
+      select: {
+        id: true, email: true, fullName: true, role: true,
+        employer: true, active: true, createdAt: true, subCommitteeId: true,
+        subCommittee: { select: { name: true, code: true } },
+        specialty: { select: { name: true } },
+        phone: true,
+        nationalId: true,
+        initialPassword: true,
+      },
+    });
+
+    return NextResponse.json(users);
+  } catch (err: any) {
+    console.error("Error fetching users:", err);
+    return NextResponse.json({ error: "فشل في تحميل قائمة المستخدمين من قاعدة البيانات" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -51,6 +59,8 @@ export async function POST(req: NextRequest) {
   if (!session?.user || !can((session.user as any).role, "MANAGE_USERS_AND_ROLES")) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
+
+  await ensureSchemaMigrated();
 
   const parsed = createUserSchema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -60,35 +70,40 @@ export async function POST(req: NextRequest) {
   const passwordError = getPasswordPolicyError(data.password, normalizedEmail);
   if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 });
 
-  const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-  if (existing) return NextResponse.json({ error: "البريد الإلكتروني مستخدم بالفعل" }, { status: 409 });
+  try {
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (existing) return NextResponse.json({ error: "البريد الإلكتروني مستخدم بالفعل" }, { status: 409 });
 
-  const passwordHash = await bcrypt.hash(data.password, 12);
+    const passwordHash = await bcrypt.hash(data.password, 12);
 
-  const user = await prisma.user.create({
-    data: {
-      email:           normalizedEmail,
-      fullName:        data.fullName.trim(),
-      passwordHash,
-      role:            data.role as any,
-      employer:        data.employer?.trim() || null,
-      subCommitteeId:  data.role === "SUBCOMMITTEE_MEMBER" ? (data.subCommitteeId || null) : null,
-      specialtyId:     data.specialtyId || null,
-      nationalId:      data.nationalId?.trim() || null,
-      phone:           data.phone?.trim() || null,
-      initialPassword: data.initialPassword?.trim() || data.password,
-      active:          true,
-    },
-    select: { id: true, email: true, fullName: true, role: true, employer: true, active: true, phone: true, initialPassword: true },
-  });
+    const user = await prisma.user.create({
+      data: {
+        email:           normalizedEmail,
+        fullName:        data.fullName.trim(),
+        passwordHash,
+        role:            data.role as any,
+        employer:        data.employer?.trim() || null,
+        subCommitteeId:  data.role === "SUBCOMMITTEE_MEMBER" ? (data.subCommitteeId || null) : null,
+        specialtyId:     data.specialtyId || null,
+        nationalId:      data.nationalId?.trim() || null,
+        phone:           data.phone?.trim() || null,
+        initialPassword: data.initialPassword?.trim() || data.password,
+        active:          true,
+      },
+      select: { id: true, email: true, fullName: true, role: true, employer: true, active: true, phone: true, initialPassword: true },
+    });
 
-  await writeAuditLog({
-    entityType: "User",
-    entityId: user.id,
-    action: "CREATE",
-    userId: (session.user as any).id,
-    afterData: { email: user.email, role: user.role },
-  });
+    await writeAuditLog({
+      entityType: "User",
+      entityId: user.id,
+      action: "CREATE",
+      userId: (session.user as any).id,
+      afterData: { email: user.email, role: user.role },
+    });
 
-  return NextResponse.json(user, { status: 201 });
+    return NextResponse.json(user, { status: 201 });
+  } catch (err: any) {
+    console.error("Error creating user:", err);
+    return NextResponse.json({ error: "فشل في حفظ المستخدم الجديد في قاعدة البيانات" }, { status: 500 });
+  }
 }
