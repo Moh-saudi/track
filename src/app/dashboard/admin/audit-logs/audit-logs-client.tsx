@@ -593,7 +593,7 @@ export function AuditLogsClient({ initialSessions, initialLogs, users, initialTa
 
                         {/* وقت تسجيل الدخول */}
                         <TableCell className="text-xs font-mono text-emerald-800 whitespace-nowrap font-medium">
-                          <span className="inline-flex items-center gap-1.5 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                          <span className="inline-flex items-center gap-1.5 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200" dir="ltr">
                             <Clock className="w-3 h-3 text-emerald-600 shrink-0" />
                             <span>{formatDateTimeArabic(session.loginAt)}</span>
                           </span>
@@ -601,7 +601,7 @@ export function AuditLogsClient({ initialSessions, initialLogs, users, initialTa
 
                         {/* وقت تسجيل الخروج */}
                         <TableCell className="text-xs font-mono text-slate-700 whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-md text-slate-700 border border-slate-200">
+                          <span className="inline-flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-md text-slate-700 border border-slate-200" dir="ltr">
                             <Clock className="w-3 h-3 text-slate-500 shrink-0" />
                             <span>{formatDateTimeArabic(session.logoutAt || session.lastActiveAt)}</span>
                           </span>
@@ -904,13 +904,13 @@ export function AuditLogsClient({ initialSessions, initialLogs, users, initialTa
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
               <div className="space-y-0.5">
                 <span className="text-slate-400 text-[11px] block">وقت تسجيل الدخول:</span>
-                <span className="font-bold text-slate-800 font-mono text-[11px]">
+                <span className="font-bold text-slate-800 font-mono text-[11px] inline-block" dir="ltr">
                   {formatDateTimeArabic(selectedSessionForActions.loginAt)}
                 </span>
               </div>
               <div className="space-y-0.5">
                 <span className="text-slate-400 text-[11px] block">آخر نشاط / خروج:</span>
-                <span className="font-bold text-slate-800 font-mono text-[11px]">
+                <span className="font-bold text-slate-800 font-mono text-[11px] inline-block" dir="ltr">
                   {formatDateTimeArabic(selectedSessionForActions.logoutAt || selectedSessionForActions.lastActiveAt)}
                 </span>
               </div>

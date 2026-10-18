@@ -5,14 +5,19 @@
  */
 
 /**
+ * المنطقة الزمنية المعتمدة للمنظومة (جمهورية مصر العربية)
+ */
+export const APP_TIMEZONE = "Africa/Cairo";
+
+/**
  * تنسيق التاريخ بالأرقام الإنجليزية (DD/MM/YYYY)
- * متوافق بنسبة 100% مع بيئة SSR و Hydration دون أي تفاوت زمني بين السيرفر والمتصفح
+ * متوافق بنسبة 100% مع بيئة SSR و Hydration وبالتوقيت المحلي لمصر
  */
 export function formatDate(date: string | Date | null | undefined): string {
   if (!date) return "—";
 
   if (typeof date === "string") {
-    const match = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const match = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (match) {
       const [, year, month, day] = match;
       return `${day}/${month}/${year}`;
@@ -22,52 +27,84 @@ export function formatDate(date: string | Date | null | undefined): string {
   const d = typeof date === "string" ? new Date(date) : date;
   if (isNaN(d.getTime())) return "—";
 
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const year = d.getUTCFullYear();
-  return `${day}/${month}/${year}`;
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: APP_TIMEZONE,
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).formatToParts(d);
+    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    return `${map.day}/${map.month}/${map.year}`;
+  } catch {
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
 }
 
 /**
  * تنسيق التاريخ والوقت بالأرقام الإنجليزية (DD/MM/YYYY hh:mm AM/PM)
- * يعتمد على UTC لضمان التطابق التام بين HTML السيرفر ورندر المتصفح ومنع أخطاء Hydration #425
+ * بالتوقيت المحلي لمصر مع ضمان تطابق السيرفر والمتصفح
  */
 export function formatDateTime(date: string | Date | null | undefined): string {
   if (!date) return "—";
   const d = typeof date === "string" ? new Date(date) : date;
   if (isNaN(d.getTime())) return "—";
 
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const year = d.getUTCFullYear();
-
-  let hours = d.getUTCHours();
-  const minutes = String(d.getUTCMinutes()).padStart(2, "0");
-  const ampm = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12;
-  hours = hours ? hours : 12;
-  const hoursStr = String(hours).padStart(2, "0");
-
-  return `${day}/${month}/${year} ${hoursStr}:${minutes} ${ampm}`;
+  try {
+    const dateStr = formatDate(d);
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: APP_TIMEZONE,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).formatToParts(d);
+    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    const period = (map.dayPeriod || "").toUpperCase();
+    return `${dateStr} ${map.hour}:${map.minute} ${period}`.trim();
+  } catch {
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+    const hoursStr = String(hours).padStart(2, "0");
+    return `${day}/${month}/${year} ${hoursStr}:${minutes} ${ampm}`;
+  }
 }
 
 /**
- * تنسيق الوقت فقط (hh:mm:ss AM/PM) بتوقيت UTC لتفادي عدم تطابق Hydration
+ * تنسيق الوقت فقط (hh:mm:ss AM/PM) بالتوقيت المحلي لمصر
  */
 export function formatTime(date: string | Date | null | undefined): string {
   if (!date) return "—";
   const d = typeof date === "string" ? new Date(date) : date;
   if (isNaN(d.getTime())) return "—";
 
-  let hours = d.getUTCHours();
-  const minutes = String(d.getUTCMinutes()).padStart(2, "0");
-  const seconds = String(d.getUTCSeconds()).padStart(2, "0");
-  const ampm = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12;
-  hours = hours ? hours : 12;
-  const hoursStr = String(hours).padStart(2, "0");
-
-  return `${hoursStr}:${minutes}:${seconds} ${ampm}`;
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: APP_TIMEZONE,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    }).formatToParts(d);
+    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    const period = (map.dayPeriod || "").toUpperCase();
+    return `${map.hour}:${map.minute}:${map.second} ${period}`.trim();
+  } catch {
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const seconds = String(d.getSeconds()).padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+    const hoursStr = String(hours).padStart(2, "0");
+    return `${hoursStr}:${minutes}:${seconds} ${ampm}`;
+  }
 }
 
 /**

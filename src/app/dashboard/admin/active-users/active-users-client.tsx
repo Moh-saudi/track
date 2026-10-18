@@ -291,7 +291,7 @@ export function ActiveUsersClient({ initialUsers }: Props) {
                             <div className="font-semibold text-slate-800" suppressHydrationWarning>
                               {formatDate(lastSeen)}
                             </div>
-                            <div className="text-[10px] text-slate-400" suppressHydrationWarning>
+                            <div className="text-[10px] text-slate-400" dir="ltr" suppressHydrationWarning>
                               {formatTime(lastSeen)}
                             </div>
                           </div>
