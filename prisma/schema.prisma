@@ -24,6 +24,7 @@ enum UserRole {
   FINANCE             // موظف المالية
   ADMIN               // مدير النظام
   RISK_OFFICER        // مسؤول إدارة المخاطر وتصحيح المسار
+  SUPREME_SUPERVISOR  // مشرف من اللجنة العليا على الموظفين ومعدل تشغيلهم
 }
 
 enum RegistrationType {

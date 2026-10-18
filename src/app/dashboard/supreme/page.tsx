@@ -48,7 +48,7 @@ export default async function SupremeDashboard({ searchParams }: SupremeDashboar
   if (!session?.user) redirect("/login");
 
   const userRole = (session.user as any).role;
-  if (userRole !== "SUPREME_COMMITTEE" && userRole !== "ADMIN") {
+  if (userRole !== "SUPREME_COMMITTEE" && userRole !== "ADMIN" && userRole !== "SUPREME_SUPERVISOR") {
     redirect("/dashboard");
   }
 

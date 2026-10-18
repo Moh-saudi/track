@@ -1,35 +1,27 @@
+export type ProsecutionType = "PLENARY" | "DISTRICT" | "ADMINISTRATIVE";
+
 export interface OfficialProsecution {
   id?: string;
   name: string;
-  type: "PLENARY" | "DISTRICT";
+  type: ProsecutionType;
   governorate: string;
   parentName?: string;
 }
 
 export const OFFICIAL_PROSECUTIONS_LIST: OfficialProsecution[] = [
+  // هيئة النيابة الإدارية والمحاكم التأديبية
+  { name: "هيئة النيابة الإدارية - رئاسة الهيئة", type: "ADMINISTRATIVE", governorate: "القاهرة" },
+  { name: "النيابة الإدارية للصحة بالقاهرة", type: "ADMINISTRATIVE", governorate: "القاهرة", parentName: "هيئة النيابة الإدارية - رئاسة الهيئة" },
+  { name: "النيابة الإدارية للصحة بالجيزة", type: "ADMINISTRATIVE", governorate: "الجيزة", parentName: "هيئة النيابة الإدارية - رئاسة الهيئة" },
+  { name: "النيابة الإدارية للصحة بالإسكندرية", type: "ADMINISTRATIVE", governorate: "الإسكندرية", parentName: "هيئة النيابة الإدارية - رئاسة الهيئة" },
+  { name: "النيابة الإدارية - فرع الدعوى التأديبية", type: "ADMINISTRATIVE", governorate: "القاهرة", parentName: "هيئة النيابة الإدارية - رئاسة الهيئة" },
+  { name: "المحكمة التأديبية للصحة", type: "ADMINISTRATIVE", governorate: "القاهرة" },
+  { name: "النيابة الإدارية بطنطا", type: "ADMINISTRATIVE", governorate: "الغربية", parentName: "هيئة النيابة الإدارية - رئاسة الهيئة" },
+  { name: "النيابة الإدارية بالمنصورة", type: "ADMINISTRATIVE", governorate: "الدقهلية", parentName: "هيئة النيابة الإدارية - رئاسة الهيئة" },
+  { name: "النيابة الإدارية بالزقازيق", type: "ADMINISTRATIVE", governorate: "الشرقية", parentName: "هيئة النيابة الإدارية - رئاسة الهيئة" },
+  { name: "النيابة الإدارية بأسيوط", type: "ADMINISTRATIVE", governorate: "أسيوط", parentName: "هيئة النيابة الإدارية - رئاسة الهيئة" },
+
   // القاهرة
-  { name: "جنوب القاهرة الكلية", type: "PLENARY", governorate: "القاهرة" },
-  { name: "السيدة زينب الجزئية", type: "DISTRICT", governorate: "القاهرة", parentName: "جنوب القاهرة الكلية" },
-  { name: "مصر القديمة الجزئية", type: "DISTRICT", governorate: "القاهرة", parentName: "جنوب القاهرة الكلية" },
-  { name: "المعادي الجزئية", type: "DISTRICT", governorate: "القاهرة", parentName: "جنوب القاهرة الكلية" },
-  { name: "شمال القاهرة الكلية", type: "PLENARY", governorate: "القاهرة" },
-  { name: "روض الفرج الجزئية", type: "DISTRICT", governorate: "القاهرة", parentName: "شمال القاهرة الكلية" },
-  { name: "شبرا الجزئية", type: "DISTRICT", governorate: "القاهرة", parentName: "شمال القاهرة الكلية" },
-  { name: "الساحل الجزئية", type: "DISTRICT", governorate: "القاهرة", parentName: "شمال القاهرة الكلية" },
-  { name: "شرق القاهرة الكلية", type: "PLENARY", governorate: "القاهرة" },
-  { name: "مدينة نصر الجزئية", type: "DISTRICT", governorate: "القاهرة", parentName: "شرق القاهرة الكلية" },
-  { name: "مصر الجديدة الجزئية", type: "DISTRICT", governorate: "القاهرة", parentName: "شرق القاهرة الكلية" },
-  { name: "عين شمس الجزئية", type: "DISTRICT", governorate: "القاهرة", parentName: "شرق القاهرة الكلية" },
-  { name: "غرب القاهرة الكلية", type: "PLENARY", governorate: "القاهرة" },
-  { name: "الوايلي الجزئية", type: "DISTRICT", governorate: "القاهرة", parentName: "غرب القاهرة الكلية" },
-  { name: "بولاق الجزئية", type: "DISTRICT", governorate: "القاهرة", parentName: "غرب القاهرة الكلية" },
-  { name: "وسط القاهرة الكلية", type: "PLENARY", governorate: "القاهرة" },
-  { name: "عابدين الجزئية", type: "DISTRICT", governorate: "القاهرة", parentName: "وسط القاهرة الكلية" },
-  { name: "القاهرة الجديدة الكلية", type: "PLENARY", governorate: "القاهرة" },
-  { name: "التجمع الخامس الجزئية", type: "DISTRICT", governorate: "القاهرة", parentName: "القاهرة الجديدة الكلية" },
-  { name: "حلوان الكلية", type: "PLENARY", governorate: "القاهرة" },
-  { name: "15 مايو الجزئية", type: "DISTRICT", governorate: "القاهرة", parentName: "حلوان الكلية" },
-  { name: "المحكمة التأديبية للصحة", type: "PLENARY", governorate: "القاهرة" },
 
   // الجيزة
   { name: "شمال الجيزة الكلية", type: "PLENARY", governorate: "الجيزة" },

@@ -10,7 +10,7 @@ const prosecutionSchema = z.object({
   name: z.string().min(2, "يجب إدخال اسم النيابة بشكل صحيح"),
   code: z.string().optional().nullable(),
   governorate: z.string().optional().nullable(),
-  type: z.enum(["PLENARY", "DISTRICT"]).optional(),
+  type: z.enum(["PLENARY", "DISTRICT", "ADMINISTRATIVE"]).optional(),
   parentId: z.string().optional().nullable(),
   active: z.boolean().optional(),
 });
@@ -50,7 +50,8 @@ export async function GET(req: NextRequest) {
 
     // التحقق مما إذا كانت النيابات بحاجة لتحديث وربط التبعية الهرمية
     const districtCount = prosecutions.filter((p) => p.type === "DISTRICT" || p.parentId).length;
-    if (prosecutions.length < 80 || districtCount < 20) {
+    const adminCount = prosecutions.filter((p) => p.type === "ADMINISTRATIVE").length;
+    if (prosecutions.length < 80 || districtCount < 20 || adminCount < 3) {
       try {
         const plenaryMap: Record<string, string> = {};
 
@@ -73,7 +74,38 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        // 2. إنشاء وتحديث النيابات الجزئية وربطها بالنيابة الكلية التابعة لها
+        // 2. إنشاء وتحديث النيابات الإدارية
+        for (const item of OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "ADMINISTRATIVE")) {
+          const parentId = item.parentName ? plenaryMap[item.parentName] || null : null;
+          const existing = await prisma.prosecution.findUnique({ where: { name: item.name } }).catch(() => null);
+          if (existing) {
+            plenaryMap[item.name] = existing.id;
+            if (!existing.governorate || existing.type !== "ADMINISTRATIVE") {
+              await prisma.prosecution.update({
+                where: { id: existing.id },
+                data: {
+                  governorate: item.governorate,
+                  type: "ADMINISTRATIVE",
+                  parentId: parentId || existing.parentId,
+                  active: true,
+                },
+              }).catch(() => null);
+            }
+          } else {
+            const created = await prisma.prosecution.create({
+              data: {
+                name: item.name,
+                governorate: item.governorate,
+                type: "ADMINISTRATIVE",
+                parentId,
+                active: true,
+              },
+            }).catch(() => null);
+            if (created) plenaryMap[item.name] = created.id;
+          }
+        }
+
+        // 3. إنشاء وتحديث النيابات الجزئية وربطها بالنيابة الكلية التابعة لها
         for (const item of OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "DISTRICT")) {
           const parentId = item.parentName ? plenaryMap[item.parentName] || null : null;
           const existing = await prisma.prosecution.findUnique({ where: { name: item.name } }).catch(() => null);
@@ -118,11 +150,11 @@ export async function GET(req: NextRequest) {
     console.error("GET /api/prosecutions query error:", err);
   }
 
-  // Fallback: return official list directly formatted with matching plenary IDs
-  const plenaryMapByName: Record<string, string> = {};
+  // Fallback: return official list directly formatted with matching parent IDs
+  const parentMapByName: Record<string, string> = {};
   OFFICIAL_PROSECUTIONS_LIST.forEach((item, idx) => {
-    if (item.type === "PLENARY") {
-      plenaryMapByName[item.name] = `official_${idx + 1}`;
+    if (item.type === "PLENARY" || item.type === "ADMINISTRATIVE") {
+      parentMapByName[item.name] = `official_${idx + 1}`;
     }
   });
 
@@ -132,11 +164,13 @@ export async function GET(req: NextRequest) {
     governorate: item.governorate,
     type: item.type,
     active: true,
-    parentId: item.parentName ? plenaryMapByName[item.parentName] || null : null,
+    parentId: item.parentName ? parentMapByName[item.parentName] || null : null,
     parent: item.parentName
-      ? { id: plenaryMapByName[item.parentName] || "", name: item.parentName }
+      ? { id: parentMapByName[item.parentName] || "", name: item.parentName }
       : null,
   }));
+
+  return NextResponse.json(fallback);
 
   return NextResponse.json(fallback);
 }

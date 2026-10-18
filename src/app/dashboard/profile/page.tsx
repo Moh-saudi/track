@@ -23,7 +23,9 @@ const ROLE_LABELS: Record<string, string> = {
   REGISTRATION_CLERK: "موظف قيد وتوثيق السجلات",
   SUBCOMMITTEE_MEMBER: "مقرر / عضو لجنة فاحصة",
   SUPREME_COMMITTEE: "عضو اللجنة العليا للمسؤولية الطبية",
+  SUPREME_SUPERVISOR: "مشرف اللجنة العليا على الموظفين ومعدل التشغيل",
   FINANCE: "مسؤول الشؤون المالية والبدلات",
+  RISK_OFFICER: "مسؤول إدارة المخاطر وتصحيح المسار",
 };
 
 export default async function ProfileAccountPage() {

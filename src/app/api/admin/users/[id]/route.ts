@@ -15,7 +15,7 @@ const updateSchema = z.object({
   employer:        z.string().nullable().optional(),
   subCommitteeId:  z.string().nullable().optional(),
   specialtyId:     z.string().nullable().optional(),
-  role:            z.enum(["REGISTRATION_CLERK", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "FINANCE", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER"]).optional(),
+  role:            z.enum(["REGISTRATION_CLERK", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "SUPREME_SUPERVISOR", "FINANCE", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER"]).optional(),
   newPassword:     z.string().optional(),
   nationalId:      z.string().trim().refine((val) => !val || /^\d{14}$/.test(val), {
                      message: "الرقم القومي يجب أن يتكون من 14 رقماً",

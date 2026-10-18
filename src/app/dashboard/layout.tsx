@@ -14,7 +14,9 @@ const ROLE_LABELS: Record<string, string> = {
   REGISTRATION_CLERK: "موظف قيد السجلات",
   SUBCOMMITTEE_MEMBER: "عضو / مقرر لجنة فاحصة",
   SUPREME_COMMITTEE: "عضو اللجنة العليا",
+  SUPREME_SUPERVISOR: "مشرف اللجنة العليا على الموظفين ومعدل التشغيل",
   FINANCE: "مسؤول الشؤون المالية",
+  RISK_OFFICER: "مسؤول إدارة المخاطر وتصحيح المسار",
 };
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {

@@ -3,11 +3,14 @@ import { NextResponse } from "next/server";
 
 const ROUTE_ROLE_PREFIX: Record<string, string[]> = {
   "/dashboard/admin/risk-mode": ["ADMIN", "RISK_OFFICER"],
-  "/dashboard/admin/audit-logs": ["ADMIN", "RISK_OFFICER"],
+  "/dashboard/admin/active-users": ["ADMIN", "RISK_OFFICER", "SUPREME_SUPERVISOR"],
+  "/dashboard/admin/audit-logs": ["ADMIN", "RISK_OFFICER", "SUPREME_SUPERVISOR"],
+  "/dashboard/admin/audit-actions": ["ADMIN", "RISK_OFFICER", "SUPREME_SUPERVISOR"],
+  "/dashboard/registration/reports": ["ADMIN", "REGISTRATION_CLERK", "FOLLOW_UP_OFFICER", "SUPREME_SUPERVISOR"],
   "/dashboard/registration": ["REGISTRATION_CLERK", "ADMIN"],
-  "/dashboard/follow-up": ["FOLLOW_UP_OFFICER", "ADMIN", "RISK_OFFICER"],
+  "/dashboard/follow-up": ["FOLLOW_UP_OFFICER", "ADMIN", "RISK_OFFICER", "SUPREME_SUPERVISOR"],
   "/dashboard/subcommittee": ["SUBCOMMITTEE_MEMBER", "ADMIN"],
-  "/dashboard/supreme": ["SUPREME_COMMITTEE", "ADMIN", "RISK_OFFICER"],
+  "/dashboard/supreme": ["SUPREME_COMMITTEE", "ADMIN", "RISK_OFFICER", "SUPREME_SUPERVISOR"],
   "/dashboard/finance": ["FINANCE", "ADMIN"],
   "/dashboard/admin": ["ADMIN"],
 };

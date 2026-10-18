@@ -40,7 +40,9 @@ const ROLE_LABELS: Record<string, string> = {
   REGISTRATION_CLERK: "موظف قيد السجلات",
   SUBCOMMITTEE_MEMBER: "عضو / مقرر لجنة فاحصة",
   SUPREME_COMMITTEE: "عضو اللجنة العليا",
+  SUPREME_SUPERVISOR: "مشرف اللجنة العليا على الموظفين والتشغيل",
   FINANCE: "مسؤول الشؤون المالية",
+  RISK_OFFICER: "مسؤول إدارة المخاطر وتصحيح المسار",
 };
 
 export function ActiveUsersClient({ initialUsers }: Props) {
@@ -184,7 +186,9 @@ export function ActiveUsersClient({ initialUsers }: Props) {
             <option value="FOLLOW_UP_OFFICER">موظفو المتابعة والتوجيه</option>
             <option value="SUBCOMMITTEE_MEMBER">أعضاء اللجان الفرعية</option>
             <option value="SUPREME_COMMITTEE">أعضاء اللجنة العليا</option>
+            <option value="SUPREME_SUPERVISOR">مشرفو اللجنة العليا للتشغيل</option>
             <option value="FINANCE">الشؤون المالية</option>
+            <option value="RISK_OFFICER">إدارة المخاطر</option>
             <option value="ADMIN">مديرو المنظومة</option>
           </select>
 

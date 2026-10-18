@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
   const user = session.user as any;
   const currentUserId = user.id;
-  const allowedRoles = ["REGISTRATION_CLERK", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER"];
+  const allowedRoles = ["REGISTRATION_CLERK", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER", "SUPREME_SUPERVISOR"];
   if (!allowedRoles.includes(user.role)) {
     return NextResponse.json({ error: "غير مصرح لك بالاطلاع على تقارير وإحصائيات قيد السجلات" }, { status: 403 });
   }

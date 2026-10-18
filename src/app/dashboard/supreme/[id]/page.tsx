@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DecisionForm } from "./decision-form";
 import { AttachmentUploader } from "@/app/dashboard/_components/attachment-uploader";
@@ -34,8 +36,12 @@ export default async function SupremeCaseDetail({ params }: { params: Promise<{ 
 
   if (!caseRecord) notFound();
 
+  const session = await getServerSession(authOptions);
+  const userRole = (session?.user as any)?.role;
+  const isSupremeMember = userRole === "SUPREME_COMMITTEE";
+
   const latestAction   = caseRecord.actions[0];
-  const canIssueDecision = caseRecord.status === "PENDING_SUPREME_REVIEW";
+  const canIssueDecision = caseRecord.status === "PENDING_SUPREME_REVIEW" && isSupremeMember;
 
   return (
     <div>
@@ -180,8 +186,12 @@ export default async function SupremeCaseDetail({ params }: { params: Promise<{ 
             </div>
           ) : (
             <div className="alert-info">
-              <strong>ملاحظة:</strong> لا يمكن إصدار قرار جديد — حالة القضية:{" "}
-              <strong>{STATUS_LABELS[caseRecord.status] ?? caseRecord.status}</strong>
+              <strong>ملاحظة:</strong>{" "}
+              {caseRecord.status === "PENDING_SUPREME_REVIEW" && !isSupremeMember ? (
+                <span>السجل بانتظار قرار اللجنة العليا. صلاحيتك الحالية مخصصة للرقابة ومتابعة معدل تشغيل الموظفين واللجان دون حق إصدار قرارات نهائية.</span>
+              ) : (
+                <span>لا يمكن إصدار قرار جديد — حالة السجل: <strong>{STATUS_LABELS[caseRecord.status] ?? caseRecord.status}</strong></span>
+              )}
             </div>
           )}
         </div>

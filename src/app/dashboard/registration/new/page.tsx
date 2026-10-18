@@ -271,7 +271,7 @@ export default function NewCasePage() {
         (official.parentName ? { id: parentId || "", name: official.parentName } : null);
 
       return {
-        id: serverItem?.id || (official.type === "PLENARY" ? `official_plenary_${official.name}` : `official_district_${idx + 1}`),
+        id: serverItem?.id || (official.type === "DISTRICT" ? `official_district_${idx + 1}` : `official_${official.type.toLowerCase()}_${idx + 1}`),
         name: official.name,
         governorate: serverItem?.governorate || official.governorate,
         type: official.type,
@@ -290,27 +290,33 @@ export default function NewCasePage() {
     return result;
   }, [prosecutions]);
 
-  // فصل النيابات الكلية
+  // فصل النيابات الكلية والجهات الرئيسية (تشمل النيابات الكلية والنيابات الإدارية)
   const plenaryProsecutions = useMemo(() => {
-    return mergedProsecutions.filter((p) => p.type === "PLENARY" || !p.parentId);
+    return mergedProsecutions.filter((p) => p.type === "PLENARY" || p.type === "ADMINISTRATIVE" || !p.parentId);
   }, [mergedProsecutions]);
 
   // فصل النيابات الجزئية
   const districtProsecutions = useMemo(() => {
     return mergedProsecutions.filter(
-      (p) => p.type === "DISTRICT" || !!p.parentId || p.name.includes("جزئية")
+      (p) => p.type === "DISTRICT" || (!!p.parentId && p.type !== "ADMINISTRATIVE") || p.name.includes("جزئية")
     );
   }, [mergedProsecutions]);
 
-  // تصفية النيابات الكلية بالمحافظة إن تم تحديدها
+  // تصفية النيابات الكلية والإدارية بالمحافظة إن تم تحديدها
   const filteredPlenaryOptions = useMemo(() => {
     return plenaryProsecutions
       .filter((p) => !governorate || p.governorate === governorate)
-      .map((p) => ({
-        id: p.id,
-        name: p.name,
-        subtitle: p.governorate ? `محافظة ${p.governorate}` : undefined,
-      }));
+      .map((p) => {
+        const parts = [
+          p.governorate ? `محافظة ${p.governorate}` : "",
+          p.type === "ADMINISTRATIVE" ? "نيابة إدارية" : "",
+        ].filter(Boolean);
+        return {
+          id: p.id,
+          name: p.name,
+          subtitle: parts.length > 0 ? parts.join(" • ") : undefined,
+        };
+      });
   }, [plenaryProsecutions, governorate]);
 
   // النيابة الكلية المحددة حالياً

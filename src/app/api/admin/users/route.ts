@@ -13,7 +13,7 @@ const createUserSchema = z.object({
   email:           z.string().email("بريد إلكتروني غير صحيح"),
   fullName:        z.string().min(2, "الاسم مطلوب"),
   password:        z.string().min(1, "كلمة المرور مطلوبة"),
-  role:            z.enum(["REGISTRATION_CLERK", "FOLLOW_UP_OFFICER", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "FINANCE", "ADMIN", "RISK_OFFICER"]),
+  role:            z.enum(["REGISTRATION_CLERK", "FOLLOW_UP_OFFICER", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "SUPREME_SUPERVISOR", "FINANCE", "ADMIN", "RISK_OFFICER"]),
   employer:        z.string().optional().nullable(),
   subCommitteeId:  z.string().optional().nullable(),
   specialtyId:     z.string().optional().nullable(),

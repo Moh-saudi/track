@@ -62,6 +62,16 @@ export const NAV_ITEMS_BY_ROLE: Record<string, NavItemConfig[]> = {
     { href: "/dashboard/supreme/cases", label: "مراجعة السجلات والقرارات", icon: FileCheck, group: "أعمال الدائرة العليا والقرارات" },
     { href: "/dashboard/supreme/schedule", label: "أجندة وخطة الانعقاد", icon: Calendar, group: "أعمال الدائرة العليا والقرارات" },
   ],
+  SUPREME_SUPERVISOR: [
+    { href: "/dashboard/reports", label: "لوحة القيادة ومعدلات تشغيل الموظفين", icon: BarChart3, group: "رقابة التشغيل والأداء", exact: true },
+    { href: "/dashboard/admin/active-users", label: "المستخدمون المتصلون ومدة العمل", icon: Activity, group: "رقابة التشغيل والأداء" },
+    { href: "/dashboard/admin/audit-logs", label: "سجل جلسات وتواجد المستخدمين", icon: Clock, group: "رقابة التشغيل والأداء" },
+    { href: "/dashboard/admin/audit-actions", label: "سجل الحركات الرقابية للموظفين", icon: History, group: "رقابة التشغيل والأداء" },
+    { href: "/dashboard/registration/reports", label: "معدلات وإحصائيات التسجيل", icon: BarChart3, group: "متابعة الإنتاجية" },
+    { href: "/dashboard/follow-up", label: "مرصد التوجيه ومتابعة المدد", icon: Scale, group: "متابعة الإنتاجية" },
+    { href: "/dashboard/supreme", label: "أعمال وإحصائيات اللجنة العليا", icon: LayoutDashboard, group: "أعمال الدائرة العليا", exact: true },
+    { href: "/dashboard/supreme/cases", label: "مراجعة السجلات والقرارات", icon: FileCheck, group: "أعمال الدائرة العليا" },
+  ],
   FINANCE: [
     { href: "/dashboard/finance", label: "لوحة قيادة ومؤشرات المنظومة المالية", icon: LayoutDashboard, group: "الرقابة والمؤشرات", exact: true },
     { href: "/dashboard/finance/payments", label: "صرف البدلات والمستحقات", icon: Scale, group: "إجراءات الصرف والحسابات" },

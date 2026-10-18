@@ -67,6 +67,16 @@ const ROLE_STYLES: Record<string, RoleStyleConfig> = {
     borderRight: "border-r-teal-600",
     accentDot: "bg-teal-500",
   },
+  SUPREME_SUPERVISOR: {
+    label: "مشرف اللجنة العليا على الموظفين ومعدل التشغيل",
+    badgeBg: "bg-teal-50/90",
+    badgeText: "text-teal-900 font-bold",
+    badgeBorder: "border-teal-300",
+    avatarBg: "bg-teal-100 text-teal-900",
+    avatarText: "text-teal-900",
+    borderRight: "border-r-teal-700",
+    accentDot: "bg-teal-600",
+  },
   FINANCE: {
     label: "الشؤون المالية والبدلات",
     badgeBg: "bg-emerald-50/80",

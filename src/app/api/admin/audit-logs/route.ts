@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
 
-  if (!session?.user || (role !== "ADMIN" && role !== "RISK_OFFICER")) {
+  if (!session?.user || (role !== "ADMIN" && role !== "RISK_OFFICER" && role !== "SUPREME_SUPERVISOR")) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
 

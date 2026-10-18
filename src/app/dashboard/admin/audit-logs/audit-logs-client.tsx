@@ -132,6 +132,7 @@ export const ROLE_NAMES: Record<string, string> = {
   REGISTRATION_CLERK: "موظف التسجيل والقيد",
   SUBCOMMITTEE_MEMBER: "عضو لجنة فرعية",
   SUPREME_COMMITTEE: "عضو اللجنة العليا",
+  SUPREME_SUPERVISOR: "مشرف اللجنة العليا على الموظفين ومعدل التشغيل",
   FINANCE: "الشؤون المالية",
   RISK_OFFICER: "مسؤول إدارة المخاطر",
 };

@@ -20,7 +20,7 @@ export default async function ActiveUsersPage() {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
 
-  if (!session?.user || role !== "ADMIN") {
+  if (!session?.user || (role !== "ADMIN" && role !== "RISK_OFFICER" && role !== "SUPREME_SUPERVISOR")) {
     redirect("/dashboard");
   }
 
