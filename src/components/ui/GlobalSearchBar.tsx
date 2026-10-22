@@ -2,8 +2,17 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Search, Loader2, X, Building2, User, ChevronLeft, Scale } from "lucide-react";
+import { useSession } from "next-auth/react";
+import {
+  Search,
+  Loader2,
+  X,
+  Building2,
+  ChevronLeft,
+  Scale,
+  Stethoscope,
+  FolderOpen,
+} from "lucide-react";
 
 interface SearchCaseResult {
   id: string;
@@ -20,7 +29,8 @@ interface SearchCaseResult {
   entityName?: string | null;
   prosecution: string | null;
   createdAt: string;
-  subCommittee: { name: string } | null;
+  subCommitteeId?: string | null;
+  subCommittee: { id?: string; name: string } | null;
 }
 
 const TYPE_CONFIG: Record<string, { label: string; badge: string }> = {
@@ -38,8 +48,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   CLOSED: { label: "مغلق", color: "text-slate-600 bg-slate-100 border-slate-200" },
 };
 
-export function GlobalSearchBar() {
+export function GlobalSearchBar({ userRole: initialRole }: { userRole?: string | null }) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const effectiveRole = initialRole || (session?.user as any)?.role;
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchCaseResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -103,6 +116,61 @@ export function GlobalSearchBar() {
     return () => clearTimeout(timeout);
   }, [query]);
 
+  // تحديد المسار الأنسب للسجل بناءً على دور المستخدم وحالة السجل
+  function getActionTarget(item: SearchCaseResult) {
+    const isUnassigned = item.status === "REGISTERED" || !item.subCommittee;
+
+    // لموظف المتابعة والتوجيه
+    if (effectiveRole === "FOLLOW_UP_OFFICER") {
+      if (isUnassigned || item.status === "REFERRED_FOR_REVIEW") {
+        return {
+          href: `/dashboard/follow-up/${item.id}/assign`,
+          label: "توجيه وتحديد التخصص واللجنة",
+        };
+      }
+      return {
+        href: `/dashboard/registration/${item.id}`,
+        label: "عرض ملف السجل",
+      };
+    }
+
+    // لعضو اللجنة الفرعية
+    if (effectiveRole === "SUBCOMMITTEE_MEMBER") {
+      return {
+        href: `/dashboard/subcommittee/${item.id}`,
+        label: "دراسة اللجنة الفرعية",
+      };
+    }
+
+    // لعضو اللجنة العليا
+    if (effectiveRole === "SUPREME_COMMITTEE") {
+      return {
+        href: `/dashboard/supreme/${item.id}`,
+        label: "قرار اللجنة العليا",
+      };
+    }
+
+    // للمشرف العام ADMIN أو أي دور آخر
+    if (isUnassigned || item.status === "REFERRED_FOR_REVIEW") {
+      return {
+        href: `/dashboard/follow-up/${item.id}/assign`,
+        label: "توجيه وتحديد التخصص واللجنة",
+      };
+    }
+
+    return {
+      href: `/dashboard/registration/${item.id}`,
+      label: "عرض ملف السجل",
+    };
+  }
+
+  function handleSelect(item: SearchCaseResult, customHref?: string) {
+    setIsOpen(false);
+    setQuery("");
+    const target = customHref || getActionTarget(item).href;
+    router.push(target);
+  }
+
   // التنقل بالأسهم واختيار نتيجة
   function handleInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (!isOpen || results.length === 0) {
@@ -124,12 +192,6 @@ export function GlobalSearchBar() {
     } else if (e.key === "Escape") {
       setIsOpen(false);
     }
-  }
-
-  function handleSelect(item: SearchCaseResult) {
-    setIsOpen(false);
-    setQuery("");
-    router.push(`/dashboard/registration/${item.id}`);
   }
 
   return (
@@ -184,13 +246,16 @@ export function GlobalSearchBar() {
 
       {/* ─── القائمة المنسدلة للنتائج السريعة ─── */}
       {isOpen && query.trim().length > 0 && (
-        <div className="absolute top-full mt-2 w-full sm:w-[480px] right-0 z-50 bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden font-body animate-in fade-in slide-in-from-top-1 duration-150">
-          <div className="p-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-            <span>نتائج البحث الفوري ({results.length})</span>
-            <span className="text-[10px]">اضغط Enter للانتقال أو Esc للإغلاق</span>
+        <div
+          onMouseDown={(e) => e.stopPropagation()}
+          className="absolute top-full mt-2 w-full sm:w-[520px] right-0 z-50 bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden font-body animate-in fade-in slide-in-from-top-1 duration-150"
+        >
+          <div className="p-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+            <span className="font-bold text-slate-700">نتائج البحث الفوري ({results.length})</span>
+            <span className="text-[10px] text-slate-400">انقر على الإجراء المطلوب أو اضغط Enter</span>
           </div>
 
-          <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100">
+          <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-100">
             {results.length === 0 ? (
               <div className="p-8 text-center text-slate-500 text-xs">
                 {loading ? (
@@ -210,20 +275,21 @@ export function GlobalSearchBar() {
                 const typeInfo = TYPE_CONFIG[item.registrationType] || { label: item.registrationType, badge: "bg-slate-100 text-slate-700" };
                 const statusInfo = STATUS_CONFIG[item.status] || { label: item.status, color: "text-slate-600 bg-slate-100 border-slate-200" };
                 const isSelected = idx === selectedIndex;
+                const isUnassigned = item.status === "REGISTERED" || !item.subCommittee;
 
                 return (
                   <div
                     key={item.id}
                     onClick={() => handleSelect(item)}
                     onMouseEnter={() => setSelectedIndex(idx)}
-                    className={`p-3 cursor-pointer transition-colors flex items-start justify-between gap-3 ${
-                      isSelected ? "bg-teal-50/70" : "hover:bg-slate-50"
+                    className={`p-3.5 cursor-pointer transition-colors space-y-2.5 ${
+                      isSelected ? "bg-teal-50/60" : "hover:bg-slate-50/80"
                     }`}
                   >
-                    <div className="space-y-1.5 flex-1 min-w-0">
-                      {/* الأرقام والأنواع */}
+                    {/* السطر الأول: الأرقام والأنواع والحالة */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-slate-900 font-mono text-xs font-heading">
+                        <span className="font-black text-slate-900 font-mono text-xs font-heading">
                           #{item.caseNumber} / {item.caseYear}
                         </span>
 
@@ -242,41 +308,105 @@ export function GlobalSearchBar() {
                         )}
                       </div>
 
-                      {/* أطراف النزاع */}
-                      <div className="text-xs text-slate-600 space-y-0.5">
-                        {item.complainantName && (
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className="text-slate-400 text-[11px]">الشاكي:</span>
-                            <span className="font-medium text-slate-800 truncate">{item.complainantName}</span>
-                          </div>
-                        )}
-                        {(item.respondentName || item.hospitalName || item.entityName) && (
-                          <div className="flex items-center gap-1.5 truncate text-[11px]">
-                            <span className="text-slate-400">المشكو في حقه:</span>
-                            <span className="font-medium text-slate-700 truncate">
-                              {item.respondentName || item.hospitalName || item.entityName}
-                            </span>
-                            {item.entityType && (
-                              <span className="px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 text-[10px] font-semibold shrink-0">
-                                {item.entityType}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        {item.prosecution && (
-                          <div className="flex items-center gap-1 text-[11px] text-slate-500 truncate">
-                            <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span>{item.prosecution}</span>
-                            {item.subCommittee && (
-                              <span className="text-teal-700 font-medium">({item.subCommittee.name})</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {item.createdAt ? new Date(item.createdAt).toLocaleDateString("ar-EG") : ""}
+                      </span>
                     </div>
 
-                    <div className="shrink-0 pt-1 text-slate-400">
-                      <ChevronLeft className="w-4 h-4" />
+                    {/* أطراف النزاع والنيابة */}
+                    <div className="text-xs text-slate-600 space-y-1">
+                      {item.complainantName && (
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="text-slate-400 text-[11px] shrink-0">الشاكي:</span>
+                          <span className="font-semibold text-slate-800 truncate">{item.complainantName}</span>
+                        </div>
+                      )}
+
+                      {(item.respondentName || item.hospitalName || item.entityName) && (
+                        <div className="flex items-center gap-1.5 truncate text-[11px]">
+                          <span className="text-slate-400 shrink-0">المشكو في حقه:</span>
+                          <span className="font-semibold text-slate-700 truncate">
+                            {item.respondentName || item.hospitalName || item.entityName}
+                          </span>
+                          {item.entityType && (
+                            <span className="px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 text-[10px] font-semibold shrink-0">
+                              {item.entityType}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {item.prosecution && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 truncate">
+                          <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="truncate">{item.prosecution}</span>
+                          {item.subCommittee && (
+                            <span className="text-teal-700 font-semibold shrink-0">({item.subCommittee.name})</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ─── شريط الإجراءات المباشرة السريعة ─── */}
+                    <div className="pt-2 border-t border-slate-100/90 flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* زر التوجيه واختيار التخصص واللجنة (المطلوب أساساً) */}
+                        {isUnassigned ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelect(item, `/dashboard/follow-up/${item.id}/assign`);
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-[11px] font-bold font-heading transition-all shadow-2xs hover:shadow-xs"
+                          >
+                            <Stethoscope className="w-3 h-3" />
+                            <span>توجيه السجل (تحديد التخصص واللجنة)</span>
+                          </button>
+                        ) : item.status === "UNDER_SUBCOMMITTEE_REVIEW" ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelect(item, `/dashboard/subcommittee/${item.id}`);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold font-heading transition-all shadow-2xs hover:shadow-xs"
+                          >
+                            <Stethoscope className="w-3 h-3" />
+                            <span>أعمال اللجنة الفرعية</span>
+                          </button>
+                        ) : (item.status === "PENDING_SUPREME_REVIEW" || item.status === "APPROVED") ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelect(item, `/dashboard/supreme/${item.id}`);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold font-heading transition-all shadow-2xs hover:shadow-xs"
+                          >
+                            <Scale className="w-3 h-3" />
+                            <span>قرار اللجنة العليا</span>
+                          </button>
+                        ) : null}
+
+                        {/* زر فتح ملف وتفاصيل السجل الشامل */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelect(item, `/dashboard/registration/${item.id}`);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition-all border border-slate-200"
+                        >
+                          <FolderOpen className="w-3 h-3 text-slate-500" />
+                          <span>عرض ملف السجل</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1 text-[10px] text-slate-400 font-semibold">
+                        <span>فتح</span>
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </div>
                     </div>
                   </div>
                 );

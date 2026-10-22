@@ -24,6 +24,7 @@ import {
   UserCheck,
   Activity,
   Download,
+  Scale,
 } from "lucide-react";
 
 export const revalidate = 0;
@@ -76,11 +77,6 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
   const currentRole = (session.user as any)?.role;
   const currentUserId = (session.user as any)?.id;
 
-  // موظف التسجيل لا يرى إلا قضاياه المسجلة بواسطته
-  if (currentRole === "REGISTRATION_CLERK" && caseRecord.createdById !== currentUserId) {
-    redirect("/dashboard/registration");
-  }
-
   const isCreatedByMe = caseRecord.createdById === currentUserId;
   const isModified =
     new Date(caseRecord.updatedAt).getTime() - new Date(caseRecord.createdAt).getTime() > 60000;
@@ -107,27 +103,81 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
     (isCreatedByMe && caseRecord.status === "REGISTERED") ||
     currentRole === "ADMIN";
 
+  const canRoute =
+    (currentRole === "FOLLOW_UP_OFFICER" || currentRole === "ADMIN") &&
+    (caseRecord.status === "REGISTERED" || caseRecord.status === "REFERRED_FOR_REVIEW" || !caseRecord.subCommitteeId);
+
+  const backHref =
+    currentRole === "FOLLOW_UP_OFFICER"
+      ? "/dashboard/follow-up"
+      : currentRole === "SUBCOMMITTEE_MEMBER"
+      ? "/dashboard/subcommittee"
+      : currentRole === "SUPREME_COMMITTEE"
+      ? "/dashboard/supreme"
+      : "/dashboard/registration";
+
   return (
     <div className="space-y-6 font-body pb-12">
+      {/* تنبيه لموظف التسجيل عند استعراض سجل زميل آخر */}
+      {currentRole === "REGISTRATION_CLERK" && !isCreatedByMe && (
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2 shadow-2xs">
+          <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+          <span>هذا السجل تم قيده بواسطة زميل آخر ({caseRecord.createdBy?.fullName || "موظف تسجيل"}). يُعرض لك للاطلاع فقط.</span>
+        </div>
+      )}
+
       {/* ─── رأس الصفحة ومسار التصفح ─── */}
       <PageHeader
         breadcrumbs={[
           { label: "الرئيسية", href: "/dashboard" },
-          { label: "قيد السجلات", href: "/dashboard/registration" },
+          { label: "السجلات", href: backHref },
           { label: `ملف السجل #${caseRecord.caseNumber}/${caseRecord.caseYear}` },
         ]}
         title={`ملف وتفاصيل السجل: ${caseRecord.caseNumber} / ${caseRecord.caseYear}`}
         description={`عرض شامل لبيانات الشاكي، الواقعة، جهة النيابة، ومسجّل السجل وحالة الوثائق المرفقة.`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant={statusInfo.variant} size="md">
               {statusInfo.label}
             </Badge>
 
+            {/* زر التوجيه المباشر لموظف المتابعة والتوجيه أو المشرف */}
+            {canRoute && (
+              <Link
+                href={`/dashboard/follow-up/${caseRecord.id}/assign`}
+                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold font-heading transition-colors shadow-xs"
+              >
+                <Stethoscope className="w-4 h-4" />
+                <span>توجيه وإحالة السجل (تحديد التخصص واللجنة)</span>
+              </Link>
+            )}
+
+            {/* رابط اللجنة الفرعية إذا كان السجل موجهاً */}
+            {caseRecord.subCommittee && (
+              <Link
+                href={`/dashboard/subcommittee/${caseRecord.id}`}
+                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold font-heading transition-colors shadow-xs"
+              >
+                <Stethoscope className="w-4 h-4" />
+                <span>متابعة أعمال اللجنة الفرعية</span>
+              </Link>
+            )}
+
+            {/* رابط اللجنة العليا إذا كان السجل بانتظار قرارها */}
+            {(caseRecord.status === "PENDING_SUPREME_REVIEW" || caseRecord.status === "APPROVED") && (
+              <Link
+                href={`/dashboard/supreme/${caseRecord.id}`}
+                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold font-heading transition-colors shadow-xs"
+              >
+                <Scale className="w-4 h-4" />
+                <span>قرار الدائرة العليا</span>
+              </Link>
+            )}
+
             {canEdit && (
               <Link
                 href={`/dashboard/registration/${caseRecord.id}/edit`}
-                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold font-heading transition-colors shadow-xs"
+                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold font-heading transition-colors shadow-xs"
               >
                 <Edit3 className="w-4 h-4" />
                 <span>تعديل بيانات السجل</span>
@@ -135,11 +185,11 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
             )}
 
             <Link
-              href="/dashboard/registration"
+              href={backHref}
               className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold font-heading transition-colors shadow-2xs"
             >
               <ArrowRight className="w-4 h-4" />
-              <span>العودة لسجل القضايا</span>
+              <span>العودة للقائمة</span>
             </Link>
           </div>
         }
@@ -352,13 +402,24 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
                       </span>
                     </div>
                   ) : (
-                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900">
-                      <span className="font-bold text-xs font-heading block">
-                        بانتظار التوجيه
-                      </span>
-                      <span className="text-[11px] text-amber-700">
-                        منوط بموظف المتابعة والتوجيه بعد اكتمال القيد.
-                      </span>
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 space-y-2.5">
+                      <div>
+                        <span className="font-bold text-xs font-heading block">
+                          بانتظار التوجيه
+                        </span>
+                        <span className="text-[11px] text-amber-700 block">
+                          منوط بموظف المتابعة والتوجيه لتحديد التخصصات الطبية واللجنة الفرعية.
+                        </span>
+                      </div>
+                      {(currentRole === "FOLLOW_UP_OFFICER" || currentRole === "ADMIN") && (
+                        <Link
+                          href={`/dashboard/follow-up/${caseRecord.id}/assign`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold font-heading transition-colors shadow-xs"
+                        >
+                          <Stethoscope className="w-3.5 h-3.5" />
+                          <span>توجيه وإحالة السجل الآن</span>
+                        </Link>
+                      )}
                     </div>
                   )}
                 </div>

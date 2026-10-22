@@ -36,7 +36,7 @@ export function TopBar({ user, roleLabel, onMobileMenuToggle }: TopBarProps) {
 
       {/* ─── المنتصف: شريط البحث الفوري الشامل ─── */}
       <div className="flex-1 max-w-md mx-2 sm:mx-4">
-        <GlobalSearchBar />
+        <GlobalSearchBar userRole={user?.role} />
       </div>
 
       {/* ─── اليسار: حالة النظام + التنبيهات + المستخدم ─── */}

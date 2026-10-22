@@ -82,8 +82,10 @@ export async function GET(req: NextRequest) {
         hospitalName: true,
         prosecution: true,
         createdAt: true,
+        subCommitteeId: true,
         subCommittee: {
           select: {
+            id: true,
             name: true,
           },
         },
