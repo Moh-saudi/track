@@ -211,7 +211,7 @@ export function Sidebar({ role = "REGISTRATION_CLERK", navItems, isOpenMobile, o
   return (
     <>
       {/* ─── Desktop Sidebar (ثابت بعرض 256px) ─── */}
-      <aside className="hidden md:flex w-64 flex-col shrink-0 z-20 sticky top-16 h-[calc(100vh-4rem)]">
+      <aside className="hidden md:flex w-64 flex-col shrink-0 z-20 sticky top-16 h-[calc(100vh-4rem)] print:hidden">
         {sidebarContent}
       </aside>
 

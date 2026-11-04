@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureSchemaMigrated } from "@/lib/db-migrate";
 import { OFFICIAL_PROSECUTIONS_LIST } from "@/lib/constants/prosecutions";
+import { EGYPT_GOVERNORATES } from "@/lib/constants/governorates";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -27,18 +28,51 @@ export async function GET(req: NextRequest) {
     const complainantName = url.searchParams.get("complainantName");
     const respondentName = url.searchParams.get("respondentName");
     const createdById = url.searchParams.get("createdById");
+    const governorate = url.searchParams.get("governorate");
+    const subCommitteeId = url.searchParams.get("subCommitteeId");
+    const status = url.searchParams.get("status");
+    const entityType = url.searchParams.get("entityType");
+    const branchOrHospital = url.searchParams.get("branchOrHospital");
 
     const where: any = {};
 
-    // الفلترة بالموظف القائم بالقيد
-    if (createdById && createdById !== "ALL") {
+    // ─── إحكام الصلاحيات (RBAC Server-side Isolation) ───
+    if (user.role === "REGISTRATION_CLERK") {
+      where.createdById = currentUserId;
+    } else if (createdById && createdById !== "ALL") {
       where.createdById = createdById;
     }
 
+    // فلتر نوع القيد (شكوى / قضية / محضر)
     if (registrationType && registrationType !== "ALL") {
       where.registrationType = registrationType as any;
     }
 
+    // فلتر مرحلة العمل / الحالة
+    if (status && status !== "ALL") {
+      where.status = status as any;
+    }
+
+    // فلتر اللجنة الفرعية
+    if (subCommitteeId && subCommitteeId !== "ALL") {
+      where.subCommitteeId = subCommitteeId;
+    }
+
+    // فلتر نوع الجهة / الفرع (مستشفى حكومي / خاص / جامعة / إلخ)
+    if (entityType && entityType !== "ALL") {
+      where.entityType = entityType;
+    }
+
+    // البحث باسم الفرع أو المستشفى
+    if (branchOrHospital?.trim()) {
+      where.OR = [
+        ...(where.OR || []),
+        { hospitalName: { contains: branchOrHospital.trim(), mode: "insensitive" } },
+        { entityName: { contains: branchOrHospital.trim(), mode: "insensitive" } },
+      ];
+    }
+
+    // فلتر النيابة المختصة
     if (prosecutionId && prosecutionId !== "ALL") {
       const pMatch = await prisma.prosecution.findUnique({
         where: { id: prosecutionId },
@@ -47,6 +81,7 @@ export async function GET(req: NextRequest) {
 
       if (pMatch) {
         where.OR = [
+          ...(where.OR || []),
           { prosecutionId: prosecutionId },
           { prosecution: pMatch.name },
         ];
@@ -55,10 +90,21 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // فلتر المحافظة (من حقل المحافظة بالسجل أو من محافظة النيابة التابعة لها)
+    if (governorate && governorate !== "ALL") {
+      where.OR = [
+        ...(where.OR || []),
+        { governorate: governorate },
+        { prosecutionRel: { governorate: governorate } },
+      ];
+    }
+
+    // فلتر اسم الشاكي
     if (complainantName?.trim()) {
       where.complainantName = { contains: complainantName.trim(), mode: "insensitive" };
     }
 
+    // فلتر اسم المشكو في حقه
     if (respondentName?.trim()) {
       where.OR = [
         ...(where.OR || []),
@@ -69,6 +115,7 @@ export async function GET(req: NextRequest) {
       ];
     }
 
+    // فلترة التاريخ والفترة الزمنية
     if (startDateStr || endDateStr) {
       where.createdAt = {};
       if (startDateStr) {
@@ -92,7 +139,7 @@ export async function GET(req: NextRequest) {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    // استعلامات تجميع سريعة وخفيفة تمنع استنزاف موارد خادم قاعدة البيانات
+    // استعلامات متزامنة خفيفة وسريعة
     const [
       globalTotalCases,
       myTotalCases,
@@ -101,9 +148,11 @@ export async function GET(req: NextRequest) {
       filteredCases,
       usersList,
       dbProsecutions,
+      subCommitteesList,
       totalByUserGroup,
       todayByUserGroup,
     ] = await Promise.all([
+      // الإجمالي العام للسيستم بدون أي فلتر وبدون مراحل
       prisma.case.count().catch(() => 0),
       currentUserId ? prisma.case.count({ where: { createdById: currentUserId } }).catch(() => 0) : 0,
       prisma.case.count({ where: { createdAt: { gte: todayStart, lte: todayEnd } } }).catch(() => 0),
@@ -112,26 +161,31 @@ export async function GET(req: NextRequest) {
         where,
         orderBy: { createdAt: "desc" },
         include: {
-          prosecutionRel: { select: { id: true, name: true } },
+          prosecutionRel: { select: { id: true, name: true, governorate: true } },
           createdBy: { select: { id: true, fullName: true, email: true, role: true } },
           subCommittee: { select: { id: true, name: true } },
         },
-        take: 1000,
+        take: 2000,
       }).catch((e) => {
         console.error("Error fetching filtered cases:", e);
         return [];
       }),
       prisma.user.findMany({
         where: {
-          role: { in: ["REGISTRATION_CLERK", "ADMIN", "FOLLOW_UP_OFFICER"] },
+          role: { in: ["REGISTRATION_CLERK", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER"] },
         },
         select: { id: true, fullName: true, email: true, role: true },
         orderBy: { fullName: "asc" },
       }).catch(() => []),
       prisma.prosecution.findMany({
         orderBy: { name: "asc" },
-        select: { id: true, name: true },
+        select: { id: true, name: true, governorate: true },
         take: 300,
+      }).catch(() => []),
+      prisma.subCommittee.findMany({
+        where: { active: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
       }).catch(() => []),
       prisma.case.groupBy({
         by: ["createdById"],
@@ -144,7 +198,7 @@ export async function GET(req: NextRequest) {
       }).catch(() => []),
     ]);
 
-    // خرائط الإحصائيات في الذاكرة لتفادي إطلاق استعلامات متكررة
+    // خرائط الإحصائيات في الذاكرة لتفادي استهلاك الموارد
     const totalMap = new Map<string, number>();
     totalByUserGroup.forEach((g: any) => {
       if (g.createdById) totalMap.set(g.createdById, g._count.id);
@@ -173,34 +227,110 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // النيابات مع بديل احتياطي فوري
+    // النيابات الرسمية مع بديل احتياطي فوري
     const prosecutions = dbProsecutions.length > 0
       ? dbProsecutions
       : OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "PLENARY").map((p, idx) => ({
           id: `official_${idx + 1}`,
           name: p.name,
+          governorate: p.governorate,
         }));
 
+    // تفريغ أنواع القيد
     const typeBreakdown = {
       COMPLAINT: filteredCases.filter((c: any) => c.registrationType === "COMPLAINT").length,
       CASE: filteredCases.filter((c: any) => c.registrationType === "CASE").length,
       REPORT: filteredCases.filter((c: any) => c.registrationType === "REPORT").length,
     };
 
+    // ─── تفريغ مراحل العمل (Work Stages Breakdown) ───
+    const stageBreakdown = {
+      REGISTERED: filteredCases.filter((c: any) => c.status === "REGISTERED").length,
+      UNDER_SUBCOMMITTEE_REVIEW: filteredCases.filter((c: any) => c.status === "UNDER_SUBCOMMITTEE_REVIEW").length,
+      PENDING_SUPREME_REVIEW: filteredCases.filter((c: any) => c.status === "PENDING_SUPREME_REVIEW").length,
+      REFERRED_FOR_REVIEW: filteredCases.filter((c: any) => c.status === "REFERRED_FOR_REVIEW").length,
+      APPROVED: filteredCases.filter((c: any) => c.status === "APPROVED").length,
+      CLOSED: filteredCases.filter((c: any) => c.status === "CLOSED").length,
+    };
+
+    const totalFiltered = filteredCases.length;
+
+    // ─── 1. التقرير العددي للمحافظات مفصلاً بالأنواع (Governorates Numerical Breakdown) ───
+    const govMap: Record<
+      string,
+      { governorate: string; complaints: number; cases: number; reports: number; total: number; percent: number }
+    > = {};
+
+    filteredCases.forEach((c: any) => {
+      const gov = c.governorate || c.prosecutionRel?.governorate || "غير محدد";
+      if (!govMap[gov]) {
+        govMap[gov] = { governorate: gov, complaints: 0, cases: 0, reports: 0, total: 0, percent: 0 };
+      }
+      govMap[gov].total++;
+      if (c.registrationType === "COMPLAINT") govMap[gov].complaints++;
+      else if (c.registrationType === "CASE") govMap[gov].cases++;
+      else if (c.registrationType === "REPORT") govMap[gov].reports++;
+    });
+
+    const governorateBreakdown = Object.values(govMap)
+      .map((g) => ({
+        ...g,
+        count: g.total,
+        percent: totalFiltered > 0 ? Number(((g.total / totalFiltered) * 100).toFixed(1)) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    // ─── 2. التقرير العددي للنيابات مفصلاً بالأنواع (Prosecutions Numerical Breakdown) ───
+    const prosMap: Record<
+      string,
+      { name: string; governorate: string; complaints: number; cases: number; reports: number; total: number; percent: number }
+    > = {};
+
+    filteredCases.forEach((c: any) => {
+      const prosName =
+        c.prosecutionRel?.name ||
+        c.prosecution ||
+        (c.registrationType === "COMPLAINT" ? "شكاوى مباشرة (بدون نيابة)" : "غير محددة");
+      const gov = c.governorate || c.prosecutionRel?.governorate || "—";
+      if (!prosMap[prosName]) {
+        prosMap[prosName] = { name: prosName, governorate: gov, complaints: 0, cases: 0, reports: 0, total: 0, percent: 0 };
+      }
+      prosMap[prosName].total++;
+      if (c.registrationType === "COMPLAINT") prosMap[prosName].complaints++;
+      else if (c.registrationType === "CASE") prosMap[prosName].cases++;
+      else if (c.registrationType === "REPORT") prosMap[prosName].reports++;
+    });
+
+    const prosecutionNumerical = Object.values(prosMap)
+      .map((p) => ({
+        ...p,
+        percent: totalFiltered > 0 ? Number(((p.total / totalFiltered) * 100).toFixed(1)) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+
     return NextResponse.json({
       metrics: {
-        globalTotalCases,
+        globalTotalCases, // إجمالي بدون فلتر وبدون مراحل
         myTotalCases,
         globalTodayCount,
         myTodayCount,
-        filteredTotal: filteredCases.length,
+        filteredTotal: totalFiltered, // إجمالي بعد الفلاتر
         myContributionPercent: globalTotalCases > 0 ? Number(((myTotalCases / globalTotalCases) * 100).toFixed(1)) : 0,
       },
       usersWorkload,
       typeBreakdown,
+      stageBreakdown,
+      governorateBreakdown,
+      prosecutionNumerical,
       prosecutions,
+      subCommitteesList,
+      governoratesList: EGYPT_GOVERNORATES,
       cases: filteredCases,
-      currentUser: { id: currentUserId, name: user.name || user.fullName || user.email, role: user.role },
+      currentUser: {
+        id: currentUserId,
+        name: user.name || user.fullName || user.email,
+        role: user.role,
+      },
     });
   } catch (err: any) {
     console.error("GET /api/registration/reports fatal error:", err);

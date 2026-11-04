@@ -1,20 +1,29 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useMemo, useTransition } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/formatters";
+import { generateStyledProtectedExcel } from "@/lib/excel-export";
+import { UnifiedPrintLayout } from "@/components/reports/UnifiedPrintLayout";
 import {
   ClipboardList,
-  Download,
   Printer,
   BarChart3,
   User,
   Zap,
-  TrendingUp,
   Filter,
   Users,
   AlertCircle,
+  MapPin,
+  Building2,
+  RotateCcw,
+  Layers,
+  FileSpreadsheet,
+  Search,
+  Hash,
+  Scale,
+  CheckCircle2,
 } from "lucide-react";
 
 interface UserWorkload {
@@ -32,14 +41,16 @@ interface CaseItem {
   id: string;
   caseNumber: string;
   caseYear: number;
+  prosecutionCaseNumber: string | null;
   registrationType: "COMPLAINT" | "CASE" | "REPORT";
   complainantName: string | null;
   respondentName: string | null;
   entityType?: string | null;
   entityName?: string | null;
   hospitalName?: string | null;
+  governorate?: string | null;
   prosecution: string | null;
-  prosecutionRel: { id: string; name: string } | null;
+  prosecutionRel: { id: string; name: string; governorate?: string | null } | null;
   attachmentsCount: number;
   status: string;
   createdAt: string;
@@ -47,9 +58,29 @@ interface CaseItem {
   subCommittee: { id: string; name: string } | null;
 }
 
+interface GovernorateStat {
+  governorate: string;
+  count: number;
+  percent: number;
+  complaints: number;
+  cases: number;
+  reports: number;
+  total: number;
+}
+
+interface ProsecutionStatItem {
+  name: string;
+  governorate: string;
+  complaints: number;
+  cases: number;
+  reports: number;
+  total: number;
+  percent: number;
+}
+
 interface ReportData {
   metrics: {
-    globalTotalCases: number;
+    globalTotalCases: number; // إجمالي بدون فلتر وبدون مراحل
     myTotalCases: number;
     globalTodayCount: number;
     myTodayCount: number;
@@ -62,7 +93,19 @@ interface ReportData {
     CASE: number;
     REPORT: number;
   };
-  prosecutions: { id: string; name: string }[];
+  stageBreakdown: {
+    REGISTERED: number;
+    UNDER_SUBCOMMITTEE_REVIEW: number;
+    PENDING_SUPREME_REVIEW: number;
+    REFERRED_FOR_REVIEW: number;
+    APPROVED: number;
+    CLOSED: number;
+  };
+  governorateBreakdown: GovernorateStat[];
+  prosecutionNumerical: ProsecutionStatItem[];
+  prosecutions: { id: string; name: string; governorate?: string | null }[];
+  subCommitteesList: { id: string; name: string }[];
+  governoratesList: string[];
   cases: CaseItem[];
   currentUser: {
     id: string;
@@ -77,37 +120,98 @@ const TYPE_CONFIG: Record<string, { label: string; badge: string }> = {
   REPORT:    { label: "محضر", badge: "bg-slate-100 text-slate-800 border-slate-300" },
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  REGISTERED: "بانتظار التوجيه",
-  UNDER_SUBCOMMITTEE_REVIEW: "قيد دراسة اللجنة الفرعية",
-  PENDING_SUPREME_REVIEW: "بانتظار اعتماد اللجنة العليا",
-  APPROVED: "معتمد (قرار نهائي)",
-  REFERRED_FOR_REVIEW: "محال لإعادة الدراسة",
-  CLOSED: "مغلق",
+const STATUS_LABELS: Record<string, { label: string; badge: string; step: number }> = {
+  REGISTERED: { label: "1. بانتظار التوجيه", badge: "bg-amber-50 text-amber-800 border-amber-200", step: 1 },
+  UNDER_SUBCOMMITTEE_REVIEW: { label: "2. قيد دراسة الفرعية", badge: "bg-teal-50 text-teal-800 border-teal-200", step: 2 },
+  PENDING_SUPREME_REVIEW: { label: "3. بانتظار اعتماد العليا", badge: "bg-blue-50 text-blue-800 border-blue-200", step: 3 },
+  REFERRED_FOR_REVIEW: { label: "4. محال لإعادة الدراسة", badge: "bg-rose-50 text-rose-800 border-rose-200", step: 4 },
+  APPROVED: { label: "5. معتمد (قرار نهائي)", badge: "bg-emerald-50 text-emerald-800 border-emerald-200", step: 5 },
+  CLOSED: { label: "6. مغلق بالأرشيف", badge: "bg-slate-100 text-slate-700 border-slate-200", step: 6 },
 };
+
+const ENTITY_TYPES = [
+  "مستشفى حكومي",
+  "مستشفى خاص",
+  "مستشفى جامعي",
+  "تأمين صحي",
+  "قوات مسلحة",
+  "شرطة",
+  "مركز طبي خاص",
+  "عيادة خاصة",
+  "أخرى",
+];
 
 export default function RegistrationReportsPage() {
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
-  // فلاتر البحث والاستخراج
+  // الفلاتر الشاملة
+  const [governorate, setGovernorate] = useState("ALL");
   const [prosecutionId, setProsecutionId] = useState("ALL");
+  const [entityType, setEntityType] = useState("ALL");
+  const [branchOrHospital, setBranchOrHospital] = useState("");
+  const [subCommitteeId, setSubCommitteeId] = useState("ALL");
+  const [status, setStatus] = useState("ALL");
   const [registrationType, setRegistrationType] = useState("ALL");
+  const [createdById, setCreatedById] = useState("ALL");
   const [complainantName, setComplainantName] = useState("");
   const [respondentName, setRespondentName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [createdById, setCreatedById] = useState("ALL");
+  const [dateShortcut, setDateShortcut] = useState<"ALL" | "TODAY" | "YESTERDAY" | "THIS_MONTH" | "THIS_YEAR">("ALL");
 
-  const [activeTab, setActiveTab] = useState<"summary" | "cases" | "workload">("summary");
+  // التبويب النشط (الافتراضي: التقرير العددي الإحصائي بالأرقام فقط)
+  const [activeTab, setActiveTab] = useState<"numerical" | "cases" | "governorates" | "prosecutions" | "stages" | "workload">("numerical");
   const [error, setError] = useState<string | null>(null);
+
+  // النيابات المتاحة مفلترة بحسب المحافظة المحددة لتسهيل الاختيار
+  const filteredProsecutions = useMemo(() => {
+    if (!data?.prosecutions) return [];
+    if (governorate === "ALL") return data.prosecutions;
+    return data.prosecutions.filter((p) => !p.governorate || p.governorate === governorate);
+  }, [data?.prosecutions, governorate]);
+
+  // بناء نص ملخص الفلاتر المطبقة للترويسة والطباعة
+  function getFilterSummaryText(): string {
+    const parts: string[] = [];
+    if (governorate !== "ALL") parts.push(`المحافظة: ${governorate}`);
+    if (prosecutionId !== "ALL") {
+      const p = data?.prosecutions.find((x) => x.id === prosecutionId);
+      parts.push(`النيابة: ${p?.name || prosecutionId}`);
+    }
+    if (entityType !== "ALL") parts.push(`فئة الجهة: ${entityType}`);
+    if (branchOrHospital.trim()) parts.push(`الفرع/المنشأة: ${branchOrHospital.trim()}`);
+    if (subCommitteeId !== "ALL") {
+      const s = data?.subCommitteesList.find((x) => x.id === subCommitteeId);
+      parts.push(`اللجنة: ${s?.name || subCommitteeId}`);
+    }
+    if (status !== "ALL") {
+      parts.push(`المرحلة: ${STATUS_LABELS[status]?.label || status}`);
+    }
+    if (registrationType !== "ALL") {
+      parts.push(`النوع: ${TYPE_CONFIG[registrationType]?.label || registrationType}`);
+    }
+    if (createdById !== "ALL") {
+      const u = data?.usersWorkload.find((x) => x.id === createdById);
+      parts.push(`الموظف: ${u?.fullName || createdById}`);
+    }
+    if (startDate || endDate) {
+      parts.push(`الفترة: ${startDate || "البداية"} إلى ${endDate || "الآن"}`);
+    }
+    return parts.length > 0 ? parts.join(" | ") : "جميع السجلات (إجمالي عام بدون فلترة وبدون مراحل)";
+  }
 
   function fetchReport() {
     setLoading(true);
     setError(null);
     const params = new URLSearchParams();
+    if (governorate !== "ALL") params.set("governorate", governorate);
     if (prosecutionId !== "ALL") params.set("prosecutionId", prosecutionId);
+    if (entityType !== "ALL") params.set("entityType", entityType);
+    if (branchOrHospital.trim()) params.set("branchOrHospital", branchOrHospital.trim());
+    if (subCommitteeId !== "ALL") params.set("subCommitteeId", subCommitteeId);
+    if (status !== "ALL") params.set("status", status);
     if (registrationType !== "ALL") params.set("registrationType", registrationType);
     if (complainantName.trim()) params.set("complainantName", complainantName.trim());
     if (respondentName.trim()) params.set("respondentName", respondentName.trim());
@@ -143,13 +247,51 @@ export default function RegistrationReportsPage() {
     fetchReport();
   }
 
+  // تطبيق الاختصارات السريعة للفترات الزمنية
+  function applyDateShortcut(shortcut: "ALL" | "TODAY" | "YESTERDAY" | "THIS_MONTH" | "THIS_YEAR") {
+    setDateShortcut(shortcut);
+    const today = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    if (shortcut === "ALL") {
+      setStartDate("");
+      setEndDate("");
+    } else if (shortcut === "TODAY") {
+      const s = fmt(today);
+      setStartDate(s);
+      setEndDate(s);
+    } else if (shortcut === "YESTERDAY") {
+      const y = new Date(today);
+      y.setDate(y.getDate() - 1);
+      const s = fmt(y);
+      setStartDate(s);
+      setEndDate(s);
+    } else if (shortcut === "THIS_MONTH") {
+      const first = new Date(today.getFullYear(), today.getMonth(), 1);
+      setStartDate(fmt(first));
+      setEndDate(fmt(today));
+    } else if (shortcut === "THIS_YEAR") {
+      const first = new Date(today.getFullYear(), 0, 1);
+      setStartDate(fmt(first));
+      setEndDate(fmt(today));
+    }
+  }
+
+  // إعادة ضبط كاملة لكافة الفلاتر (عرض الإجمالي بدون فلتر وبدون مراحل)
   function handleResetFilters() {
+    setGovernorate("ALL");
     setProsecutionId("ALL");
+    setEntityType("ALL");
+    setBranchOrHospital("");
+    setSubCommitteeId("ALL");
+    setStatus("ALL");
     setRegistrationType("ALL");
     setComplainantName("");
     setRespondentName("");
     setStartDate("");
     setEndDate("");
+    setDateShortcut("ALL");
     setCreatedById("ALL");
     setError(null);
     setLoading(true);
@@ -163,125 +305,214 @@ export default function RegistrationReportsPage() {
         return res.json();
       })
       .then((json) => {
-        if (json.error) throw new Error(json.error);
         setData(json);
       })
       .catch((err: any) => {
         console.error("handleResetFilters error:", err);
-        setError(err.message || "تعذر تحميل تقارير التسجيل، يرجى المحاولة لاحقاً");
+        setError("تعذر إعادة ضبط الفلاتر");
       })
       .finally(() => setLoading(false));
   }
 
-  function handleExportCSV() {
-    if (!data || !data.cases.length) return;
-    const headers = [
-      "رقم السجل",
-      "سنة السجل",
-      "النوع",
-      "اسم الشاكي",
-      "المشكو في حقه",
-      "نوع الجهة",
-      "اسم الجهة / المنشأة",
-      "النيابة",
-      "الموظف المسجل",
-      "تاريخ القيد",
-      "عدد المرفقات",
-      "الحالة",
-    ];
+  // تصدير إكسيل محمي ومنسق وفق التبويب الحالي
+  function handleExportProtectedExcel() {
+    if (!data) return;
 
-    const rows = data.cases.map((c) => [
-      `"${c.caseNumber}"`,
-      `"${c.caseYear}"`,
-      `"${TYPE_CONFIG[c.registrationType]?.label || c.registrationType}"`,
-      `"${c.complainantName || ""}"`,
-      `"${c.respondentName || ""}"`,
-      `"${c.entityType || ""}"`,
-      `"${c.entityName || c.hospitalName || ""}"`,
-      `"${c.prosecutionRel?.name || c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة" : "")}"`,
-      `"${c.createdBy?.fullName || ""}"`,
-      `"${formatDate(c.createdAt)}"`,
-      `"${c.attachmentsCount}"`,
-      `"${STATUS_LABELS[c.status] || c.status}"`,
-    ]);
+    if (activeTab === "numerical" || activeTab === "governorates") {
+      const fileName = `تقرير_إحصائي_عددي_${new Date().toISOString().slice(0, 10)}`;
+      generateStyledProtectedExcel({
+        fileName,
+        sheetName: "الحصر العددي بالمحافظات",
+        reportTitle: "التقرير الإحصائي العددي لحصر السجلات المسجلة بالمحافظات",
+        organizationName: "جمهورية مصر العربية — رئاسة مجلس الوزراء",
+        committeeName: "اللجنة العليا للمسؤولية الطبية وسلامة المريض",
+        extractedBy: data.currentUser.name,
+        extractedAt: formatDateTime(new Date()),
+        filterSummary: getFilterSummaryText(),
+        totalRecords: data.governorateBreakdown.length,
+        columns: [
+          { header: "م", key: "index", width: 40, align: "center", type: "Number" },
+          { header: "المحافظة", key: "governorate", width: 140, align: "right" },
+          { header: "عدد الشكاوى", key: "complaints", width: 100, align: "center", type: "Number" },
+          { header: "عدد القضايا", key: "cases", width: 100, align: "center", type: "Number" },
+          { header: "عدد المحاضر", key: "reports", width: 100, align: "center", type: "Number" },
+          { header: "إجمالي السجلات (عدد)", key: "total", width: 130, align: "center", type: "Number" },
+          { header: "النسبة المئوية (%)", key: "percent", width: 110, align: "center" },
+        ],
+        rows: data.governorateBreakdown.map((g, i) => ({
+          index: i + 1,
+          governorate: `محافظة ${g.governorate}`,
+          complaints: g.complaints,
+          cases: g.cases,
+          reports: g.reports,
+          total: g.total,
+          percent: `${g.percent}%`,
+        })),
+        isProtected: true,
+      });
+      return;
+    }
 
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `تقرير_قيد_السجلات_${new Date().toISOString().split("T")[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (activeTab === "prosecutions") {
+      const fileName = `تقرير_عددي_النيابات_${new Date().toISOString().slice(0, 10)}`;
+      generateStyledProtectedExcel({
+        fileName,
+        sheetName: "الحصر العددي بالنيابات",
+        reportTitle: "التقرير الإحصائي العددي لحصر السجلات بالنيابات المختصة",
+        organizationName: "جمهورية مصر العربية — رئاسة مجلس الوزراء",
+        committeeName: "اللجنة العليا للمسؤولية الطبية وسلامة المريض",
+        extractedBy: data.currentUser.name,
+        extractedAt: formatDateTime(new Date()),
+        filterSummary: getFilterSummaryText(),
+        totalRecords: data.prosecutionNumerical.length,
+        columns: [
+          { header: "م", key: "index", width: 40, align: "center", type: "Number" },
+          { header: "اسم النيابة / جهة الورود", key: "name", width: 160, align: "right" },
+          { header: "المحافظة", key: "governorate", width: 120, align: "center" },
+          { header: "عدد الشكاوى", key: "complaints", width: 100, align: "center", type: "Number" },
+          { header: "عدد القضايا", key: "cases", width: 100, align: "center", type: "Number" },
+          { header: "عدد المحاضر", key: "reports", width: 100, align: "center", type: "Number" },
+          { header: "إجمالي النيابة (عدد)", key: "total", width: 130, align: "center", type: "Number" },
+          { header: "النسبة المئوية (%)", key: "percent", width: 110, align: "center" },
+        ],
+        rows: data.prosecutionNumerical.map((p, i) => ({
+          index: i + 1,
+          name: p.name,
+          governorate: p.governorate,
+          complaints: p.complaints,
+          cases: p.cases,
+          reports: p.reports,
+          total: p.total,
+          percent: `${p.percent}%`,
+        })),
+        isProtected: true,
+      });
+      return;
+    }
+
+    // تصدير التقرير التفصيلي
+    const fileName = `تقرير_سجلات_تفصيلي_${new Date().toISOString().slice(0, 10)}`;
+    generateStyledProtectedExcel({
+      fileName,
+      sheetName: "سجل القضايا والشكاوى",
+      reportTitle: "تقرير حصر ومعدلات تسجيل القضايا والشكاوى والمحاضر",
+      organizationName: "جمهورية مصر العربية — رئاسة مجلس الوزراء",
+      committeeName: "اللجنة العليا للمسؤولية الطبية وسلامة المريض",
+      extractedBy: data.currentUser.name,
+      extractedAt: formatDateTime(new Date()),
+      filterSummary: getFilterSummaryText(),
+      totalRecords: data.cases.length,
+      columns: [
+        { header: "م", key: "index", width: 40, align: "center", type: "Number" },
+        { header: "رقم السجل", key: "caseNumber", width: 90, align: "center" },
+        { header: "سنة السجل", key: "caseYear", width: 70, align: "center", type: "Number" },
+        { header: "نوع السجل", key: "typeLabel", width: 80, align: "center" },
+        { header: "رقم المحضر / القضية / الشكوى", key: "prosecutionCaseNumber", width: 160, align: "center" },
+        { header: "المحافظة", key: "governorate", width: 100, align: "center" },
+        { header: "النيابة المختصة", key: "prosecution", width: 140, align: "right" },
+        { header: "الفرع / المنشأة المشكو في حقها", key: "hospitalName", width: 160, align: "right" },
+        { header: "اسم الشاكي", key: "complainantName", width: 130, align: "right" },
+        { header: "اسم المشكو في حقه", key: "respondentName", width: 130, align: "right" },
+        { header: "اللجنة الفرعية", key: "subCommittee", width: 120, align: "center" },
+        { header: "المرحلة الحالية", key: "statusLabel", width: 140, align: "center" },
+        { header: "الموظف المسجل", key: "createdByName", width: 120, align: "center" },
+        { header: "تاريخ القيد", key: "createdAtFormatted", width: 90, align: "center" },
+      ],
+      rows: data.cases.map((c, i) => {
+        let prosNo = "—";
+        if (c.registrationType === "REPORT") {
+          prosNo = c.prosecutionCaseNumber ? `محضر رقم ${c.prosecutionCaseNumber}` : "محضر بدون رقم";
+        } else if (c.registrationType === "CASE") {
+          prosNo = c.prosecutionCaseNumber ? `قضية رقم ${c.prosecutionCaseNumber}` : "قضية نيابة";
+        } else {
+          prosNo = c.prosecutionCaseNumber ? `شكوى رقم ${c.prosecutionCaseNumber}` : "شكوى مباشرة";
+        }
+
+        return {
+          index: i + 1,
+          caseNumber: c.caseNumber,
+          caseYear: c.caseYear,
+          typeLabel: TYPE_CONFIG[c.registrationType]?.label || c.registrationType,
+          prosecutionCaseNumber: prosNo,
+          governorate: c.governorate || c.prosecutionRel?.governorate || "غير محدد",
+          prosecution: c.prosecutionRel?.name || c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة" : "—"),
+          hospitalName: c.hospitalName || c.entityName || "—",
+          complainantName: c.complainantName || "—",
+          respondentName: c.respondentName || "—",
+          subCommittee: c.subCommittee?.name || "لم تحدد بعد",
+          statusLabel: STATUS_LABELS[c.status]?.label || c.status,
+          createdByName: c.createdBy?.fullName || "—",
+          createdAtFormatted: formatDate(c.createdAt),
+        };
+      }),
+      isProtected: true,
+    });
   }
+
+  const isClerk = data?.currentUser.role === "REGISTRATION_CLERK";
 
   return (
     <div className="space-y-6">
-      {/* ─── رأس الصفحة الموحد ─── */}
-      <div className="print:hidden">
-        <PageHeader
-          breadcrumbs={[
-            { label: "الرئيسية", href: "/dashboard" },
-            { label: "قيد السجلات", href: "/dashboard/registration" },
-            { label: "تقارير ومعدلات التسجيل" },
-          ]}
-          title="تقارير ومعدلات تسجيل القضايا والشكاوى"
-          description="مؤشرات أداء القيد اليومية والشهرية واستخراج البيانات الإحصائية."
-          actions={
-            <div className="flex items-center gap-2">
-              <Link
-                href="/dashboard/registration"
-                className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-lg bg-white border border-slate-300 text-slate-700 text-xs font-medium hover:bg-slate-50 shadow-xs"
-              >
-                <ClipboardList className="w-3.5 h-3.5 text-slate-500" />
-                <span>سجل القضايا</span>
-              </Link>
-              <button
-                type="button"
-                onClick={handleExportCSV}
-                disabled={!data || data.cases.length === 0}
-                className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-lg bg-white border border-slate-300 text-slate-700 text-xs font-medium hover:bg-slate-50 shadow-xs disabled:opacity-50"
-              >
-                <Download className="w-3.5 h-3.5 text-slate-500" />
-                <span>تصدير Excel</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg bg-teal-600 text-white text-xs font-medium hover:bg-teal-700 shadow-xs"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>طباعة التقرير</span>
-              </button>
-            </div>
-          }
-        />
-      </div>
-
-      {/* ترويسة رسمية خاصة بالطباعة الورقية فقط */}
-      <div className="hidden print:block border-b-2 border-slate-900 pb-4 mb-6">
-        <div className="flex items-center justify-between">
+      {/* ─── شريط العمليات والطباعة الرئيسي البارز جداً ─── */}
+      <div className="bg-white p-4 rounded-2xl border-2 border-teal-600/30 shadow-sm print:hidden">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-right">
-            <p className="text-xs font-bold text-slate-800">جمهورية مصر العربية</p>
-            <p className="text-xs font-bold text-slate-800">رئاسة مجلس الوزراء</p>
-            <p className="text-xs font-bold text-slate-900">اللجنة العليا للمسؤولية الطبية وسلامة المريض</p>
-            <p className="text-[11px] text-slate-600">الأمانة الفنية لقيد وتوثيق الموضوعات</p>
+            <h1 className="text-lg font-black text-slate-900 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-teal-700" />
+              <span>منظومة التقارير والإحصائيات الشاملة</span>
+            </h1>
+            <p className="text-xs text-slate-600 mt-0.5">
+              حصر عددي وإحصائي بالمحافظات والنيابات والمراحل مع طباعة موحدة A4 بالعرض وحفظ PDF وتصدير Excel محمي.
+            </p>
           </div>
-          <div className="text-center">
-            <h2 className="text-base font-black text-slate-900">تقرير حصر ومعدلات تسجيل القضايا والشكاوى</h2>
-            <p className="text-xs text-slate-600 font-mono mt-1" suppressHydrationWarning>تاريخ الاستخراج: {formatDateTime(new Date())}</p>
-          </div>
-          <div className="text-left text-xs font-bold text-slate-700">
-            <p>الموظف المستخرج: {data?.currentUser?.name}</p>
-            <p className="font-mono">إجمالي السجلات المستخرجة: {data?.cases.length || 0}</p>
+
+          {/* أزرار العمليات الرئيسية: طباعة PDF - تصدير Excel - تصفير */}
+          <div className="flex items-center gap-2.5 flex-wrap w-full md:w-auto justify-end">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-black shadow-md hover:shadow-lg transition-all active:scale-98 cursor-pointer"
+              title="طباعة التقرير فوراً أو حفظه كملف PDF بتنسيق A4 بالعرض"
+            >
+              <Printer className="w-5 h-5" />
+              <span>طباعة / حفظ PDF</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportProtectedExcel}
+              disabled={!data || data.cases.length === 0}
+              className="inline-flex items-center gap-2 h-11 px-4.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+              title="تصدير ملف Excel رسمي منسق ومحمي ضد التعديل"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>تصدير Excel محمي</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex items-center gap-1.5 h-11 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-300 transition-colors cursor-pointer"
+              title="تصفير كافة الفلاتر والرجوع للإجمالي العام بدون مراحل وبدون قيود"
+            >
+              <RotateCcw className="w-4 h-4 text-slate-500" />
+              <span>إجمالي بدون فلتر</span>
+            </button>
+
+            <Link
+              href="/dashboard/registration"
+              className="inline-flex items-center gap-1.5 h-11 px-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-300 transition-colors"
+            >
+              <ClipboardList className="w-4 h-4 text-slate-500" />
+              <span>سجل القيد</span>
+            </Link>
           </div>
         </div>
       </div>
 
-      {/* تنبيه الخطأ إن وجد */}
+      {/* ─── تنبيه الخطأ إن وجد ─── */}
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between print:hidden">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{error}</span>
@@ -296,80 +527,163 @@ export default function RegistrationReportsPage() {
         </div>
       )}
 
-      {/* بطاقات المؤشرات ومعدلات التشغيل اليومية والعامة */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="stat-card">
-          <div className="stat-icon bg-slate-100 text-slate-800"><BarChart3 className="w-5 h-5 text-slate-700" /></div>
+      {/* ─── بطاقات المؤشرات: إجمالي عام بدون فلتر + إجمالي بالفلتر + اليوم ─── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 print:hidden">
+        {/* 1. الإجمالي العام للنظام (بدون فلتر وبدون مراحل) */}
+        <div className="stat-card border-slate-300 bg-white">
+          <div className="stat-icon bg-slate-100 text-slate-800">
+            <BarChart3 className="w-5 h-5 text-slate-700" />
+          </div>
           <div>
             <p className="text-2xl font-black text-slate-900 font-mono">
               {formatNumber(data?.metrics.globalTotalCases)}
             </p>
-            <p className="text-xs font-bold text-slate-500">إجمالي القضايا عموماً</p>
+            <p className="text-xs font-bold text-slate-500">الإجمالي العام (بدون فلتر)</p>
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon bg-blue-50 text-blue-700 border border-blue-200"><User className="w-5 h-5 text-sky-700" /></div>
+        {/* 2. الإجمالي المطابق للفلاتر المحددة */}
+        <div className="stat-card border-teal-200 bg-teal-50/30">
+          <div className="stat-icon bg-teal-100 text-teal-800 border border-teal-200">
+            <Filter className="w-5 h-5 text-teal-700" />
+          </div>
           <div>
-            <p className="text-2xl font-black text-blue-700 font-mono">
-              {formatNumber(data?.metrics.myTotalCases)}
-            </p>
-            <p className="text-xs font-bold text-slate-500">سجلات هذا الحساب</p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-teal-700 font-mono">
+                {formatNumber(data?.metrics.filteredTotal)}
+              </span>
+              {data?.metrics.globalTotalCases ? (
+                <span className="text-[11px] font-mono text-teal-600 font-bold">
+                  ({Math.round(((data.metrics.filteredTotal || 0) / (data.metrics.globalTotalCases || 1)) * 100)}%)
+                </span>
+              ) : null}
+            </div>
+            <p className="text-xs font-bold text-slate-600">السجلات حسب الفلاتر النشطة</p>
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon bg-emerald-50 text-emerald-700 border border-emerald-200"><Zap className="w-5 h-5 text-emerald-700" /></div>
+        {/* 3. سجلات اليوم */}
+        <div className="stat-card border-emerald-200 bg-emerald-50/20">
+          <div className="stat-icon bg-emerald-100 text-emerald-800 border border-emerald-200">
+            <Zap className="w-5 h-5 text-emerald-700" />
+          </div>
           <div>
             <p className="text-2xl font-black text-emerald-700 font-mono">
-              {formatNumber(data?.metrics.myTodayCount)}
+              {formatNumber(data?.metrics.globalTodayCount)}
             </p>
-            <p className="text-xs font-bold text-slate-500">قيد هذا الحساب اليوم</p>
+            <p className="text-xs font-bold text-slate-500">إجمالي المقيد اليوم</p>
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon bg-purple-50 text-purple-700 border border-purple-200"><TrendingUp className="w-5 h-5 text-purple-700" /></div>
-          <div>
-            <p className="text-2xl font-black text-purple-700 font-mono">
-              {data?.metrics.myContributionPercent}%
-            </p>
-            <p className="text-xs font-bold text-slate-500">معدل تشغيل الحساب</p>
+        {/* 4. حساب المستخدم الحالي */}
+        <div className="stat-card border-blue-200 bg-blue-50/20">
+          <div className="stat-icon bg-blue-100 text-blue-800 border border-blue-200">
+            <User className="w-5 h-5 text-blue-700" />
           </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon bg-amber-50 text-amber-700 border border-amber-200"><Filter className="w-5 h-5 text-amber-700" /></div>
           <div>
-            <p className="text-2xl font-black text-amber-700 font-mono">
-              {formatNumber(data?.metrics.filteredTotal)}
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-black text-blue-700 font-mono">
+                {formatNumber(data?.metrics.myTotalCases)}
+              </span>
+              <span className="text-[10px] text-blue-600 font-bold font-mono">
+                (اليوم: {data?.metrics.myTodayCount})
+              </span>
+            </div>
+            <p className="text-xs font-bold text-slate-500">
+              {isClerk ? "سجلات حسابك (وفق صلاحيتك)" : "سجلات حسابك الشخصي"}
             </p>
-            <p className="text-xs font-bold text-slate-500">السجلات حسب الفلترة</p>
           </div>
         </div>
       </div>
 
-      {/* قسم الفلاتر للبحث واستخراج التقارير — بدون أي تلميحات للحقول وفقاً للتعليمات الصارمة */}
-      <div className="card bg-white p-4 print:hidden">
-        <div className="border-b border-slate-200 pb-3 mb-4 flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-800">تصفية واستخراج تقارير السجلات</span>
-          <span className="text-xs font-mono font-bold text-teal-800">
-            نتائج البحث: {formatNumber(data?.cases.length)} سجل
-          </span>
+      {/* ─── قسم الفلاتر الشامل: المحافظات، النيابات، الفروع، اللجان، المراحل، الموظف، الفترة ─── */}
+      <div className="card bg-white p-4.5 border border-slate-200 shadow-xs print:hidden">
+        <div className="border-b border-slate-200 pb-3 mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-teal-700" />
+            <span className="text-xs font-black text-slate-900">محددات وتصفية التقارير الشاملة</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+              النتائج الحالية: {formatNumber(data?.cases.length)} سجل
+            </span>
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors border border-slate-300"
+              title="تصفير كافة الفلاتر والرجوع للإجمالي العام بدون مراحل وبدون قيود"
+            >
+              <RotateCcw className="w-3 h-3 text-slate-500" />
+              <span>إجمالي بدون فلتر</span>
+            </button>
+          </div>
+        </div>
+
+        {/* أزرار سريعة للفترات الزمنية */}
+        <div className="mb-4 pb-3 border-b border-dashed border-slate-200 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-bold text-slate-600 ml-1">الفترة الزمنية السريعة:</span>
+          {(
+            [
+              { id: "ALL", label: "كامل المدة (الكل)" },
+              { id: "TODAY", label: "سجلات اليوم" },
+              { id: "YESTERDAY", label: "سجلات أمس" },
+              { id: "THIS_MONTH", label: "هذا الشهر" },
+              { id: "THIS_YEAR", label: "هذا العام" },
+            ] as const
+          ).map((btn) => (
+            <button
+              key={btn.id}
+              type="button"
+              onClick={() => applyDateShortcut(btn.id)}
+              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${
+                dateShortcut === btn.id
+                  ? "bg-teal-700 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+              }`}
+            >
+              {btn.label}
+            </button>
+          ))}
         </div>
 
         <form onSubmit={handleFilterSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {/* النيابة */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+            {/* 1. فلتر المحافظة */}
             <div>
-              <label className="label">النيابة العامة</label>
+              <label className="label flex items-center gap-1">
+                <MapPin className="w-3 h-3 text-rose-600" />
+                <span>المحافظة</span>
+              </label>
+              <select
+                value={governorate}
+                onChange={(e) => {
+                  setGovernorate(e.target.value);
+                  setProsecutionId("ALL");
+                }}
+                className="input"
+              >
+                <option value="ALL">جميع المحافظات (27 محافظة)</option>
+                {data?.governoratesList.map((gov) => (
+                  <option key={gov} value={gov}>
+                    محافظة {gov}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 2. فلتر النيابة المختصة */}
+            <div>
+              <label className="label">النيابة المختصة</label>
               <select
                 value={prosecutionId}
                 onChange={(e) => setProsecutionId(e.target.value)}
                 className="input"
               >
-                <option value="ALL">جميع النيابات</option>
-                {data?.prosecutions.map((p) => (
+                <option value="ALL">
+                  {governorate === "ALL" ? "جميع النيابات" : `نيابات ${governorate}`}
+                </option>
+                {filteredProsecutions.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
@@ -377,7 +691,77 @@ export default function RegistrationReportsPage() {
               </select>
             </div>
 
-            {/* النوع */}
+            {/* 3. فلتر الفرع / نوع الجهة المشكو في حقها */}
+            <div>
+              <label className="label flex items-center gap-1">
+                <Building2 className="w-3 h-3 text-teal-600" />
+                <span>فئة الفرع / المنشأة</span>
+              </label>
+              <select
+                value={entityType}
+                onChange={(e) => setEntityType(e.target.value)}
+                className="input"
+              >
+                <option value="ALL">جميع فئات المنشآت</option>
+                {ENTITY_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 4. اسم الفرع أو المستشفى */}
+            <div>
+              <label className="label">اسم المستشفى / الفرع المشكو فيه</label>
+              <input
+                type="text"
+                value={branchOrHospital}
+                onChange={(e) => setBranchOrHospital(e.target.value)}
+                placeholder="مثال: القصر العيني، الهلال..."
+                className="input text-xs"
+              />
+            </div>
+
+            {/* 5. فلتر اللجنة الفرعية */}
+            <div>
+              <label className="label">اللجنة الفرعية المختصة</label>
+              <select
+                value={subCommitteeId}
+                onChange={(e) => setSubCommitteeId(e.target.value)}
+                className="input"
+              >
+                <option value="ALL">جميع اللجان الفرعية</option>
+                {data?.subCommitteesList.map((sc) => (
+                  <option key={sc.id} value={sc.id}>
+                    {sc.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 6. المرحلة بناءً على مراحل العمل */}
+            <div>
+              <label className="label flex items-center gap-1">
+                <Layers className="w-3 h-3 text-purple-600" />
+                <span>المرحلة الحالية بسير العمل</span>
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="input font-semibold"
+              >
+                <option value="ALL">جميع المراحل (إجمالي عام بدون مراحل)</option>
+                <option value="REGISTERED">1. بانتظار التوجيه (قيد جديد)</option>
+                <option value="UNDER_SUBCOMMITTEE_REVIEW">2. قيد دراسة اللجنة الفرعية</option>
+                <option value="PENDING_SUPREME_REVIEW">3. بانتظار اعتماد اللجنة العليا</option>
+                <option value="REFERRED_FOR_REVIEW">4. محال لإعادة الدراسة</option>
+                <option value="APPROVED">5. معتمد (قرار نهائي)</option>
+                <option value="CLOSED">6. مغلق بالأرشيف</option>
+              </select>
+            </div>
+
+            {/* 7. نوع السجل */}
             <div>
               <label className="label">نوع السجل</label>
               <select
@@ -385,346 +769,776 @@ export default function RegistrationReportsPage() {
                 onChange={(e) => setRegistrationType(e.target.value)}
                 className="input"
               >
-                <option value="ALL">جميع الأنواع</option>
+                <option value="ALL">جميع الأنواع (شكوى / قضية / محضر)</option>
                 <option value="COMPLAINT">شكوى</option>
                 <option value="CASE">قضية</option>
                 <option value="REPORT">محضر</option>
               </select>
             </div>
 
-            {/* الشاكي */}
+            {/* 8. الموظف القائم بالقيد (خاضع للصلاحيات) */}
+            <div>
+              <label className="label flex items-center gap-1">
+                <User className="w-3 h-3 text-blue-600" />
+                <span>الموظف القائم بالقيد</span>
+              </label>
+              {isClerk ? (
+                <div className="input bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-between border-slate-300">
+                  <span>{data?.currentUser.name}</span>
+                  <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded border border-blue-200">
+                    مقيد بحسابك
+                  </span>
+                </div>
+              ) : (
+                <select
+                  value={createdById}
+                  onChange={(e) => setCreatedById(e.target.value)}
+                  className="input"
+                >
+                  <option value="ALL">جميع موظفي التسجيل</option>
+                  {data?.usersWorkload.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.fullName} ({formatNumber(u.totalRegistered)} سجل)
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* 9. من تاريخ */}
+            <div>
+              <label className="label">من تاريخ قيد</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setDateShortcut("ALL");
+                }}
+                className="input font-mono text-xs"
+              />
+            </div>
+
+            {/* 10. إلى تاريخ */}
+            <div>
+              <label className="label">إلى تاريخ قيد</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setDateShortcut("ALL");
+                }}
+                className="input font-mono text-xs"
+              />
+            </div>
+
+            {/* 11. اسم الشاكي */}
             <div>
               <label className="label">اسم الشاكي</label>
               <input
                 type="text"
                 value={complainantName}
                 onChange={(e) => setComplainantName(e.target.value)}
-                className="input"
+                placeholder="بحث باسم الشاكي..."
+                className="input text-xs"
               />
             </div>
 
-            {/* المشكو في حقه */}
+            {/* 12. المشكو في حقه */}
             <div>
               <label className="label">المشكو في حقه</label>
               <input
                 type="text"
                 value={respondentName}
                 onChange={(e) => setRespondentName(e.target.value)}
-                className="input"
+                placeholder="اسم الطبيب / المشكو في حقه..."
+                className="input text-xs"
               />
             </div>
+          </div>
 
-            {/* من تاريخ */}
-            <div>
-              <label className="label">من تاريخ</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="input font-mono"
-              />
-            </div>
-
-            {/* إلى تاريخ */}
-            <div>
-              <label className="label">إلى تاريخ</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="input font-mono"
-              />
-            </div>
-
-            {/* حساب الموظف */}
-            <div>
-              <label className="label">الموظف المسجل</label>
-              <select
-                value={createdById}
-                onChange={(e) => setCreatedById(e.target.value)}
-                className="input"
-              >
-                <option value="ALL">جميع حسابات التسجيل</option>
-                {data?.usersWorkload.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.fullName} ({formatNumber(u.totalRegistered)} سجل)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* أزرار الفلترة */}
-            <div className="flex items-end gap-2">
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary flex-1 justify-center"
-              >
-                {loading ? "جاري الفرز..." : "تطبيق الفلترة"}
-              </button>
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 border border-slate-300"
-              >
-                إعادة ضبط
-              </button>
-            </div>
+          {/* أزرار تطبيق الفلترة وإعادة التعيين */}
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-300 transition-colors"
+            >
+              إلغاء الفلاتر وعرض الإجمالي
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-6 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs transition-colors disabled:opacity-50"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>{loading ? "جاري الفرز..." : "تطبيق الفلترة"}</span>
+            </button>
           </div>
         </form>
       </div>
 
-      {/* تبويبات العرض (التقرير التفصيلي / معدلات التشغيل لكل حساب) */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 print:hidden">
+      {/* ─── تبويبات التقرير التفاعلية ─── */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 print:hidden overflow-x-auto">
+        {/* التبويب 1: التقرير العددي الإحصائي (أعداد فقط) */}
         <button
-          onClick={() => setActiveTab("summary")}
-          className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors ${
-            activeTab === "summary"
-              ? "bg-teal-600 text-white shadow-sm"
+          onClick={() => setActiveTab("numerical")}
+          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
+            activeTab === "numerical"
+              ? "bg-teal-700 text-white shadow-sm"
               : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
           }`}
         >
-          <ClipboardList className="w-3.5 h-3.5" /><span>قائمة السجلات والتقرير التفصيلي</span> ({formatNumber(data?.cases.length)})
+          <Hash className="w-3.5 h-3.5" />
+          <span>التقرير العددي الإحصائي (أعداد فقط)</span>
+          <span className="font-mono bg-white/20 text-white px-1.5 py-0.2 rounded text-[11px]">
+            {formatNumber(data?.cases.length)} سجل
+          </span>
         </button>
 
+        {/* التبويب 2: جدول السجلات التفصيلي */}
         <button
-          onClick={() => setActiveTab("workload")}
-          className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors ${
-            activeTab === "workload"
-              ? "bg-teal-600 text-white shadow-sm"
+          onClick={() => setActiveTab("cases")}
+          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
+            activeTab === "cases"
+              ? "bg-teal-700 text-white shadow-sm"
               : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
           }`}
         >
-          <Users className="w-3.5 h-3.5" /><span>معدلات تشغيل الحسابات منفصلة</span> ({formatNumber(data?.usersWorkload.length)})
+          <ClipboardList className="w-3.5 h-3.5" />
+          <span>جدول السجلات التفصيلي</span>
         </button>
+
+        {/* التبويب 3: تقرير وتوزيع المحافظات */}
+        <button
+          onClick={() => setActiveTab("governorates")}
+          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
+            activeTab === "governorates"
+              ? "bg-teal-700 text-white shadow-sm"
+              : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+          }`}
+        >
+          <MapPin className="w-3.5 h-3.5" />
+          <span>حصر المحافظات</span>
+          <span className="font-mono bg-slate-200 text-slate-800 px-1.5 py-0.2 rounded text-[11px]">
+            {data?.governorateBreakdown.length || 0} محافظة
+          </span>
+        </button>
+
+        {/* التبويب 4: حصر النيابات */}
+        <button
+          onClick={() => setActiveTab("prosecutions")}
+          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
+            activeTab === "prosecutions"
+              ? "bg-teal-700 text-white shadow-sm"
+              : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+          }`}
+        >
+          <Scale className="w-3.5 h-3.5" />
+          <span>حصر النيابات</span>
+        </button>
+
+        {/* التبويب 5: مراحل سير العمل */}
+        <button
+          onClick={() => setActiveTab("stages")}
+          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
+            activeTab === "stages"
+              ? "bg-teal-700 text-white shadow-sm"
+              : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>مراحل سير العمل</span>
+        </button>
+
+        {!isClerk && (
+          <button
+            onClick={() => setActiveTab("workload")}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
+              activeTab === "workload"
+                ? "bg-teal-700 text-white shadow-sm"
+                : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>معدل إنجاز الموظفين</span>
+          </button>
+        )}
       </div>
 
-      {/* التبويب الأول: قائمة السجلات المقيدة والتفصيلية */}
-      {(activeTab === "summary" || typeof window !== "undefined") && (
-        <div className={`space-y-4 ${activeTab !== "summary" ? "hidden print:block" : ""}`}>
-          {/* ملخص أعداد الأنواع في التقرير الحالي */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
-              <span className="text-xs font-bold text-blue-900">الشكاوى</span>
-              <span className="text-lg font-black text-blue-900 font-mono">
-                {formatNumber(data?.typeBreakdown.COMPLAINT)}
-              </span>
-            </div>
-            <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center justify-between">
-              <span className="text-xs font-bold text-purple-900">القضايا</span>
-              <span className="text-lg font-black text-purple-900 font-mono">
-                {formatNumber(data?.typeBreakdown.CASE)}
-              </span>
-            </div>
-            <div className="p-3 bg-slate-100 border border-slate-300 rounded-lg flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800">المحاضر</span>
-              <span className="text-lg font-black text-slate-900 font-mono">
-                {formatNumber(data?.typeBreakdown.REPORT)}
-              </span>
-            </div>
-          </div>
-
-          <div className="card p-0 overflow-hidden">
-            <div className="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800">
-                بيانات السجلات المشمولة بالتقرير ({formatNumber(data?.cases.length)})
-              </span>
-            </div>
-
-            {loading ? (
-              <div className="p-12 text-center text-slate-500 text-xs font-bold">
-                جاري تحميل بيانات التقرير...
+      {/* ─── الحاوية الموحدة للطباعة الورقية A4 ─── */}
+      <UnifiedPrintLayout
+        title={
+          activeTab === "numerical"
+            ? "التقرير العددي الإحصائي لحصر السجلات بالمحافظات والنيابات"
+            : activeTab === "governorates"
+            ? "تقرير حصر وتوزيع السجلات المسجلة بالمحافظات"
+            : activeTab === "prosecutions"
+            ? "تقرير حصر السجلات بالنيابات المختصة"
+            : activeTab === "stages"
+            ? "تقرير حصر السجلات بمراحل سير العمل"
+            : activeTab === "workload"
+            ? "تقرير معدلات تشغيل وإنجاز موظفي قيد السجلات"
+            : "تقرير حصر ومعدلات تسجيل القضايا والشكاوى والمحاضر"
+        }
+        filterSummary={getFilterSummaryText()}
+        currentUser={data?.currentUser}
+        totalCount={data?.cases.length || 0}
+        globalTotal={data?.metrics.globalTotalCases}
+        orientation="landscape"
+      >
+        {/* ═══════════════════════════════════════════════════════
+            التبويب الأول: التقرير العددي الإحصائي (أعداد فقط)
+            ═══════════════════════════════════════════════════════ */}
+        {activeTab === "numerical" && (
+          <div className="space-y-4">
+            {/* بطاقة ملخص الفلتر النشط إن وجد */}
+            {governorate !== "ALL" && (
+              <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg text-xs font-bold text-teal-900 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-teal-700" />
+                  <span>
+                    حصر عددي خاص بمحافظة: <strong>{governorate}</strong>
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 font-mono">
+                  <span>إجمالي المحافظة: <strong>{data?.cases.length} سجل</strong></span>
+                  <span className="text-blue-800">شكاوى: {data?.typeBreakdown.COMPLAINT}</span>
+                  <span className="text-purple-800">قضايا: {data?.typeBreakdown.CASE}</span>
+                  <span className="text-emerald-800">محاضر: {data?.typeBreakdown.REPORT}</span>
+                </div>
               </div>
-            ) : !data?.cases.length ? (
-              <div className="p-12 text-center text-slate-400 text-xs font-bold">
-                لا توجد سجلات مطابقة لشروط الفلترة المحددة
+            )}
+
+            {/* بطاقات الإجماليات العددية السريعة */}
+            <div className="grid grid-cols-4 gap-3 print:grid-cols-4">
+              <div className="p-3 bg-slate-50 border border-slate-300 rounded-lg text-center">
+                <span className="text-[11px] font-bold text-slate-600 block">إجمالي السجلات (عدد)</span>
+                <span className="text-xl font-mono font-black text-slate-900 block mt-0.5">
+                  {formatNumber(data?.cases.length)}
+                </span>
               </div>
-            ) : (
+              <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg text-center">
+                <span className="text-[11px] font-bold text-blue-900 block">عدد الشكاوى</span>
+                <span className="text-xl font-mono font-black text-blue-900 block mt-0.5">
+                  {formatNumber(data?.typeBreakdown.COMPLAINT)}
+                </span>
+              </div>
+              <div className="p-3 bg-purple-50/70 border border-purple-200 rounded-lg text-center">
+                <span className="text-[11px] font-bold text-purple-900 block">عدد القضايا</span>
+                <span className="text-xl font-mono font-black text-purple-900 block mt-0.5">
+                  {formatNumber(data?.typeBreakdown.CASE)}
+                </span>
+              </div>
+              <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-lg text-center">
+                <span className="text-[11px] font-bold text-emerald-900 block">عدد المحاضر</span>
+                <span className="text-xl font-mono font-black text-emerald-900 block mt-0.5">
+                  {formatNumber(data?.typeBreakdown.REPORT)}
+                </span>
+              </div>
+            </div>
+
+            {/* جدول 1: الحصر العددي حسب المحافظات والأنواع (أعداد فقط) */}
+            <div className="card p-0 overflow-hidden border border-slate-200">
+              <div className="p-2.5 bg-slate-100 border-b border-slate-200 font-bold text-xs text-slate-800 flex items-center justify-between">
+                <span>أولاً: الحصر العددي للسجلات حسب المحافظات والأنواع (أعداد فقط)</span>
+                <span className="text-[11px] text-slate-500 font-mono">
+                  إجمالي المحافظات المسجلة: {data?.governorateBreakdown.length || 0}
+                </span>
+              </div>
               <div className="table-wrapper border-0 rounded-none shadow-none">
-                <table className="table-custom">
+                <table className="table-custom print-table" style={{ width: "100%", tableLayout: "fixed" }}>
                   <thead>
                     <tr>
-                      <th>رقم السجل / السنة</th>
-                      <th>النوع</th>
-                      <th>الشاكي</th>
-                      <th>المشكو في حقه</th>
-                      <th>الجهة / المنشأة</th>
-                      <th>النيابة</th>
-                      <th>الموظف المسجل</th>
-                      <th>تاريخ القيد</th>
-                      <th>المرفقات</th>
-                      <th>الحالة</th>
+                      <th style={{ width: "5%" }}>م</th>
+                      <th style={{ width: "27%" }}>المحافظة</th>
+                      <th style={{ width: "13%" }}>عدد الشكاوى</th>
+                      <th style={{ width: "13%" }}>عدد القضايا</th>
+                      <th style={{ width: "13%" }}>عدد المحاضر</th>
+                      <th style={{ width: "16%" }} className="bg-teal-50 text-teal-900">إجمالي السجلات (عدد)</th>
+                      <th style={{ width: "13%" }}>النسبة المئوية (%)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.cases.map((c) => {
-                      const typeInfo = TYPE_CONFIG[c.registrationType] ?? {
-                        label: c.registrationType,
-                        badge: "bg-slate-100",
-                      };
+                    {data?.governorateBreakdown.map((g, idx) => (
+                      <tr key={g.governorate}>
+                        <td className="text-center font-mono text-xs">{idx + 1}</td>
+                        <td className="font-bold text-slate-900 text-right">محافظة {g.governorate}</td>
+                        <td className="text-center font-mono font-bold text-blue-800">{g.complaints}</td>
+                        <td className="text-center font-mono font-bold text-purple-800">{g.cases}</td>
+                        <td className="text-center font-mono font-bold text-emerald-800">{g.reports}</td>
+                        <td className="text-center font-mono font-black text-slate-900 text-sm bg-teal-50/40">
+                          {formatNumber(g.total)}
+                        </td>
+                        <td className="text-center font-mono font-bold text-slate-700">{g.percent}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-100 font-black text-slate-900 border-t-2 border-slate-400">
+                      <td colSpan={2} className="text-right font-black">الإجمالي الكلي العام</td>
+                      <td className="text-center font-mono font-black text-blue-900">
+                        {data?.typeBreakdown.COMPLAINT}
+                      </td>
+                      <td className="text-center font-mono font-black text-purple-900">
+                        {data?.typeBreakdown.CASE}
+                      </td>
+                      <td className="text-center font-mono font-black text-emerald-900">
+                        {data?.typeBreakdown.REPORT}
+                      </td>
+                      <td className="text-center font-mono font-black text-base text-teal-900 bg-teal-100/60">
+                        {data?.cases.length}
+                      </td>
+                      <td className="text-center font-mono font-black">100%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            {/* جدول 2: الحصر العددي حسب النيابات المختصة (أعداد فقط) */}
+            <div className="card p-0 overflow-hidden border border-slate-200">
+              <div className="p-2.5 bg-slate-100 border-b border-slate-200 font-bold text-xs text-slate-800 flex items-center justify-between">
+                <span>ثانياً: الحصر العددي للسجلات حسب النيابات المختصة (أعداد فقط)</span>
+                <span className="text-[11px] text-slate-500 font-mono">
+                  إجمالي جهات القيد والنيابات: {data?.prosecutionNumerical.length || 0}
+                </span>
+              </div>
+              <div className="table-wrapper border-0 rounded-none shadow-none">
+                <table className="table-custom print-table" style={{ width: "100%", tableLayout: "fixed" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: "5%" }}>م</th>
+                      <th style={{ width: "25%" }}>اسم النيابة / جهة الورود</th>
+                      <th style={{ width: "15%" }}>المحافظة</th>
+                      <th style={{ width: "11%" }}>عدد الشكاوى</th>
+                      <th style={{ width: "11%" }}>عدد القضايا</th>
+                      <th style={{ width: "11%" }}>عدد المحاضر</th>
+                      <th style={{ width: "12%" }} className="bg-teal-50 text-teal-900">إجمالي النيابة (عدد)</th>
+                      <th style={{ width: "10%" }}>النسبة (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data?.prosecutionNumerical.map((p, idx) => (
+                      <tr key={p.name}>
+                        <td className="text-center font-mono text-xs">{idx + 1}</td>
+                        <td className="font-bold text-slate-900 text-right">{p.name}</td>
+                        <td className="text-center text-xs font-semibold text-slate-700">{p.governorate}</td>
+                        <td className="text-center font-mono font-bold text-blue-800">{p.complaints}</td>
+                        <td className="text-center font-mono font-bold text-purple-800">{p.cases}</td>
+                        <td className="text-center font-mono font-bold text-emerald-800">{p.reports}</td>
+                        <td className="text-center font-mono font-black text-slate-900 text-sm bg-teal-50/40">
+                          {formatNumber(p.total)}
+                        </td>
+                        <td className="text-center font-mono font-bold text-slate-700">{p.percent}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-100 font-black text-slate-900 border-t-2 border-slate-400">
+                      <td colSpan={3} className="text-right font-black">الإجمالي الكلي للنيابات</td>
+                      <td className="text-center font-mono font-black text-blue-900">
+                        {data?.typeBreakdown.COMPLAINT}
+                      </td>
+                      <td className="text-center font-mono font-black text-purple-900">
+                        {data?.typeBreakdown.CASE}
+                      </td>
+                      <td className="text-center font-mono font-black text-emerald-900">
+                        {data?.typeBreakdown.REPORT}
+                      </td>
+                      <td className="text-center font-mono font-black text-base text-teal-900 bg-teal-100/60">
+                        {data?.cases.length}
+                      </td>
+                      <td className="text-center font-mono font-black">100%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            {/* جدول 3: الحصر العددي بمراحل سير العمل (أعداد فقط) */}
+            <div className="card p-0 overflow-hidden border border-slate-200">
+              <div className="p-2.5 bg-slate-100 border-b border-slate-200 font-bold text-xs text-slate-800 flex items-center justify-between">
+                <span>ثالثاً: الحصر العددي بمراحل سير العمل (أعداد فقط)</span>
+              </div>
+              <div className="table-wrapper border-0 rounded-none shadow-none">
+                <table className="table-custom print-table" style={{ width: "100%", tableLayout: "fixed" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: "6%" }}>م</th>
+                      <th style={{ width: "54%" }}>مرحلة سير العمل</th>
+                      <th style={{ width: "20%" }}>إجمالي السجلات (عدد)</th>
+                      <th style={{ width: "20%" }}>النسبة المئوية (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(STATUS_LABELS).map(([key, info], idx) => {
+                      const count = (data?.stageBreakdown as any)?.[key] || 0;
+                      const total = data?.cases.length || 1;
+                      const pct = Math.round((count / total) * 100);
                       return (
-                        <tr key={c.id}>
-                          <td className="font-bold text-slate-900 font-mono whitespace-nowrap">
-                            {c.caseNumber} / {c.caseYear}
+                        <tr key={key}>
+                          <td className="text-center font-mono text-xs">{idx + 1}</td>
+                          <td className="font-bold text-slate-900 text-right">{info.label}</td>
+                          <td className="text-center font-mono font-black text-slate-900 text-sm">
+                            {formatNumber(count)}
                           </td>
-                          <td>
-                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold border ${typeInfo.badge}`}>
-                              {typeInfo.label}
-                            </span>
-                          </td>
-                          <td className="font-bold text-slate-800 text-xs">
-                            {c.complainantName || "—"}
-                          </td>
-                          <td className="font-medium text-slate-800 text-xs">
-                            {c.respondentName || "—"}
-                          </td>
-                          <td className="text-xs">
-                            {c.entityType || c.entityName || c.hospitalName ? (
-                              <div className="flex flex-col gap-0.5">
-                                <span className="font-semibold text-slate-800">{c.entityName || c.hospitalName || "—"}</span>
-                                {c.entityType && (
-                                  <span className="text-[10px] text-teal-800 bg-teal-50 px-1 rounded border border-teal-200 font-bold w-fit">
-                                    {c.entityType}
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-slate-400">—</span>
-                            )}
-                          </td>
-                          <td className="text-xs text-slate-700">
-                            {c.prosecutionRel?.name || c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة (بدون نيابة)" : "—")}
-                          </td>
-                          <td className="text-xs font-bold text-slate-800 whitespace-nowrap">
-                            {c.createdBy?.fullName || "—"}
-                          </td>
-                          <td className="text-xs font-mono text-slate-600 whitespace-nowrap">
-                            {formatDate(c.createdAt)}
-                          </td>
-                          <td className="text-xs font-mono text-slate-700 whitespace-nowrap">
-                            {c.attachmentsCount} ملف
-                          </td>
-                          <td className="text-xs whitespace-nowrap">
-                            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold">
-                              {STATUS_LABELS[c.status] || c.status}
-                            </span>
-                          </td>
+                          <td className="text-center font-mono font-bold text-slate-700">{pct}%</td>
                         </tr>
                       );
                     })}
                   </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-100 font-black text-slate-900 border-t-2 border-slate-400">
+                      <td colSpan={2} className="text-right font-black">إجمالي كافة المراحل</td>
+                      <td className="text-center font-mono font-black text-base text-teal-900 bg-teal-100/60">
+                        {data?.cases.length}
+                      </td>
+                      <td className="text-center font-mono font-black">100%</td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* التبويب الثاني: معدلات تشغيل الحسابات منفصلة */}
-      {activeTab === "workload" && (
-        <div className="space-y-4">
-          <div className="card p-0 overflow-hidden">
-            <div className="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800">
-                جدول معدلات تشغيل حسابات موظفي التسجيل
-              </span>
             </div>
+          </div>
+        )}
 
-            <div className="table-wrapper border-0 rounded-none shadow-none">
-              <table className="table-custom">
-                <thead>
-                  <tr>
-                    <th>اسم الموظف / الحساب</th>
-                    <th>الدور الوظيفي</th>
-                    <th>إجمالي السجلات المقيدة</th>
-                    <th>معدل تسجيل اليوم</th>
-                    <th>السجلات في الفترة المحددة</th>
-                    <th>نسبة المشاركة في إجمالي التشغيل</th>
-                    <th className="print:hidden">إجراء</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data?.usersWorkload.map((u) => {
-                    const isCurrent = u.id === data.currentUser.id;
-                    return (
-                      <tr key={u.id} className={isCurrent ? "bg-blue-50/40 font-bold" : ""}>
-                        <td>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-900 text-xs">
-                              {u.fullName}
-                            </span>
-                            {isCurrent && (
-                              <span className="px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 text-[10px] font-bold border border-blue-200">
-                                حسابك الحالي
+        {/* ═══════════════════════════════════════════════════════
+            التبويب الثاني: جدول السجلات والتقرير التفصيلي
+            (منسق بدقة A4 ومطابق للعرض المتاح 100% بدون أي خروج)
+            ═══════════════════════════════════════════════════════ */}
+        {activeTab === "cases" && (
+          <div className="space-y-4">
+            <div className="card p-0 overflow-hidden border border-slate-200">
+              <div className="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between print:hidden">
+                <span className="text-xs font-bold text-slate-800">
+                  قائمة السجلات المشمولة بالتقرير ({formatNumber(data?.cases.length)} سجل)
+                </span>
+                <span className="text-[11px] text-slate-500 font-medium">
+                  جدول تفصيلي يتضمن رقم السجل ورقم المحضر والقضية والشاكي والمشكو في حقه
+                </span>
+              </div>
+
+              {loading ? (
+                <div className="p-12 text-center text-slate-500 text-xs font-bold">
+                  جاري استخراج السجلات وفرزها...
+                </div>
+              ) : !data?.cases.length ? (
+                <div className="p-12 text-center text-slate-400 text-xs font-bold">
+                  لا توجد سجلات مطابقة لشروط الفلترة المحددة
+                </div>
+              ) : (
+                <div className="table-wrapper border-0 rounded-none shadow-none overflow-x-auto">
+                  <table className="table-custom print-table" style={{ width: "100%", tableLayout: "fixed" }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: "3.5%" }}>م</th>
+                        <th style={{ width: "9%" }}>رقم السجل / السنة</th>
+                        <th style={{ width: "6%" }}>النوع</th>
+                        <th style={{ width: "13.5%" }}>رقم المحضر / القضية / الشكوى</th>
+                        <th style={{ width: "7.5%" }}>المحافظة</th>
+                        <th style={{ width: "12%" }}>النيابة المختصة</th>
+                        <th style={{ width: "12.5%" }}>الفرع / المنشأة المشكو فيها</th>
+                        <th style={{ width: "9.5%" }}>الشاكي</th>
+                        <th style={{ width: "9.5%" }}>المشكو في حقه</th>
+                        <th style={{ width: "10%" }}>اللجنة الفرعية</th>
+                        <th style={{ width: "7%" }}>المرحلة الحالية</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.cases.map((c, idx) => {
+                        const typeInfo = TYPE_CONFIG[c.registrationType] ?? {
+                          label: c.registrationType,
+                          badge: "bg-slate-100",
+                        };
+                        const statusInfo = STATUS_LABELS[c.status] ?? {
+                          label: c.status,
+                          badge: "bg-slate-100",
+                        };
+                        const govName = c.governorate || c.prosecutionRel?.governorate || "—";
+
+                        // تحديد رقم المحضر أو الشكوى أو القضية حسب نوع السجل
+                        let recordDetails = "—";
+                        if (c.registrationType === "REPORT") {
+                          recordDetails = c.prosecutionCaseNumber ? `محضر: ${c.prosecutionCaseNumber}` : "محضر بدون رقم";
+                        } else if (c.registrationType === "CASE") {
+                          recordDetails = c.prosecutionCaseNumber ? `قضية: ${c.prosecutionCaseNumber}` : "قضية نيابة";
+                        } else {
+                          recordDetails = c.prosecutionCaseNumber ? `شكوى: ${c.prosecutionCaseNumber}` : "شكوى مباشرة";
+                        }
+
+                        return (
+                          <tr key={c.id}>
+                            <td className="text-center font-mono text-[10px] text-slate-500">
+                              {idx + 1}
+                            </td>
+                            <td className="text-center font-bold text-slate-900 font-mono text-xs">
+                              {c.caseNumber} / {c.caseYear}
+                            </td>
+                            <td>
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${typeInfo.badge} print:border-0 print:bg-transparent print:p-0`}>
+                                {typeInfo.label}
                               </span>
-                            )}
-                          </div>
+                            </td>
+                            <td className="text-center font-bold text-teal-900 font-mono text-xs">
+                              {recordDetails}
+                            </td>
+                            <td className="font-semibold text-slate-800 text-xs">
+                              {govName}
+                            </td>
+                            <td className="text-xs text-slate-700">
+                              {c.prosecutionRel?.name || c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة" : "—")}
+                            </td>
+                            <td className="text-xs">
+                              {c.hospitalName || c.entityName || "—"}
+                            </td>
+                            <td className="font-semibold text-slate-800 text-xs">
+                              {c.complainantName || "—"}
+                            </td>
+                            <td className="font-medium text-slate-800 text-xs">
+                              {c.respondentName || "—"}
+                            </td>
+                            <td className="text-xs text-slate-700">
+                              {c.subCommittee?.name || "لم تحدد"}
+                            </td>
+                            <td className="text-xs">
+                              <span className="font-bold text-slate-900 print:text-[8.5px]">
+                                {statusInfo.label}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════
+            التبويب الثالث: تقرير وتوزيع السجلات بالمحافظات
+            ═══════════════════════════════════════════════════════ */}
+        {activeTab === "governorates" && (
+          <div className="space-y-4">
+            <div className="card p-0 overflow-hidden border border-slate-200">
+              <div className="table-wrapper border-0 rounded-none shadow-none">
+                <table className="table-custom print-table" style={{ width: "100%", tableLayout: "fixed" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: "6%" }}>م</th>
+                      <th style={{ width: "24%" }}>المحافظة</th>
+                      <th style={{ width: "14%" }}>عدد الشكاوى</th>
+                      <th style={{ width: "14%" }}>عدد القضايا</th>
+                      <th style={{ width: "14%" }}>عدد المحاضر</th>
+                      <th style={{ width: "16%" }} className="bg-teal-50 text-teal-900">إجمالي السجلات</th>
+                      <th style={{ width: "12%" }}>النسبة المئوية (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data?.governorateBreakdown.map((govItem, idx) => (
+                      <tr key={govItem.governorate}>
+                        <td className="text-center font-mono text-xs text-slate-500">{idx + 1}</td>
+                        <td className="font-bold text-slate-900 text-sm text-right">
+                          محافظة {govItem.governorate}
                         </td>
-                        <td className="text-xs text-slate-600">
-                          {u.role === "REGISTRATION_CLERK"
-                            ? "موظف قيد السجلات"
-                            : u.role === "ADMIN"
-                            ? "مدير المنظومة"
-                            : u.role}
+                        <td className="text-center font-mono font-bold text-blue-800">{govItem.complaints}</td>
+                        <td className="text-center font-mono font-bold text-purple-800">{govItem.cases}</td>
+                        <td className="text-center font-mono font-bold text-emerald-800">{govItem.reports}</td>
+                        <td className="text-center font-mono font-black text-slate-900 text-base bg-teal-50/40">
+                          {formatNumber(govItem.total)}
                         </td>
-                        <td className="font-mono font-black text-slate-900 text-sm">
-                          {formatNumber(u.totalRegistered)}
-                        </td>
-                        <td className="font-mono font-bold text-emerald-700 text-sm">
-                          {formatNumber(u.todayRegistered)}
-                        </td>
-                        <td className="font-mono font-bold text-purple-700 text-sm">
-                          {formatNumber(u.periodRegistered)}
-                        </td>
-                        <td>
-                          <div className="flex items-center gap-2">
-                            <div className="w-24 bg-slate-200 rounded-full h-2 overflow-hidden">
-                              <div
-                                className="bg-teal-600 h-2 rounded-full"
-                                style={{ width: `${Math.min(u.sharePercent, 100)}%` }}
-                              />
-                            </div>
-                            <span className="text-xs font-mono font-bold text-slate-700">
-                              {u.sharePercent}%
-                            </span>
-                          </div>
-                        </td>
-                        <td className="print:hidden">
-                          <button
-                            onClick={() => {
-                              setCreatedById(u.id);
-                              setActiveTab("summary");
-                              // trigger fetch for this clerk
-                              setLoading(true);
-                              const params = new URLSearchParams();
-                              if (prosecutionId !== "ALL") params.set("prosecutionId", prosecutionId);
-                              if (registrationType !== "ALL") params.set("registrationType", registrationType);
-                              if (complainantName.trim()) params.set("complainantName", complainantName.trim());
-                              if (respondentName.trim()) params.set("respondentName", respondentName.trim());
-                              if (startDate) params.set("startDate", startDate);
-                              if (endDate) params.set("endDate", endDate);
-                              params.set("createdById", u.id);
-                              fetch(`/api/registration/reports?${params.toString()}`)
-                                .then((res) => res.json())
-                                .then((json) => {
-                                  if (!json.error) setData(json);
-                                })
-                                .finally(() => setLoading(false));
-                            }}
-                            className="px-2.5 py-1 rounded bg-white border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50"
-                          >
-                            عرض سجلاته فقط
-                          </button>
+                        <td className="text-center font-mono font-bold text-teal-800 text-sm">
+                          {govItem.percent}%
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-100 font-black text-slate-900 border-t-2 border-slate-400">
+                      <td colSpan={2} className="text-right font-black">إجمالي كافة المحافظات</td>
+                      <td className="text-center font-mono font-black text-blue-900">{data?.typeBreakdown.COMPLAINT}</td>
+                      <td className="text-center font-mono font-black text-purple-900">{data?.typeBreakdown.CASE}</td>
+                      <td className="text-center font-mono font-black text-emerald-900">{data?.typeBreakdown.REPORT}</td>
+                      <td className="text-center font-mono font-black text-base text-teal-900 bg-teal-100/60">{data?.cases.length}</td>
+                      <td className="text-center font-mono font-black">100%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* ═══════════════════════════════════════════════════════
+            التبويب الرابع: حصر النيابات المختصة
+            ═══════════════════════════════════════════════════════ */}
+        {activeTab === "prosecutions" && (
+          <div className="space-y-4">
+            <div className="card p-0 overflow-hidden border border-slate-200">
+              <div className="table-wrapper border-0 rounded-none shadow-none">
+                <table className="table-custom print-table" style={{ width: "100%", tableLayout: "fixed" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: "5%" }}>م</th>
+                      <th style={{ width: "25%" }}>اسم النيابة / جهة الورود</th>
+                      <th style={{ width: "15%" }}>المحافظة</th>
+                      <th style={{ width: "11%" }}>عدد الشكاوى</th>
+                      <th style={{ width: "11%" }}>عدد القضايا</th>
+                      <th style={{ width: "11%" }}>عدد المحاضر</th>
+                      <th style={{ width: "12%" }} className="bg-teal-50 text-teal-900">إجمالي النيابة</th>
+                      <th style={{ width: "10%" }}>النسبة (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data?.prosecutionNumerical.map((p, idx) => (
+                      <tr key={p.name}>
+                        <td className="text-center font-mono text-xs">{idx + 1}</td>
+                        <td className="font-bold text-slate-900 text-right">{p.name}</td>
+                        <td className="text-center text-xs font-semibold text-slate-700">{p.governorate}</td>
+                        <td className="text-center font-mono font-bold text-blue-800">{p.complaints}</td>
+                        <td className="text-center font-mono font-bold text-purple-800">{p.cases}</td>
+                        <td className="text-center font-mono font-bold text-emerald-800">{p.reports}</td>
+                        <td className="text-center font-mono font-black text-slate-900 text-sm bg-teal-50/40">
+                          {formatNumber(p.total)}
+                        </td>
+                        <td className="text-center font-mono font-bold text-slate-700">{p.percent}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-100 font-black text-slate-900 border-t-2 border-slate-400">
+                      <td colSpan={3} className="text-right font-black">الإجمالي الكلي للنيابات</td>
+                      <td className="text-center font-mono font-black text-blue-900">
+                        {data?.typeBreakdown.COMPLAINT}
+                      </td>
+                      <td className="text-center font-mono font-black text-purple-900">
+                        {data?.typeBreakdown.CASE}
+                      </td>
+                      <td className="text-center font-mono font-black text-emerald-900">
+                        {data?.typeBreakdown.REPORT}
+                      </td>
+                      <td className="text-center font-mono font-black text-base text-teal-900 bg-teal-100/60">
+                        {data?.cases.length}
+                      </td>
+                      <td className="text-center font-mono font-black">100%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════
+            التبويب الخامس: تقرير مراحل سير العمل
+            ═══════════════════════════════════════════════════════ */}
+        {activeTab === "stages" && (
+          <div className="space-y-4">
+            <div className="card p-0 overflow-hidden border border-slate-200">
+              <div className="table-wrapper border-0 rounded-none shadow-none">
+                <table className="table-custom print-table" style={{ width: "100%", tableLayout: "fixed" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: "8%" }}>م</th>
+                      <th style={{ width: "42%" }}>مرحلة سير العمل</th>
+                      <th style={{ width: "25%" }}>عدد السجلات المقيدة</th>
+                      <th style={{ width: "25%" }}>النسبة المئوية من الإجمالي</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(STATUS_LABELS).map(([key, info], idx) => {
+                      const count = (data?.stageBreakdown as any)?.[key] || 0;
+                      const total = data?.cases.length || 1;
+                      const pct = Math.round((count / total) * 100);
+                      return (
+                        <tr key={key}>
+                          <td className="text-center font-mono text-xs text-slate-500">{idx + 1}</td>
+                          <td className="font-bold text-slate-900 text-right">{info.label}</td>
+                          <td className="text-center font-mono font-black text-slate-900 text-sm">
+                            {formatNumber(count)}
+                          </td>
+                          <td className="text-center font-mono font-bold text-teal-800 text-sm">{pct}%</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-100 font-black text-slate-900 border-t-2 border-slate-400">
+                      <td colSpan={2} className="text-right font-black">الإجمالي العام لجميع المراحل</td>
+                      <td className="text-center font-mono font-black text-base text-teal-900 bg-teal-100/60">
+                        {data?.cases.length}
+                      </td>
+                      <td className="text-center font-mono font-black">100%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════
+            التبويب السادس: معدل إنجاز الموظفين (للإدارة فقط)
+            ═══════════════════════════════════════════════════════ */}
+        {activeTab === "workload" && !isClerk && (
+          <div className="space-y-4">
+            <div className="card p-0 overflow-hidden border border-slate-200">
+              <div className="table-wrapper border-0 rounded-none shadow-none">
+                <table className="table-custom print-table" style={{ width: "100%", tableLayout: "fixed" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: "6%" }}>م</th>
+                      <th style={{ width: "34%" }}>اسم الموظف المسجل</th>
+                      <th style={{ width: "15%" }}>إجمالي المقيد</th>
+                      <th style={{ width: "15%" }}>المقيد اليوم</th>
+                      <th style={{ width: "15%" }}>المقيد بالفترة</th>
+                      <th style={{ width: "15%" }}>نسبة المساهمة (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data?.usersWorkload.map((u, idx) => (
+                      <tr key={u.id}>
+                        <td className="text-center font-mono text-xs text-slate-500">{idx + 1}</td>
+                        <td className="font-bold text-slate-900 text-right">{u.fullName}</td>
+                        <td className="text-center font-mono font-black text-slate-900 text-sm">
+                          {formatNumber(u.totalRegistered)}
+                        </td>
+                        <td className="text-center font-mono font-bold text-emerald-800 text-sm">
+                          {formatNumber(u.todayRegistered)}
+                        </td>
+                        <td className="text-center font-mono font-bold text-blue-800 text-sm">
+                          {formatNumber(u.periodRegistered)}
+                        </td>
+                        <td className="text-center font-mono font-bold text-teal-800 text-sm">
+                          {u.sharePercent}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-100 font-black text-slate-900 border-t-2 border-slate-400">
+                      <td colSpan={2} className="text-right font-black">إجمالي كافة الموظفين</td>
+                      <td className="text-center font-mono font-black text-base text-teal-900 bg-teal-100/60">
+                        {data?.cases.length}
+                      </td>
+                      <td className="text-center font-mono font-black text-emerald-900">
+                        {data?.metrics.globalTodayCount}
+                      </td>
+                      <td className="text-center font-mono font-black text-blue-900">
+                        {data?.cases.length}
+                      </td>
+                      <td className="text-center font-mono font-black">100%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+      </UnifiedPrintLayout>
     </div>
   );
 }

@@ -19,7 +19,7 @@ export interface TopBarProps {
 
 export function TopBar({ user, roleLabel, onMobileMenuToggle }: TopBarProps) {
   return (
-    <header className="sticky top-0 z-30 h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-4 font-body shadow-xs">
+    <header className="sticky top-0 z-30 h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-4 font-body shadow-xs print:hidden">
       {/* ─── اليمين: الهوية الرسمية وزر القائمة للموبايل ─── */}
       <div className="flex items-center gap-3 shrink-0">
         <button
