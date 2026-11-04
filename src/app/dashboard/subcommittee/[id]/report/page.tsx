@@ -291,55 +291,53 @@ export default async function SubCommitteeReportPage({ params }: { params: Promi
                   {/* معلومات التوثيق */}
                   <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200 text-xs text-slate-600">
                     <div className="flex items-center gap-4">
-                      <span><strong>مُعد التقرير ومقرر اللجنة: </strong>{latestReport.recordedBy.fullName}</span>
+                      <span><strong>مُعد القرار ومقرر اللجنة: </strong>{latestReport.recordedBy.fullName}</span>
                       <span><strong>تاريخ الاعتماد والرفع: </strong><span className="font-mono">{formatDate(latestReport.createdAt)}</span></span>
                     </div>
                     {latestReport.reportDate && (
                       <span className="font-mono text-teal-800 font-bold">
-                        تاريخ صدور التقرير: {formatDate(latestReport.reportDate)}
+                        تاريخ صدور القرار: {formatDate(latestReport.reportDate)}
                       </span>
                     )}
                   </div>
 
-                  {/* توصيف الخطأ الطبي وحيثياته */}
-                  {latestReport.faultDescription && (
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-bold font-heading text-slate-900 flex items-center gap-1.5">
-                        <Stethoscope className="w-4 h-4 text-teal-600" />
-                        <span>توصيف الخطأ الطبي وحيثياته الفنية:</span>
-                      </h4>
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed font-medium whitespace-pre-wrap">
-                        {latestReport.faultDescription}
+                  {/* قرار ونتيجة دراسة اللجنة الفرعية المعتمدة */}
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold font-heading text-slate-700">
+                      قرار ونتيجة دراسة اللجنة الفرعية:
+                    </h4>
+                    <div className="p-5 rounded-2xl bg-teal-50/70 border-2 border-teal-300 text-teal-950 flex items-center justify-between gap-4 shadow-xs">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-teal-300 text-teal-800 flex items-center justify-center shrink-0">
+                          <CheckCircle2 className="w-5 h-5 text-teal-700" />
+                        </div>
+                        <div>
+                          <span className="text-base font-black font-heading block text-slate-900">
+                            {latestReport.faultDescription || "لم يُحدد"}
+                          </span>
+                          <span className="text-xs text-slate-600 font-body">
+                            قرار فني صادر عن مداولة اللجنة الفرعية ومحال رسمياً لرئاسة اللجنة العليا
+                          </span>
+                        </div>
                       </div>
+                      <span className="px-3 py-1 rounded-full bg-white text-teal-800 border border-teal-300 text-xs font-bold font-mono shrink-0">
+                        معتمد رسمياً
+                      </span>
                     </div>
-                  )}
+                  </div>
 
-                  {/* النص الكامل لتقرير اللجنة */}
-                  {latestReport.reportText && (
+                  {/* ملاحظات إضافية إن وجدت */}
+                  {latestReport.reportText && latestReport.reportText !== latestReport.faultDescription && (
                     <div className="space-y-2">
-                      <h4 className="text-xs font-bold font-heading text-slate-900 flex items-center gap-1.5">
-                        <FileText className="w-4 h-4 text-teal-600" />
-                        <span>النص الكامل لتقرير اللجنة الفرعية ومداولة الجلسة:</span>
+                      <h4 className="text-xs font-bold font-heading text-slate-700">
+                        ملاحظات وإيضاحات إضافية:
                       </h4>
                       <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed font-medium whitespace-pre-wrap">
                         {latestReport.reportText}
                       </div>
                     </div>
                   )}
-
-                  {/* التوصية والإجراء المتخذ */}
-                  {latestReport.actionTaken && (
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-bold font-heading text-slate-900 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-teal-600" />
-                        <span>التوصية الختامية والإجراء المرفوع للجنة العليا:</span>
-                      </h4>
-                      <div className="p-4 rounded-xl bg-teal-50/70 border border-teal-200 text-xs text-teal-950 leading-relaxed font-medium whitespace-pre-wrap">
-                        {latestReport.actionTaken}
-                      </div>
-                    </div>
-                  )}
-
+                  
                   {/* تذييل توضيحي */}
                   <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs text-slate-500">
                     <span className="flex items-center gap-1.5">

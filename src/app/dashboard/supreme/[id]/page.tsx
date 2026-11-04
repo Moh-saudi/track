@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { DecisionForm } from "./decision-form";
 import { AttachmentUploader } from "@/app/dashboard/_components/attachment-uploader";
 import { formatDate } from "@/lib/formatters";
-import { Download } from "lucide-react";
+import { Download, CheckCircle2 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING_SUPREME_REVIEW:"بانتظار القرار",
@@ -117,40 +117,51 @@ export default async function SupremeCaseDetail({ params }: { params: Promise<{ 
             </p>
           </div>
 
-          {/* تقرير اللجنة الفرعية */}
+          {/* نتيجة دراسة اللجنة الفرعية المرفوعة */}
           {latestAction && (
-            <div className="card border-r-4 border-r-blue-400">
-              <h2 className="section-title">تقرير اللجنة الفرعية</h2>
-              <dl className="space-y-3 text-sm">
-                {latestAction.faultDescription && (
-                  <div className="bg-red-50 rounded-lg p-3">
-                    <dt className="text-xs font-semibold text-red-700 mb-1">توصيف الخطأ الطبي</dt>
-                    <dd className="text-red-900">{latestAction.faultDescription}</dd>
+            <div className="card border-2 border-teal-500/30 bg-white shadow-sm p-5 space-y-3 font-body">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-200">
+                    <CheckCircle2 className="w-4 h-4 text-teal-700" />
                   </div>
-                )}
-                {latestAction.reportText && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <dt className="text-xs font-semibold text-gray-600 mb-1">نص التقرير</dt>
-                    <dd className="text-gray-800 leading-relaxed">{latestAction.reportText}</dd>
+                  <div>
+                    <h2 className="text-sm font-bold font-heading text-slate-900">
+                      نتيجة دراسة اللجنة الفرعية
+                    </h2>
+                    <p className="text-[11px] text-slate-500">
+                      اللجنة: {caseRecord.subCommittee?.name || "اللجنة الفرعية"}
+                    </p>
                   </div>
-                )}
-                {latestAction.actionTaken && (
-                  <div className="bg-blue-50 rounded-lg p-3">
-                    <dt className="text-xs font-semibold text-blue-700 mb-1">الإجراء المتخذ / التوصية</dt>
-                    <dd className="text-blue-900">{latestAction.actionTaken}</dd>
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-xs text-gray-400 pt-1">
-                  <span>بواسطة: {latestAction.recordedBy.fullName}</span>
-                  <span>{latestAction.meetingDate
-                    ? `انعقاد: ${formatDate(latestAction.meetingDate)}`
-                    : ""
-                  }</span>
                 </div>
-              </dl>
+
+                <div className="text-left text-xs font-mono text-slate-500">
+                  {latestAction.meetingDate && (
+                    <span>تاريخ الجلسة: {formatDate(latestAction.meetingDate)}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* بطاقة القرار الفني المعتمد من الخيارات الخمسة */}
+              <div className="p-4 rounded-xl bg-teal-50/60 border-2 border-teal-300 text-teal-950 flex items-center justify-between gap-3">
+                <div>
+                  <span className="text-xs text-teal-800 font-bold block mb-0.5">القرار الصادر عن دراسة اللجنة:</span>
+                  <span className="text-base font-black font-heading text-slate-900">
+                    {latestAction.faultDescription || "لم يُحدد"}
+                  </span>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-white text-teal-800 border border-teal-300 text-xs font-bold font-mono shrink-0">
+                  معتمد من الفرعية
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                <span>مقرر اللجنة الفاحصة: {latestAction.recordedBy.fullName}</span>
+                <span>تاريخ الرفع: {formatDate(latestAction.createdAt)}</span>
+              </div>
             </div>
           )}
-
+          
           {/* سجل قرارات اللجنة العليا */}
           {caseRecord.supremeDecisions.length > 0 && (
             <div className="card">
@@ -182,7 +193,7 @@ export default async function SupremeCaseDetail({ params }: { params: Promise<{ 
           {canIssueDecision ? (
             <div className="card">
               <h2 className="section-title">إصدار القرار النهائي</h2>
-              <DecisionForm caseId={caseRecord.id} subCommittees={subCommittees} />
+              <DecisionForm caseId={caseRecord.id} subCommittees={subCommittees} subCommitteeFinding={latestAction?.faultDescription} />
             </div>
           ) : (
             <div className="alert-info">

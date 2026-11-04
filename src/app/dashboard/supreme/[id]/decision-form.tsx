@@ -31,9 +31,11 @@ const DECISION_OPTIONS = [
 export function DecisionForm({
   caseId,
   subCommittees,
+  subCommitteeFinding,
 }: {
   caseId: string;
   subCommittees: { id: string; name: string; code: string }[];
+  subCommitteeFinding?: string | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -72,6 +74,12 @@ export function DecisionForm({
 
   return (
     <form onSubmit={handleSubmit} noValidate>
+      {subCommitteeFinding && (
+        <div className="p-3.5 mb-4 rounded-xl bg-teal-50 border border-teal-200 text-teal-950 text-xs">
+          <span className="text-[11px] font-bold text-teal-800 block mb-0.5">دراسة اللجنة الفرعية المعروضة:</span>
+          <span className="text-sm font-black font-heading text-slate-900 block">{subCommitteeFinding}</span>
+        </div>
+      )}
       {error && <div className="alert-error mb-4">{error}</div>}
 
       {/* تاريخ الانعقاد */}

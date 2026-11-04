@@ -449,7 +449,7 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
                       <span className="font-mono">{formatDate(act.createdAt)}</span>
                     </div>
                     {act.faultDescription && (
-                      <p><strong className="text-slate-900 font-heading">توصيف الخطأ الطبي: </strong>{act.faultDescription}</p>
+                      <p><strong className="text-slate-900 font-heading">قرار دراسة اللجنة الفرعية: </strong>{act.faultDescription}</p>
                     )}
                     {act.reportText && (
                       <p><strong className="text-slate-900 font-heading">نص التقرير: </strong>{act.reportText}</p>
