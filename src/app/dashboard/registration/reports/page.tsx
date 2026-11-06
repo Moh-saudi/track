@@ -185,6 +185,20 @@ export default function RegistrationReportsPage() {
   const [activeTab, setActiveTab] = useState<"numerical" | "cases" | "governorates" | "prosecutions" | "stages" | "workload">("numerical");
   const [error, setError] = useState<string | null>(null);
 
+  // نظام الإشعارات والتنبيهات المودرن التفاعلي (In-App Toast System)
+  const [toast, setToast] = useState<{
+    type: "success" | "error" | "info";
+    title?: string;
+    message: string;
+  } | null>(null);
+
+  function showToast(message: string, type: "success" | "error" | "info" = "success", title?: string) {
+    setToast({ message, type, title });
+    setTimeout(() => {
+      setToast((current) => (current?.message === message ? null : current));
+    }, 4500);
+  }
+
   // حالة نافذة المعالجة والاستنتاج الذكي للمحافظات
   const [showAutoDetectModal, setShowAutoDetectModal] = useState(false);
   const [autoDetectData, setAutoDetectData] = useState<any>(null);
@@ -275,7 +289,7 @@ export default function RegistrationReportsPage() {
       }
 
       setEditingCase(null);
-      alert("تم حفظ التعديل بنجاح وتسجيل اسمك وسبب التعديل في سجل الرقابة والتدقيق.");
+      showToast("تم حفظ التعديل بنجاح وتوثيق اسمك وسند التعديل في سجل الرقابة والتدقيق الأمني.", "success", "تم الاعتماد والحفظ");
       fetchReport();
     } catch (err: any) {
       setEditError(err.message || "حدث خطأ أثناء حفظ التعديل");
@@ -381,8 +395,9 @@ export default function RegistrationReportsPage() {
         };
       });
       fetchReport();
+      showToast("تم تحديد وتثبيت المحافظة للسجل بنجاح.", "success");
     } catch (e: any) {
-      alert(e.message || "حدث خطأ أثناء حفظ المحافظة");
+      showToast(e.message || "حدث خطأ أثناء حفظ المحافظة", "error");
     }
   }
 
@@ -395,7 +410,7 @@ export default function RegistrationReportsPage() {
       const json = await res.json();
       setAutoDetectData(json);
     } catch (e: any) {
-      alert("تعذر جلب مقترحات المحافظات");
+      showToast("تعذر جلب مقترحات المحافظات في الوقت الحالي", "error");
     } finally {
       setDetecting(false);
     }
@@ -413,11 +428,11 @@ export default function RegistrationReportsPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "فشل تطبيق التحديثات");
-      alert(`تم بنجاح تحديث وتحديد محافظات ${json.successCount} سجل.`);
+      showToast(`تم بنجاح تحديث وتثبيت محافظات ${json.successCount} سجل في قاعدة البيانات.`, "success", "اكتمل التحديث الذكي");
       setShowAutoDetectModal(false);
       fetchReport();
     } catch (e: any) {
-      alert(e.message || "تعذر تطبيق التحديثات");
+      showToast(e.message || "تعذر تطبيق التحديثات", "error");
     } finally {
       setApplyingBatch(false);
     }
@@ -2026,12 +2041,10 @@ export default function RegistrationReportsPage() {
                       .filter((s: any) => s.suggestedGovernorate)
                       .map((s: any) => ({ caseId: s.id, governorate: s.suggestedGovernorate }));
                     if (validUpdates.length === 0) {
-                      alert("يرجى اختيار محافظة لسجل واحد على الأقل قبل الحفظ");
+                      showToast("يرجى اختيار محافظة لسجل واحد على الأقل قبل الحفظ", "error");
                       return;
                     }
-                    if (confirm(`هل أنت متأكد من حفظ واعتماد محافظات ${validUpdates.length} سجل في قاعدة البيانات؟`)) {
-                      applyDetectedBatch(validUpdates);
-                    }
+                    applyDetectedBatch(validUpdates);
                   }}
                   className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-colors shadow-sm disabled:opacity-50 flex items-center gap-1.5"
                 >
@@ -2398,6 +2411,45 @@ export default function RegistrationReportsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* ─── إشعار تفاعلي عصري أنيق (In-App Modern Toast Notification) ─── */}
+      {toast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] max-w-lg w-[92%] sm:w-auto min-w-[340px] pointer-events-auto animate-in fade-in-50 slide-in-from-top-4 duration-300">
+          <div
+            className={`p-4 rounded-2xl shadow-2xl border flex items-start gap-3 backdrop-blur-md ${
+              toast.type === "success"
+                ? "bg-slate-900/95 text-white border-emerald-500/60 shadow-emerald-950/30"
+                : toast.type === "error"
+                ? "bg-slate-900/95 text-white border-rose-500/60 shadow-rose-950/30"
+                : "bg-slate-900/95 text-white border-teal-500/60 shadow-teal-950/30"
+            }`}
+          >
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                toast.type === "success"
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : toast.type === "error"
+                  ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                  : "bg-teal-500/20 text-teal-400 border border-teal-500/30"
+              }`}
+            >
+              {toast.type === "success" && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
+              {toast.type === "error" && <AlertCircle className="w-5 h-5 text-rose-400" />}
+              {toast.type === "info" && <Info className="w-5 h-5 text-teal-400" />}
+            </div>
+            <div className="flex-1 text-right pt-0.5">
+              {toast.title && <p className="font-black text-xs text-white mb-0.5">{toast.title}</p>}
+              <p className="text-xs text-slate-200 leading-relaxed font-medium">{toast.message}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}
