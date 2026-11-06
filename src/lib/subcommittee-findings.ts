@@ -113,3 +113,4 @@ export function getFindingConfig(finding?: string | null): FindingConfigItem {
     iconType: "check",
   };
 }
+

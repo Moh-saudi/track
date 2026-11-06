@@ -488,6 +488,11 @@ export default function NewCasePage() {
       return;
     }
 
+    if (!governorate.trim()) {
+      setError("المحافظة حقل إلزامي لجميع السجلات والشكاوى لتحديد النطاق الجغرافي والإحصائي");
+      return;
+    }
+
     startTransition(async () => {
       try {
         const payload = {
@@ -910,7 +915,7 @@ export default function NewCasePage() {
               </div>
               <span className="text-[11px] text-slate-500 font-body">
                 {registrationType === "COMPLAINT"
-                  ? "يمكن تركها غير محددة إذا كانت الشكوى مباشرة بدون نيابة"
+                  ? "المحافظة إلزامية لتحديد النطاق الجغرافي، بينما النيابة اختيارية للشكاوى المباشرة"
                   : "ابحث مباشرة داخل القائمة عند فتحها"}
               </span>
             </div>
@@ -919,13 +924,21 @@ export default function NewCasePage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* 1. المحافظة */}
               <div className="form-group">
-                <label className="form-label">المحافظة</label>
+                <label className="form-label flex items-center justify-between">
+                  <span>المحافظة <span className="text-rose-600 font-bold">*</span></span>
+                  <span className="text-[10px] text-slate-400 font-normal">
+                    {registrationType === "COMPLAINT" ? "إلزامي (موقع الشاكي/المنشأة)" : "تحدد آلياً مع النيابة"}
+                  </span>
+                </label>
                 <select
                   value={governorate}
+                  required
                   onChange={(e) => handleGovernorateChange(e.target.value)}
-                  className="form-select text-xs font-medium h-10 bg-white"
+                  className={`form-select text-xs font-medium h-10 bg-white ${
+                    !governorate && !!error && error.includes("المحافظة") ? "border-rose-400 ring-2 ring-rose-400/20" : ""
+                  }`}
                 >
-                  <option value="">-- جميع المحافظات ({EGYPT_GOVERNORATES.length}) --</option>
+                  <option value="">-- اختر المحافظة ({EGYPT_GOVERNORATES.length} محافظة) * --</option>
                   {EGYPT_GOVERNORATES.map((gov) => (
                     <option key={gov} value={gov}>
                       {gov}

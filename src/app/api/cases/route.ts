@@ -112,15 +112,27 @@ export async function POST(req: NextRequest) {
   }
 
   let prosecutionName = data.prosecution?.trim() || null;
-  if (data.prosecutionId && !prosecutionName) {
+  let resolvedGovernorate = data.governorate?.trim() || null;
+
+  if (data.prosecutionId) {
     const p = await prisma.prosecution.findUnique({ where: { id: data.prosecutionId } });
     if (!p || !p.active) return NextResponse.json({ error: "النيابة/الجهة المحددة غير صالحة أو غير نشطة" }, { status: 400 });
-    prosecutionName = p.name;
+    if (!prosecutionName) prosecutionName = p.name;
+    if (!resolvedGovernorate && p.governorate) {
+      resolvedGovernorate = p.governorate;
+    }
   }
 
   if (data.registrationType !== "COMPLAINT" && !prosecutionName && !data.prosecutionId) {
     return NextResponse.json(
       { error: "النيابة العامة المختصة حقل إلزامي عند قيد قضية أو محضر نيابة، يرجى اختيار النيابة الكلية" },
+      { status: 400 }
+    );
+  }
+
+  if (!resolvedGovernorate) {
+    return NextResponse.json(
+      { error: "المحافظة حقل إلزامي لجميع السجلات والشكاوى لتحديد النطاق الجغرافي والإحصائي بدقة" },
       { status: 400 }
     );
   }
@@ -173,7 +185,7 @@ export async function POST(req: NextRequest) {
       prosecutionId: data.prosecutionId || null,
       partialProsecution: partialProsecutionName,
       partialProsecutionId: data.partialProsecutionId || null,
-      governorate: data.governorate?.trim() || null,
+      governorate: resolvedGovernorate,
       complainantName: primaryComplainant.trim(),
       complainantPhone: primaryComplainantPhone ? primaryComplainantPhone.trim() : null,
       complainants: data.complainants && data.complainants.length > 0

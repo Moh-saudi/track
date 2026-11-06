@@ -24,6 +24,9 @@ import {
   Hash,
   Scale,
   CheckCircle2,
+  AlertTriangle,
+  Sparkles,
+  Wand2,
 } from "lucide-react";
 
 interface UserWorkload {
@@ -165,17 +168,25 @@ export default function RegistrationReportsPage() {
   const [activeTab, setActiveTab] = useState<"numerical" | "cases" | "governorates" | "prosecutions" | "stages" | "workload">("numerical");
   const [error, setError] = useState<string | null>(null);
 
+  // حالة نافذة المعالجة والاستنتاج الذكي للمحافظات
+  const [showAutoDetectModal, setShowAutoDetectModal] = useState(false);
+  const [autoDetectData, setAutoDetectData] = useState<any>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [applyingBatch, setApplyingBatch] = useState(false);
+
   // النيابات المتاحة مفلترة بحسب المحافظة المحددة لتسهيل الاختيار
   const filteredProsecutions = useMemo(() => {
     if (!data?.prosecutions) return [];
-    if (governorate === "ALL") return data.prosecutions;
+    if (governorate === "ALL" || governorate === "UNSPECIFIED") return data.prosecutions;
     return data.prosecutions.filter((p) => !p.governorate || p.governorate === governorate);
   }, [data?.prosecutions, governorate]);
 
   // بناء نص ملخص الفلاتر المطبقة للترويسة والطباعة
   function getFilterSummaryText(): string {
     const parts: string[] = [];
-    if (governorate !== "ALL") parts.push(`المحافظة: ${governorate}`);
+    if (governorate !== "ALL") {
+      parts.push(governorate === "UNSPECIFIED" ? "المحافظة: غير محددة (شكاوى بدون نيابة)" : `المحافظة: ${governorate}`);
+    }
     if (prosecutionId !== "ALL") {
       const p = data?.prosecutions.find((x) => x.id === prosecutionId);
       parts.push(`النيابة: ${p?.name || prosecutionId}`);
@@ -202,11 +213,12 @@ export default function RegistrationReportsPage() {
     return parts.length > 0 ? parts.join(" | ") : "جميع السجلات (إجمالي عام بدون فلترة وبدون مراحل)";
   }
 
-  function fetchReport() {
+  function fetchReport(overrideGov?: string) {
     setLoading(true);
     setError(null);
+    const activeGov = overrideGov !== undefined ? overrideGov : governorate;
     const params = new URLSearchParams();
-    if (governorate !== "ALL") params.set("governorate", governorate);
+    if (activeGov !== "ALL") params.set("governorate", activeGov);
     if (prosecutionId !== "ALL") params.set("prosecutionId", prosecutionId);
     if (entityType !== "ALL") params.set("entityType", entityType);
     if (branchOrHospital.trim()) params.set("branchOrHospital", branchOrHospital.trim());
@@ -236,6 +248,69 @@ export default function RegistrationReportsPage() {
         setError(err.message || "تعذر تحميل تقارير التسجيل، يرجى المحاولة لاحقاً");
       })
       .finally(() => setLoading(false));
+  }
+
+  // تعيين سريع للمحافظة من داخل جدول السجلات
+  async function handleQuickAssignGov(caseId: string, gov: string) {
+    if (!gov) return;
+    try {
+      const res = await fetch(`/api/cases/${caseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ governorate: gov }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "تعذر تحديث المحافظة");
+      }
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          cases: prev.cases.map((c) => (c.id === caseId ? { ...c, governorate: gov } : c)),
+        };
+      });
+      fetchReport();
+    } catch (e: any) {
+      alert(e.message || "حدث خطأ أثناء حفظ المحافظة");
+    }
+  }
+
+  // فتح نافذة الاستنتاج والمعالجة الذكية
+  async function openAutoDetect() {
+    setShowAutoDetectModal(true);
+    setDetecting(true);
+    try {
+      const res = await fetch("/api/cases/auto-detect-governorates");
+      const json = await res.json();
+      setAutoDetectData(json);
+    } catch (e: any) {
+      alert("تعذر جلب مقترحات المحافظات");
+    } finally {
+      setDetecting(false);
+    }
+  }
+
+  // تطبيق حزمة المقترحات دفعة واحدة
+  async function applyDetectedBatch(updates: { caseId: string; governorate: string }[]) {
+    if (!updates.length) return;
+    setApplyingBatch(true);
+    try {
+      const res = await fetch("/api/cases/auto-detect-governorates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "فشل تطبيق التحديثات");
+      alert(`تم بنجاح تحديث وتحديد محافظات ${json.successCount} سجل.`);
+      setShowAutoDetectModal(false);
+      fetchReport();
+    } catch (e: any) {
+      alert(e.message || "تعذر تطبيق التحديثات");
+    } finally {
+      setApplyingBatch(false);
+    }
   }
 
   useEffect(() => {
@@ -519,7 +594,7 @@ export default function RegistrationReportsPage() {
           </div>
           <button
             type="button"
-            onClick={fetchReport}
+            onClick={() => fetchReport()}
             className="px-3 py-1 bg-white border border-rose-300 rounded-lg text-rose-700 font-bold hover:bg-rose-100/50 transition-colors"
           >
             إعادة المحاولة
@@ -664,6 +739,9 @@ export default function RegistrationReportsPage() {
                 className="input"
               >
                 <option value="ALL">جميع المحافظات (27 محافظة)</option>
+                <option value="UNSPECIFIED" className="font-bold text-amber-800 bg-amber-50">
+                  ⚠️ غير محددة المحافظة (شكاوى مباشرة بدون نيابة / غير مسجلة)
+                </option>
                 {data?.governoratesList.map((gov) => (
                   <option key={gov} value={gov}>
                     محافظة {gov}
@@ -879,6 +957,48 @@ export default function RegistrationReportsPage() {
         </form>
       </div>
 
+      {/* ─── تنبيه ومعالج السجلات غير المحددة المحافظات ─── */}
+      {data?.governorateBreakdown.some((g) => g.governorate === "غير محدد" && g.total > 0) && (
+        <div className="bg-amber-50/80 border-2 border-amber-300 p-4 rounded-2xl flex items-center justify-between gap-4 flex-wrap print:hidden shadow-xs animate-in fade-in-50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800 shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-black text-amber-950 flex items-center gap-2">
+                <span>توجد ({data.governorateBreakdown.find((g) => g.governorate === "غير محدد")?.total || 0}) شكوى/سجل غير محددة المحافظة</span>
+                <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">شكاوى مباشرة بدون نيابة</span>
+              </p>
+              <p className="text-xs text-amber-800 mt-0.5">
+                يمكنك حصرها واستعراضها بالجدول، أو استخدام المعالج الذكي لاستنتاج وتحديد محافظاتها تلقائياً من واقع أسماء المستشفيات.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                setGovernorate("UNSPECIFIED");
+                setActiveTab("cases");
+                fetchReport("UNSPECIFIED");
+              }}
+              className="px-3.5 py-2 rounded-xl bg-white border border-amber-300 text-amber-900 text-xs font-bold hover:bg-amber-100 transition-colors shadow-xs flex items-center gap-1.5"
+            >
+              <ClipboardList className="w-3.5 h-3.5" />
+              <span>حصر وعرض الـ ({data.governorateBreakdown.find((g) => g.governorate === "غير محدد")?.total || 0}) بالجدول</span>
+            </button>
+            <button
+              type="button"
+              onClick={openAutoDetect}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors flex items-center gap-2 shadow-xs"
+            >
+              <Wand2 className="w-4 h-4" />
+              <span>المعالج الذكي لاستنتاج المحافظات</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ─── تبويبات التقرير التفاعلية ─── */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 print:hidden overflow-x-auto">
         {/* التبويب 1: التقرير العددي الإحصائي (أعداد فقط) */}
@@ -1064,7 +1184,30 @@ export default function RegistrationReportsPage() {
                     {data?.governorateBreakdown.map((g, idx) => (
                       <tr key={g.governorate}>
                         <td className="text-center font-mono text-xs">{idx + 1}</td>
-                        <td className="font-bold text-slate-900 text-right">محافظة {g.governorate}</td>
+                        <td className="font-bold text-slate-900 text-right">
+                          {g.governorate === "غير محدد" ? (
+                            <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                              <span className="text-amber-900 font-bold flex items-center gap-1 text-xs">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <span>غير محددة (شكاوى بدون نيابة)</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setGovernorate("UNSPECIFIED");
+                                  setActiveTab("cases");
+                                  fetchReport("UNSPECIFIED");
+                                }}
+                                className="px-2 py-0.5 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 text-[11px] font-bold transition-colors border border-amber-300 print:hidden"
+                                title="عرض وحصر السجلات بالتفصيل"
+                              >
+                                عرض السجلات ({g.total})
+                              </button>
+                            </div>
+                          ) : (
+                            `محافظة ${g.governorate}`
+                          )}
+                        </td>
                         <td className="text-center font-mono font-bold text-blue-800">{g.complaints}</td>
                         <td className="text-center font-mono font-bold text-purple-800">{g.cases}</td>
                         <td className="text-center font-mono font-bold text-emerald-800">{g.reports}</td>
@@ -1285,7 +1428,26 @@ export default function RegistrationReportsPage() {
                               {recordDetails}
                             </td>
                             <td className="font-semibold text-slate-800 text-xs">
-                              {govName}
+                              {govName === "—" || govName === "غير محدد" ? (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-amber-800 bg-amber-50 border border-amber-300 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                    غير محدد
+                                  </span>
+                                  <select
+                                    defaultValue=""
+                                    onChange={(e) => handleQuickAssignGov(c.id, e.target.value)}
+                                    className="text-[10px] py-0.5 px-1 bg-white border border-teal-500 rounded font-bold cursor-pointer hover:bg-teal-50 print:hidden text-teal-900"
+                                    title="تحديد المحافظة فورياً لهذا السجل"
+                                  >
+                                    <option value="" disabled>+ تعيين</option>
+                                    {data.governoratesList.map((g) => (
+                                      <option key={g} value={g}>{g}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ) : (
+                                govName
+                              )}
                             </td>
                             <td className="text-xs text-slate-700">
                               {c.prosecutionRel?.name || c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة" : "—")}
@@ -1342,7 +1504,28 @@ export default function RegistrationReportsPage() {
                       <tr key={govItem.governorate}>
                         <td className="text-center font-mono text-xs text-slate-500">{idx + 1}</td>
                         <td className="font-bold text-slate-900 text-sm text-right">
-                          محافظة {govItem.governorate}
+                          {govItem.governorate === "غير محدد" ? (
+                            <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                              <span className="text-amber-900 font-bold flex items-center gap-1 text-xs">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <span>غير محددة (شكاوى بدون نيابة)</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setGovernorate("UNSPECIFIED");
+                                  setActiveTab("cases");
+                                  fetchReport("UNSPECIFIED");
+                                }}
+                                className="px-2 py-0.5 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 text-[11px] font-bold transition-colors border border-amber-300 print:hidden"
+                                title="عرض وحصر السجلات بالتفصيل"
+                              >
+                                عرض السجلات ({govItem.total})
+                              </button>
+                            </div>
+                          ) : (
+                            `محافظة ${govItem.governorate}`
+                          )}
                         </td>
                         <td className="text-center font-mono font-bold text-blue-800">{govItem.complaints}</td>
                         <td className="text-center font-mono font-bold text-purple-800">{govItem.cases}</td>
@@ -1539,6 +1722,149 @@ export default function RegistrationReportsPage() {
           </div>
         )}
       </UnifiedPrintLayout>
+
+      {/* ─── نافذة المعالج الذكي لتحديد واستنتاج المحافظات ─── */}
+      {showAutoDetectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs print:hidden animate-in fade-in-50">
+          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="p-4 bg-gradient-to-r from-teal-900 to-slate-900 text-white flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300">
+                  <Wand2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">المعالج الذكي لاستنتاج وتحديد المحافظات للسجلات غير المحددة</h3>
+                  <p className="text-[11px] text-teal-200">
+                    استنتاج المحافظة آلياً من واقع أسماء المستشفيات والجهات واللجان المشكو في حقها
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAutoDetectModal(false)}
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-4 overflow-y-auto flex-1 space-y-4">
+              {detecting ? (
+                <div className="py-12 text-center space-y-3">
+                  <div className="w-8 h-8 border-3 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-xs font-bold text-slate-700">جاري فحص السجلات واستنتاج المحافظات من أسماء المستشفيات...</p>
+                </div>
+              ) : !autoDetectData || autoDetectData.totalUnspecified === 0 ? (
+                <div className="py-12 text-center text-slate-500 space-y-2">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+                  <p className="text-sm font-bold text-slate-800">ممتاز! لا توجد حالياً أي سجلات غير محددة المحافظة.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2 p-3 bg-teal-50 rounded-xl border border-teal-200 text-xs text-teal-900">
+                    <span>
+                      إجمالي السجلات غير المحددة: <strong>{autoDetectData.totalUnspecified}</strong> | تم استنتاج محافظة لـ:{" "}
+                      <strong className="text-emerald-700">{autoDetectData.autoDetectedCount} سجل</strong>
+                    </span>
+                    <span className="text-[11px] text-teal-700">
+                      يمكنك مراجعة أو تعديل المحافظة المقترحة لكل سجل قبل الحفظ
+                    </span>
+                  </div>
+
+                  <div className="table-wrapper border border-slate-200 rounded-xl max-h-96">
+                    <table className="table-custom text-xs w-full">
+                      <thead>
+                        <tr>
+                          <th style={{ width: "6%" }}>م</th>
+                          <th style={{ width: "16%" }}>رقم السجل</th>
+                          <th style={{ width: "24%" }}>المستشفى / الجهة</th>
+                          <th style={{ width: "18%" }}>الشاكي</th>
+                          <th style={{ width: "22%" }}>المحافظة المقترحة</th>
+                          <th style={{ width: "14%" }}>سند الاستنتاج</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {autoDetectData.suggestions.map((s: any, i: number) => (
+                          <tr key={s.id} className={s.suggestedGovernorate ? "bg-emerald-50/20" : ""}>
+                            <td className="text-center font-mono text-[11px] text-slate-500">{i + 1}</td>
+                            <td className="font-bold text-slate-900 font-mono text-center">
+                              {s.caseNumber} / {s.caseYear}
+                            </td>
+                            <td className="font-semibold text-slate-800">{s.hospitalName}</td>
+                            <td className="text-slate-700">{s.complainantName}</td>
+                            <td>
+                              <select
+                                value={s.suggestedGovernorate || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setAutoDetectData((prev: any) => ({
+                                    ...prev,
+                                    suggestions: prev.suggestions.map((item: any) =>
+                                      item.id === s.id ? { ...item, suggestedGovernorate: val, matchedReason: "تحديد يدوي" } : item
+                                    ),
+                                  }));
+                                }}
+                                className="form-select text-xs py-1 px-2 border-teal-500 bg-white font-bold text-teal-950 w-full rounded-lg"
+                              >
+                                <option value="">-- حدد المحافظة --</option>
+                                {data?.governoratesList.map((g) => (
+                                  <option key={g} value={g}>{g}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="text-[11px] text-slate-500">
+                              {s.matchedReason || "لم يستدل تلقائياً"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAutoDetectModal(false)}
+                className="px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors"
+              >
+                إغلاق
+              </button>
+              {autoDetectData && autoDetectData.suggestions?.length > 0 && (
+                <button
+                  type="button"
+                  disabled={applyingBatch}
+                  onClick={() => {
+                    const validUpdates = autoDetectData.suggestions
+                      .filter((s: any) => s.suggestedGovernorate)
+                      .map((s: any) => ({ caseId: s.id, governorate: s.suggestedGovernorate }));
+                    if (validUpdates.length === 0) {
+                      alert("يرجى اختيار محافظة لسجل واحد على الأقل قبل الحفظ");
+                      return;
+                    }
+                    if (confirm(`هل أنت متأكد من حفظ واعتماد محافظات ${validUpdates.length} سجل في قاعدة البيانات؟`)) {
+                      applyDetectedBatch(validUpdates);
+                    }
+                  }}
+                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-colors shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>
+                    {applyingBatch
+                      ? "جاري الحفظ والاعتماد..."
+                      : `اعتماد وتثبيت المحافظات (${autoDetectData.suggestions.filter((s: any) => s.suggestedGovernorate).length} سجل)`}
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

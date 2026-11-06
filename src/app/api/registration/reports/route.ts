@@ -65,10 +65,14 @@ export async function GET(req: NextRequest) {
 
     // البحث باسم الفرع أو المستشفى
     if (branchOrHospital?.trim()) {
-      where.OR = [
-        ...(where.OR || []),
-        { hospitalName: { contains: branchOrHospital.trim(), mode: "insensitive" } },
-        { entityName: { contains: branchOrHospital.trim(), mode: "insensitive" } },
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { hospitalName: { contains: branchOrHospital.trim(), mode: "insensitive" } },
+            { entityName: { contains: branchOrHospital.trim(), mode: "insensitive" } },
+          ],
+        },
       ];
     }
 
@@ -80,10 +84,14 @@ export async function GET(req: NextRequest) {
       }).catch(() => null);
 
       if (pMatch) {
-        where.OR = [
-          ...(where.OR || []),
-          { prosecutionId: prosecutionId },
-          { prosecution: pMatch.name },
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { prosecutionId: prosecutionId },
+              { prosecution: pMatch.name },
+            ],
+          },
         ];
       } else {
         where.prosecutionId = prosecutionId;
@@ -92,11 +100,27 @@ export async function GET(req: NextRequest) {
 
     // فلتر المحافظة (من حقل المحافظة بالسجل أو من محافظة النيابة التابعة لها)
     if (governorate && governorate !== "ALL") {
-      where.OR = [
-        ...(where.OR || []),
-        { governorate: governorate },
-        { prosecutionRel: { governorate: governorate } },
-      ];
+      if (governorate === "UNSPECIFIED" || governorate === "UNKNOWN" || governorate === "غير محدد") {
+        where.AND = [
+          ...(where.AND || []),
+          {
+            AND: [
+              { OR: [{ governorate: null }, { governorate: "" }] },
+              { OR: [{ prosecutionRel: null }, { prosecutionRel: { governorate: null } }] },
+            ],
+          },
+        ];
+      } else {
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { governorate: governorate },
+              { prosecutionRel: { governorate: governorate } },
+            ],
+          },
+        ];
+      }
     }
 
     // فلتر اسم الشاكي
@@ -106,12 +130,16 @@ export async function GET(req: NextRequest) {
 
     // فلتر اسم المشكو في حقه
     if (respondentName?.trim()) {
-      where.OR = [
-        ...(where.OR || []),
-        { respondentName: { contains: respondentName.trim(), mode: "insensitive" } },
-        { entityName: { contains: respondentName.trim(), mode: "insensitive" } },
-        { entityType: { contains: respondentName.trim(), mode: "insensitive" } },
-        { hospitalName: { contains: respondentName.trim(), mode: "insensitive" } },
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { respondentName: { contains: respondentName.trim(), mode: "insensitive" } },
+            { entityName: { contains: respondentName.trim(), mode: "insensitive" } },
+            { entityType: { contains: respondentName.trim(), mode: "insensitive" } },
+            { hospitalName: { contains: respondentName.trim(), mode: "insensitive" } },
+          ],
+        },
       ];
     }
 
