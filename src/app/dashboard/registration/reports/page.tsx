@@ -27,6 +27,14 @@ import {
   AlertTriangle,
   Sparkles,
   Wand2,
+  Eye,
+  Edit3,
+  X,
+  Phone,
+  FileText,
+  Clock,
+  Calendar,
+  Info,
 } from "lucide-react";
 
 interface UserWorkload {
@@ -47,16 +55,25 @@ interface CaseItem {
   prosecutionCaseNumber: string | null;
   registrationType: "COMPLAINT" | "CASE" | "REPORT";
   complainantName: string | null;
+  complainantPhone?: string | null;
   respondentName: string | null;
+  respondentPhone?: string | null;
   entityType?: string | null;
   entityName?: string | null;
   hospitalName?: string | null;
   governorate?: string | null;
   prosecution: string | null;
+  prosecutionId?: string | null;
   prosecutionRel: { id: string; name: string; governorate?: string | null } | null;
+  partialProsecution?: string | null;
+  partialProsecutionId?: string | null;
+  partialProsecutionRel?: { id: string; name: string } | null;
+  description?: string | null;
+  incomingDate?: string | null;
   attachmentsCount: number;
   status: string;
   createdAt: string;
+  updatedAt?: string;
   createdBy: { id: string; fullName: string; email: string; role: string };
   subCommittee: { id: string; name: string } | null;
 }
@@ -173,6 +190,99 @@ export default function RegistrationReportsPage() {
   const [autoDetectData, setAutoDetectData] = useState<any>(null);
   const [detecting, setDetecting] = useState(false);
   const [applyingBatch, setApplyingBatch] = useState(false);
+
+  // نافذة معاينة بيانات السجل التفصيلية (Pop-up)
+  const [selectedCaseModal, setSelectedCaseModal] = useState<CaseItem | null>(null);
+
+  // نافذة وتعديل بيانات السجل مع تدوين سند الرقابة والتدقيق
+  const [editingCase, setEditingCase] = useState<CaseItem | null>(null);
+  const [editForm, setEditForm] = useState({
+    governorate: "",
+    hospitalName: "",
+    entityType: "",
+    complainantName: "",
+    complainantPhone: "",
+    respondentName: "",
+    respondentPhone: "",
+    prosecutionCaseNumber: "",
+    description: "",
+    reason: "",
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  function handleOpenEdit(c: CaseItem) {
+    setEditingCase(c);
+    setEditForm({
+      governorate: c.governorate || c.prosecutionRel?.governorate || "",
+      hospitalName: c.hospitalName || c.entityName || "",
+      entityType: c.entityType || "",
+      complainantName: c.complainantName || "",
+      complainantPhone: c.complainantPhone || "",
+      respondentName: c.respondentName || "",
+      respondentPhone: c.respondentPhone || "",
+      prosecutionCaseNumber: c.prosecutionCaseNumber || "",
+      description: c.description || "",
+      reason: "",
+    });
+    setEditError(null);
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingCase) return;
+    if (!editForm.reason.trim()) {
+      setEditError("يرجى ذكر سبب وسند التعديل (إلزامي للرقابة والتدقيق الأمني)");
+      return;
+    }
+    setSavingEdit(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/cases/${editingCase.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          governorate: editForm.governorate.trim() || null,
+          hospitalName: editForm.hospitalName.trim() || null,
+          entityName: editForm.hospitalName.trim() || null,
+          entityType: editForm.entityType.trim() || null,
+          complainantName: editForm.complainantName.trim() || null,
+          complainantPhone: editForm.complainantPhone.trim() || null,
+          respondentName: editForm.respondentName.trim() || null,
+          respondentPhone: editForm.respondentPhone.trim() || null,
+          prosecutionCaseNumber: editForm.prosecutionCaseNumber.trim() || null,
+          description: editForm.description.trim(),
+          reason: editForm.reason.trim(),
+        }),
+      });
+
+      const updated = await res.json();
+      if (!res.ok) {
+        throw new Error(updated.error || "تعذر حفظ التعديل");
+      }
+
+      // تحديث السجل محلياً في الجدول فوراً
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          cases: prev.cases.map((c) => (c.id === editingCase.id ? { ...c, ...updated } : c)),
+        };
+      });
+
+      if (selectedCaseModal && selectedCaseModal.id === editingCase.id) {
+        setSelectedCaseModal((prev) => (prev ? { ...prev, ...updated } : null));
+      }
+
+      setEditingCase(null);
+      alert("تم حفظ التعديل بنجاح وتسجيل اسمك وسبب التعديل في سجل الرقابة والتدقيق.");
+      fetchReport();
+    } catch (err: any) {
+      setEditError(err.message || "حدث خطأ أثناء حفظ التعديل");
+    } finally {
+      setSavingEdit(false);
+    }
+  }
 
   // النيابات المتاحة مفلترة بحسب المحافظة المحددة لتسهيل الاختيار
   const filteredProsecutions = useMemo(() => {
@@ -1377,16 +1487,17 @@ export default function RegistrationReportsPage() {
                     <thead>
                       <tr>
                         <th style={{ width: "3.5%" }}>م</th>
-                        <th style={{ width: "9%" }}>رقم السجل / السنة</th>
+                        <th style={{ width: "9.5%" }}>رقم السجل / السنة</th>
                         <th style={{ width: "6%" }}>النوع</th>
-                        <th style={{ width: "13.5%" }}>رقم المحضر / القضية / الشكوى</th>
+                        <th style={{ width: "13%" }}>رقم المحضر / القضية / الشكوى</th>
                         <th style={{ width: "7.5%" }}>المحافظة</th>
-                        <th style={{ width: "12%" }}>النيابة المختصة</th>
-                        <th style={{ width: "12.5%" }}>الفرع / المنشأة المشكو فيها</th>
+                        <th style={{ width: "11.5%" }}>النيابة المختصة</th>
+                        <th style={{ width: "12%" }}>الفرع / المنشأة المشكو فيها</th>
                         <th style={{ width: "9.5%" }}>الشاكي</th>
                         <th style={{ width: "9.5%" }}>المشكو في حقه</th>
-                        <th style={{ width: "10%" }}>اللجنة الفرعية</th>
-                        <th style={{ width: "7%" }}>المرحلة الحالية</th>
+                        <th style={{ width: "9.5%" }}>اللجنة الفرعية</th>
+                        <th style={{ width: "7%" }}>المرحلة</th>
+                        <th style={{ width: "6%" }} className="print:hidden">خيارات</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1412,12 +1523,63 @@ export default function RegistrationReportsPage() {
                         }
 
                         return (
-                          <tr key={c.id}>
+                          <tr
+                            key={c.id}
+                            onClick={() => setSelectedCaseModal(c)}
+                            className="hover:bg-teal-50/60 transition-colors group cursor-pointer"
+                            title="اضغط لمعاينة كامل بيانات السجل أو تعديلها"
+                          >
                             <td className="text-center font-mono text-[10px] text-slate-500">
                               {idx + 1}
                             </td>
                             <td className="text-center font-bold text-slate-900 font-mono text-xs">
-                              {c.caseNumber} / {c.caseYear}
+                              {/* ─── معاينة سريعة عند المرور بالماوس (Hover Tooltip) ─── */}
+                              <div className="relative group/tip inline-flex items-center justify-center gap-1">
+                                <span className="font-bold text-slate-900 font-mono text-xs underline decoration-teal-400 decoration-dotted underline-offset-4 group-hover:text-teal-700">
+                                  {c.caseNumber} / {c.caseYear}
+                                </span>
+                                <div
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="hidden group-hover/tip:block absolute z-50 right-0 top-full mt-2 w-80 p-3.5 bg-slate-900 text-white rounded-2xl shadow-2xl text-xs space-y-2 pointer-events-none border border-slate-700 print:hidden text-right animate-in fade-in-50 zoom-in-95"
+                                >
+                                  <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                                    <span className="font-bold text-teal-400">سجل: {c.caseNumber} لسنة {c.caseYear}</span>
+                                    <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-bold">{typeInfo.label}</span>
+                                  </div>
+                                  <div className="space-y-1.5 text-[11px] leading-relaxed">
+                                    <div className="p-2 bg-slate-800/80 rounded-lg text-slate-200">
+                                      <p className="text-[10px] text-teal-400 font-bold mb-0.5">موضوع الشكوى / الواقعة:</p>
+                                      <p className="line-clamp-3 text-slate-300">{c.description || "لم يسجل ملخص"}</p>
+                                    </div>
+                                    {c.complainantPhone && (
+                                      <p className="text-slate-300 flex items-center justify-between">
+                                        <span className="text-slate-400">هاتف الشاكي:</span>
+                                        <span className="font-mono text-teal-300">{c.complainantPhone}</span>
+                                      </p>
+                                    )}
+                                    {c.respondentPhone && (
+                                      <p className="text-slate-300 flex items-center justify-between">
+                                        <span className="text-slate-400">هاتف المشكو فيه:</span>
+                                        <span className="font-mono text-teal-300">{c.respondentPhone}</span>
+                                      </p>
+                                    )}
+                                    <p className="text-slate-300 flex items-center justify-between">
+                                      <span className="text-slate-400">الجهة المشكو فيها:</span>
+                                      <span className="font-bold text-slate-200">{c.hospitalName || c.entityName || "—"}</span>
+                                    </p>
+                                    {c.attachmentsCount > 0 && (
+                                      <p className="text-slate-300 flex items-center justify-between">
+                                        <span className="text-slate-400">عدد المرفقات:</span>
+                                        <span className="font-bold text-teal-300 font-mono">{c.attachmentsCount} ملف</span>
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-teal-300/80 pt-1.5 border-t border-slate-800 flex items-center justify-between">
+                                    <span>اضغط على السطر لفتح النافذة والتعديل</span>
+                                    <span>👁️ عرض كامل</span>
+                                  </div>
+                                </div>
+                              </div>
                             </td>
                             <td>
                               <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${typeInfo.badge} print:border-0 print:bg-transparent print:p-0`}>
@@ -1427,7 +1589,7 @@ export default function RegistrationReportsPage() {
                             <td className="text-center font-bold text-teal-900 font-mono text-xs">
                               {recordDetails}
                             </td>
-                            <td className="font-semibold text-slate-800 text-xs">
+                            <td className="font-semibold text-slate-800 text-xs" onClick={(e) => e.stopPropagation()}>
                               {govName === "—" || govName === "غير محدد" ? (
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="text-amber-800 bg-amber-50 border border-amber-300 px-1.5 py-0.5 rounded text-[10px] font-bold">
@@ -1468,6 +1630,26 @@ export default function RegistrationReportsPage() {
                               <span className="font-bold text-slate-900 print:text-[8.5px]">
                                 {statusInfo.label}
                               </span>
+                            </td>
+                            <td className="text-center print:hidden" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedCaseModal(c)}
+                                  className="p-1 rounded-md bg-teal-50 hover:bg-teal-100 text-teal-800 transition-colors"
+                                  title="معاينة تفاصيل السجل في نافذة منبثقة"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEdit(c)}
+                                  className="p-1 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 transition-colors"
+                                  title="تعديل بيانات السجل (مع تسجيل السند)"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1862,6 +2044,360 @@ export default function RegistrationReportsPage() {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── نافذة تفاصيل وبيانات السجل المنبثقة (Pop-up Modal) ─── */}
+      {selectedCaseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs print:hidden animate-in fade-in-50">
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="p-4 bg-gradient-to-r from-teal-900 via-teal-800 to-slate-900 text-white flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-teal-300 shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-black text-sm">
+                      تفاصيل وبيانات السجل: ({selectedCaseModal.caseNumber}) لسنة ({selectedCaseModal.caseYear})
+                    </h3>
+                    <span className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-bold">
+                      {TYPE_CONFIG[selectedCaseModal.registrationType]?.label || selectedCaseModal.registrationType}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-teal-200 mt-0.5">
+                    المرحلة: {STATUS_LABELS[selectedCaseModal.status]?.label || selectedCaseModal.status}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCaseModal(null)}
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors text-sm"
+                title="إغلاق النافذة"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+              {/* قسم 1: بيانات القيد والنيابة */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
+                  <Scale className="w-3.5 h-3.5 text-teal-700" />
+                  <span>بيانات القيد والجهة القضائية</span>
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">رقم وسنة السجل:</span>
+                    <strong className="text-slate-900 font-mono">{selectedCaseModal.caseNumber} / {selectedCaseModal.caseYear}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">نوع القيد:</span>
+                    <strong className="text-slate-900">{TYPE_CONFIG[selectedCaseModal.registrationType]?.label}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">المحافظة:</span>
+                    <strong className="text-teal-900">{selectedCaseModal.governorate || selectedCaseModal.prosecutionRel?.governorate || "غير محدد"}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">النيابة الكلية:</span>
+                    <strong className="text-slate-900">{selectedCaseModal.prosecutionRel?.name || selectedCaseModal.prosecution || "شكوى مباشرة (بدون نيابة)"}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">النيابة الجزئية:</span>
+                    <strong className="text-slate-800">{selectedCaseModal.partialProsecutionRel?.name || selectedCaseModal.partialProsecution || "—"}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">رقم القضية / المحضر:</span>
+                    <strong className="text-teal-900 font-mono">{selectedCaseModal.prosecutionCaseNumber || "—"}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">عدد المرفقات:</span>
+                    <strong className="text-slate-800 font-mono">{selectedCaseModal.attachmentsCount} ملف</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">تاريخ التسجيل:</span>
+                    <strong className="text-slate-800 font-mono">{formatDate(selectedCaseModal.createdAt)}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* قسم 2: أطراف الشكوى والمنشأة المشكو فيها */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-teal-700" />
+                  <span>أطراف النزاع والمنشأة الطبية</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div className="p-2.5 bg-white rounded-lg border border-slate-200">
+                    <span className="text-slate-500 block text-[11px]">الشاكي:</span>
+                    <strong className="text-slate-900 block text-sm">{selectedCaseModal.complainantName || "—"}</strong>
+                    {selectedCaseModal.complainantPhone && (
+                      <span className="text-teal-700 font-mono text-[11px] block mt-1 flex items-center gap-1">
+                        <Phone className="w-3 h-3" />
+                        <span>{selectedCaseModal.complainantPhone}</span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-2.5 bg-white rounded-lg border border-slate-200">
+                    <span className="text-slate-500 block text-[11px]">المشكو في حقه:</span>
+                    <strong className="text-slate-900 block text-sm">{selectedCaseModal.respondentName || "—"}</strong>
+                    {selectedCaseModal.respondentPhone && (
+                      <span className="text-teal-700 font-mono text-[11px] block mt-1 flex items-center gap-1">
+                        <Phone className="w-3 h-3" />
+                        <span>{selectedCaseModal.respondentPhone}</span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-2.5 bg-white rounded-lg border border-slate-200">
+                    <span className="text-slate-500 block text-[11px]">المنشأة الطبية / الفرع:</span>
+                    <strong className="text-slate-900 block text-sm">{selectedCaseModal.hospitalName || selectedCaseModal.entityName || "—"}</strong>
+                    <span className="text-slate-500 text-[11px] block mt-1">
+                      الفئة: {selectedCaseModal.entityType || "غير محددة"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* قسم 3: موضوع الشكوى وملخص الواقعة */}
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
+                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-teal-700" />
+                  <span>موضوع الشكوى وملخص الواقعة</span>
+                </h4>
+                <div className="p-3.5 bg-slate-50 rounded-xl text-slate-800 text-xs leading-relaxed whitespace-pre-wrap border border-slate-200 font-body">
+                  {selectedCaseModal.description || "لا يوجد ملخص مسجل للواقعة."}
+                </div>
+              </div>
+
+              {/* قسم 4: التوجيه والمتابعة */}
+              <div className="flex items-center justify-between text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 flex-wrap gap-2">
+                <div>
+                  <span className="text-slate-500">اللجنة الفرعية: </span>
+                  <strong className="text-slate-900">{selectedCaseModal.subCommittee?.name || "لم تحدد بعد"}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500">موظف القيد: </span>
+                  <strong className="text-slate-900">{selectedCaseModal.createdBy?.fullName || selectedCaseModal.createdBy?.email || "—"}</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedCaseModal(null)}
+                className="px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors"
+              >
+                إغلاق النافذة
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleOpenEdit(selectedCaseModal);
+                  setSelectedCaseModal(null);
+                }}
+                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors shadow-xs flex items-center gap-1.5"
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>تعديل بيانات السجل</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── نافذة تعديل بيانات السجل وتوثيق سبب التعديل (Edit Modal) ─── */}
+      {editingCase && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs print:hidden animate-in fade-in-50">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+            {/* Header */}
+            <div className="p-4 bg-gradient-to-r from-amber-700 to-amber-900 text-white flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-amber-200 shrink-0">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">
+                    تعديل بيانات السجل: {editingCase.caseNumber} / {editingCase.caseYear}
+                  </h3>
+                  <p className="text-[11px] text-amber-200">
+                    سيتم تدوين اسمك وتاريخ التعديل وسبب التعديل تلقائياً في سجل الرقابة والتدقيق
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingCase(null)}
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <form onSubmit={handleSaveEdit} className="p-5 overflow-y-auto flex-1 space-y-3.5 text-xs">
+              {editError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{editError}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* المحافظة */}
+                <div>
+                  <label className="font-bold text-slate-800 block mb-1">المحافظة *</label>
+                  <select
+                    value={editForm.governorate}
+                    onChange={(e) => setEditForm({ ...editForm, governorate: e.target.value })}
+                    required
+                    className="input w-full"
+                  >
+                    <option value="">-- اختر المحافظة --</option>
+                    {data?.governoratesList.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* فئة المنشأة */}
+                <div>
+                  <label className="font-bold text-slate-800 block mb-1">فئة المنشأة الطبية</label>
+                  <select
+                    value={editForm.entityType}
+                    onChange={(e) => setEditForm({ ...editForm, entityType: e.target.value })}
+                    className="input w-full"
+                  >
+                    <option value="">-- اختر فئة المنشأة --</option>
+                    {ENTITY_TYPES.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* اسم المستشفى */}
+                <div className="sm:col-span-2">
+                  <label className="font-bold text-slate-800 block mb-1">اسم المستشفى / المركز الطبي المشكو فيه</label>
+                  <input
+                    type="text"
+                    value={editForm.hospitalName}
+                    onChange={(e) => setEditForm({ ...editForm, hospitalName: e.target.value })}
+                    className="input w-full"
+                    placeholder="مثال: مستشفيات جامعة القاهرة (قصر العيني)"
+                  />
+                </div>
+
+                {/* رقم المحضر أو القضية */}
+                <div className="sm:col-span-2">
+                  <label className="font-bold text-slate-800 block mb-1">رقم المحضر / القضية المرتبط (إن وجد)</label>
+                  <input
+                    type="text"
+                    value={editForm.prosecutionCaseNumber}
+                    onChange={(e) => setEditForm({ ...editForm, prosecutionCaseNumber: e.target.value })}
+                    className="input w-full"
+                    placeholder="رقم المحضر أو القضية بالنيابة العامة"
+                  />
+                </div>
+
+                {/* اسم الشاكي */}
+                <div>
+                  <label className="font-bold text-slate-800 block mb-1">اسم الشاكي</label>
+                  <input
+                    type="text"
+                    value={editForm.complainantName}
+                    onChange={(e) => setEditForm({ ...editForm, complainantName: e.target.value })}
+                    className="input w-full"
+                  />
+                </div>
+
+                {/* هاتف الشاكي */}
+                <div>
+                  <label className="font-bold text-slate-800 block mb-1">هاتف الشاكي</label>
+                  <input
+                    type="text"
+                    value={editForm.complainantPhone}
+                    onChange={(e) => setEditForm({ ...editForm, complainantPhone: e.target.value })}
+                    className="input w-full font-mono text-left"
+                    placeholder="01XXXXXXXXX"
+                  />
+                </div>
+
+                {/* اسم المشكو في حقه */}
+                <div>
+                  <label className="font-bold text-slate-800 block mb-1">المشكو في حقه (الطبيب/المنشأة)</label>
+                  <input
+                    type="text"
+                    value={editForm.respondentName}
+                    onChange={(e) => setEditForm({ ...editForm, respondentName: e.target.value })}
+                    className="input w-full"
+                  />
+                </div>
+
+                {/* هاتف المشكو في حقه */}
+                <div>
+                  <label className="font-bold text-slate-800 block mb-1">هاتف المشكو فيه</label>
+                  <input
+                    type="text"
+                    value={editForm.respondentPhone}
+                    onChange={(e) => setEditForm({ ...editForm, respondentPhone: e.target.value })}
+                    className="input w-full font-mono text-left"
+                    placeholder="01XXXXXXXXX"
+                  />
+                </div>
+              </div>
+
+              {/* ملخص الواقعة وموضوع الشكوى */}
+              <div>
+                <label className="font-bold text-slate-800 block mb-1">ملخص الواقعة / موضوع الشكوى</label>
+                <textarea
+                  rows={3}
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  className="input w-full leading-relaxed"
+                />
+              </div>
+
+              {/* ─── حقل إلزامي: سبب وسند التعديل للرقابة والتدقيق ─── */}
+              <div className="p-3 bg-amber-50 rounded-xl border-2 border-amber-300 space-y-1">
+                <label className="font-black text-amber-950 flex items-center justify-between">
+                  <span>سبب وسند التعديل (إلزامي للرقابة والتدقيق الأمني) *</span>
+                  <span className="text-[10px] text-amber-700 font-normal">يُسجل في سجل الحركات Audit Log</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.reason}
+                  onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
+                  className="input w-full bg-white border-amber-300 font-medium"
+                  placeholder="مثال: تصحيح المحافظة واسم المستشفى بناءً على المستندات المقدمة بالشكوى"
+                />
+              </div>
+
+              {/* Footer Buttons */}
+              <div className="pt-2 flex items-center justify-between gap-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setEditingCase(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-colors"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-5 py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold transition-colors shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{savingEdit ? "جاري الحفظ والتدوين..." : "حفظ التعديل واعتماده"}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

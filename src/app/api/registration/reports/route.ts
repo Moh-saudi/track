@@ -190,6 +190,7 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: "desc" },
         include: {
           prosecutionRel: { select: { id: true, name: true, governorate: true } },
+          partialProsecutionRel: { select: { id: true, name: true } },
           createdBy: { select: { id: true, fullName: true, email: true, role: true } },
           subCommittee: { select: { id: true, name: true } },
         },

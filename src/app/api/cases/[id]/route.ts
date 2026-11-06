@@ -24,7 +24,11 @@ const partyItemSchema = z.object({
 const patchCaseSchema = z.object({
   // Party and session attendees updates
   complainants: z.array(partyItemSchema).optional(),
+  complainantName: z.string().optional().nullable(),
+  complainantPhone: z.string().optional().nullable(),
   respondents: z.array(partyItemSchema).optional(),
+  respondentName: z.string().optional().nullable(),
+  respondentPhone: z.string().optional().nullable(),
   sessionAttendees: z.array(partyItemSchema).optional(),
 
   // Case registration updates
@@ -43,6 +47,7 @@ const patchCaseSchema = z.object({
   partialProsecutionId: z.string().optional().nullable(),
   governorate: z.string().optional().nullable(),
   description: z.string().min(1, "ملخص الواقعة مطلوب").optional(),
+  reason: z.string().optional().nullable(), // سبب أو سند التعديل لتدوين التدقيق
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -123,10 +128,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const isCreator = currentCase.createdById === userId;
   const isAdmin = role === "ADMIN";
+  const isSupervisor = role === "SUPREME_SUPERVISOR" || role === "RISK_OFFICER";
   const isSubcommittee = role === "SUBCOMMITTEE_MEMBER" && !!subCommitteeId && currentCase.subCommitteeId === subCommitteeId;
   const isRouteCase = can(role, "ROUTE_CASE");
 
-  const permitted = (isCreator && role === "REGISTRATION_CLERK") || isAdmin || isSubcommittee || isRouteCase;
+  const permitted = (isCreator && role === "REGISTRATION_CLERK") || isAdmin || isSupervisor || isSubcommittee || isRouteCase;
 
   if (!permitted) {
     return NextResponse.json({ error: "غير مصرح بتعديل هذا السجل" }, { status: 403 });
@@ -222,6 +228,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       updateData.complainantName = data.complainants[0].name;
       updateData.complainantPhone = data.complainants[0].phone || null;
     }
+  } else if (data.complainantName !== undefined) {
+    updateData.complainantName = data.complainantName ? data.complainantName.trim() : null;
+    if (data.complainantPhone !== undefined) updateData.complainantPhone = data.complainantPhone ? data.complainantPhone.trim() : null;
+    if (updateData.complainantName) {
+      updateData.complainants = [{ name: updateData.complainantName, phone: updateData.complainantPhone || null }];
+    }
   }
 
   if (data.respondents) {
@@ -232,6 +244,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     } else {
       updateData.respondentName = null;
       updateData.respondentPhone = null;
+    }
+  } else if (data.respondentName !== undefined) {
+    updateData.respondentName = data.respondentName ? data.respondentName.trim() : null;
+    if (data.respondentPhone !== undefined) updateData.respondentPhone = data.respondentPhone ? data.respondentPhone.trim() : null;
+    if (updateData.respondentName) {
+      updateData.respondents = [{ name: updateData.respondentName, phone: updateData.respondentPhone || null }];
     }
   }
 
@@ -244,14 +262,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data: updateData,
   });
 
-  const isGeneralUpdate = !!(data.caseNumber || data.prosecution || data.description || data.registrationType);
+  const isGeneralUpdate = !!(data.caseNumber || data.prosecution || data.description || data.registrationType || data.governorate || data.hospitalName || data.entityName);
   await writeAuditLog({
     entityType: "Case",
     entityId: id,
     action: isGeneralUpdate ? "UPDATE" : "UPDATE_PARTIES",
     userId,
     beforeData: currentCase,
-    afterData: updatedCase,
+    afterData: {
+      ...updatedCase,
+      _auditReason: data.reason || "تعديل بيانات السجل من شاشة التقارير والمتابعة",
+      _editedBy: (session.user as any).fullName || (session.user as any).email,
+      _editedAt: new Date().toISOString(),
+    },
   });
 
   return NextResponse.json(updatedCase);
