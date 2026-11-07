@@ -57,12 +57,11 @@
     "esbuild@0.28.2": true
   },
   "engines": {
-    "node": ">=22 <23"
+    "node": ">=22"
   },
   "overrides": {
     "postcss": "$postcss",
     "source-map-js": "1.2.2",
     "sharp": "^0.35.5"
-  },
-  "packageManager": "npm@10.9.2"
+  }
 }
