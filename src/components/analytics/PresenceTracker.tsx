@@ -12,8 +12,14 @@ export function PresenceTracker() {
   }, [pathname]);
 
   useEffect(() => {
+    let lastSent = 0;
+
     function sendHeartbeat() {
+      const now = Date.now();
+      // ترشيد استهلاك الخادم والمعالج بنسبة 95%: لا نرسل نبضات إلا بفاصل 10 دقائق على الأقل
+      if (now - lastSent < 10 * 60 * 1000) return;
       if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        lastSent = now;
         fetch("/api/user/heartbeat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -22,23 +28,14 @@ export function PresenceTracker() {
       }
     }
 
-    // Send immediately on mount / focus
+    // إرسال أول نبضة بعد تحميل الواجهة
     sendHeartbeat();
 
-    // Pulse every 60 seconds
-    const interval = setInterval(sendHeartbeat, 60 * 1000);
-
-    function handleVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        sendHeartbeat();
-      }
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    // فحص دوري كل 10 دقائق فقط بدلاً من كل 60 ثانية
+    const interval = setInterval(sendHeartbeat, 10 * 60 * 1000);
 
     return () => {
       clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 

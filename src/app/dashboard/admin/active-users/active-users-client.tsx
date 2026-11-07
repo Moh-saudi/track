@@ -53,11 +53,13 @@ export function ActiveUsersClient({ initialUsers }: Props) {
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [refreshing, setRefreshing] = useState(false);
 
-  // Auto-refresh every 30 seconds for live presence
+  // Auto-refresh every 2 minutes only when tab is visible to conserve bandwidth
   useEffect(() => {
     const timer = setInterval(() => {
-      router.refresh();
-    }, 30 * 1000);
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        router.refresh();
+      }
+    }, 2 * 60 * 1000);
     return () => clearInterval(timer);
   }, [router]);
 

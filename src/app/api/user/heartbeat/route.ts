@@ -44,8 +44,10 @@ export async function POST(req: NextRequest) {
   } else {
     if (user.lastSeenAt) {
       const diffMs = now.getTime() - new Date(user.lastSeenAt).getTime();
-      const diffMin = diffMs / (1000 * 60);
-      if (diffMin <= 5) {
+      const diffMin = Math.round(diffMs / (1000 * 60));
+      if (diffMin <= 15) {
+        newMinutes += Math.max(1, Math.min(diffMin, 10));
+      } else {
         newMinutes += 1;
       }
     } else {
