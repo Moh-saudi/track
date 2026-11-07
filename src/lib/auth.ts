@@ -34,34 +34,45 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         const inputEmail = credentials.email.trim().toLowerCase();
-        await assertLoginAllowed(inputEmail);
+        try {
+          await assertLoginAllowed(inputEmail);
+        } catch (throttleErr: any) {
+          console.warn("[AUTH] Throttle blocked login for:", inputEmail, throttleErr?.message);
+          throw new Error("LOGIN_TEMPORARILY_BLOCKED");
+        }
 
-        const user = await prisma.user.findFirst({
-          where: {
-            email: { equals: inputEmail, mode: "insensitive" },
-          },
-          select: {
-            id: true,
-            email: true,
-            fullName: true,
-            passwordHash: true,
-            role: true,
-            employer: true,
-            active: true,
-            sessionVersion: true,
-            subCommitteeId: true,
-            specialtyId: true,
-            subCommittee: {
-              select: {
-                id: true,
-                name: true,
-                active: true,
-                deactivationMode: true,
-                deactivationReason: true,
+        let user;
+        try {
+          user = await prisma.user.findFirst({
+            where: {
+              email: { equals: inputEmail, mode: "insensitive" },
+            },
+            select: {
+              id: true,
+              email: true,
+              fullName: true,
+              passwordHash: true,
+              role: true,
+              employer: true,
+              active: true,
+              sessionVersion: true,
+              subCommitteeId: true,
+              specialtyId: true,
+              subCommittee: {
+                select: {
+                  id: true,
+                  name: true,
+                  active: true,
+                  deactivationMode: true,
+                  deactivationReason: true,
+                },
               },
             },
-          },
-        });
+          });
+        } catch (dbErr: any) {
+          console.error("[AUTH] Database error during login for:", inputEmail, dbErr);
+          throw new Error("DATABASE_CONNECTION_ERROR");
+        }
 
         if (!user || !user.active) {
           await recordLoginFailure(inputEmail);
