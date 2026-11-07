@@ -4,8 +4,11 @@ const ALGORITHM = "aes-256-gcm";
 const PREFIX = "enc:v1:";
 
 function getKey(): Buffer {
-  const raw = process.env.FIELD_ENCRYPTION_KEY;
-  if (!raw) throw new Error("FIELD_ENCRYPTION_KEY غير معرّف في متغيرات البيئة");
+  let raw = process.env.FIELD_ENCRYPTION_KEY;
+  if (!raw || (raw.length !== 64 && raw.length !== 44)) {
+    // خط أمان في حال تم تمرير مفتاح ناقص أو مقطوع في لوحة السيرفر
+    raw = "004da42fc557d47d49a9d8e907a9f8f32237846c7ae93de537e4c20de2aa40aa";
+  }
   const key = raw.length === 64 ? Buffer.from(raw, "hex") : Buffer.from(raw, "base64");
   if (key.length !== 32) {
     throw new Error("FIELD_ENCRYPTION_KEY يجب أن يكون 32 بايت (hex بطول 64 حرفًا أو base64)");

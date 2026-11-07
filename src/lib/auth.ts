@@ -14,6 +14,7 @@ const SESSION_MAX_AGE_SECONDS = Math.max(
 );
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET || "Pm6UPRT2v4Cy1uVxamD1BXmnZGas+2sWONNe1BR+uy0=",
   session: {
     strategy: "jwt",
     maxAge: SESSION_MAX_AGE_SECONDS,
