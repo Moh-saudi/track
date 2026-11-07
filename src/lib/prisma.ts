@@ -6,24 +6,37 @@ import { PrismaPg } from "@prisma/adapter-pg";
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 const SUPABASE_FALLBACK_URL =
-  "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:5432/postgres";
+  "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true";
 
 function getConnectionString(): string {
+  let url = "";
   if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== "") {
-    return process.env.DATABASE_URL.trim();
-  }
-
-  try {
-    const { getCloudflareContext } = require("@opennextjs/cloudflare");
-    const ctx = getCloudflareContext();
-    if (ctx?.env?.DATABASE_URL) {
-      return ctx.env.DATABASE_URL;
+    url = process.env.DATABASE_URL.trim();
+  } else {
+    try {
+      const { getCloudflareContext } = require("@opennextjs/cloudflare");
+      const ctx = getCloudflareContext();
+      if (ctx?.env?.DATABASE_URL) {
+        url = ctx.env.DATABASE_URL.trim();
+      }
+    } catch {
+      // getCloudflareContext is only available inside Cloudflare Workers request context
     }
-  } catch {
-    // getCloudflareContext is only available inside Cloudflare Workers request context
   }
 
-  return SUPABASE_FALLBACK_URL;
+  if (!url) {
+    url = SUPABASE_FALLBACK_URL;
+  }
+
+  // في البيئات السحابية Serverless (Cloudflare)، منفذ 6543 مع pgbouncer=true إلزامي لمنع انقطاع الاتصالات
+  if (url.includes("pooler.supabase.com:5432")) {
+    url = url.replace("pooler.supabase.com:5432", "pooler.supabase.com:6543");
+    if (!url.includes("pgbouncer=true")) {
+      url += (url.includes("?") ? "&" : "?") + "pgbouncer=true";
+    }
+  }
+
+  return url;
 }
 
 function createPrismaClient(): PrismaClient {
@@ -36,7 +49,8 @@ function createPrismaClient(): PrismaClient {
       connectionString,
       max: 1,
       maxUses: 1,
-      connectionTimeoutMillis: 8000,
+      idleTimeoutMillis: 1000,
+      connectionTimeoutMillis: 10000,
       ssl: isLocal ? false : { rejectUnauthorized: false },
     });
 
