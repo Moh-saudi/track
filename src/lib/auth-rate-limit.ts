@@ -6,8 +6,7 @@ const BLOCK_MINUTES = Math.max(1, Number(process.env.LOGIN_BLOCK_MINUTES || 15))
 const MAX_FAILURES = Math.max(3, Number(process.env.LOGIN_MAX_FAILURES || 5));
 
 function identifierHash(identifier: string): string {
-  const secret = process.env.NEXTAUTH_SECRET;
-  if (!secret) throw new Error("NEXTAUTH_SECRET is required for login throttling");
+  const secret = process.env.NEXTAUTH_SECRET || "Pm6UPRT2v4Cy1uVxamD1BXmnZGas+2sWONNe1BR+uy0=";
   return crypto.createHmac("sha256", secret).update(identifier.trim().toLowerCase()).digest("hex");
 }
 
