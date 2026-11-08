@@ -50,8 +50,8 @@ function createPrismaClient(): PrismaClient {
     const pool = new Pool({
       connectionString,
       max: 5,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 8000,
+      idleTimeoutMillis: 15000,
+      connectionTimeoutMillis: 5000,
       ssl: false,
     });
 
@@ -96,9 +96,10 @@ export const prisma = new Proxy({} as PrismaClient, {
               if (
                 err?.message?.includes("Connection terminated") ||
                 err?.message?.includes("closed") ||
-                err?.message?.includes("socket")
+                err?.message?.includes("socket") ||
+                err?.message?.includes("timeout")
               ) {
-                console.warn("[PRISMA RESET] Resetting cached client due to socket error:", err?.message);
+                console.warn("[PRISMA RESET] Resetting cached client due to connection/timeout error:", err?.message);
                 cachedClient = null;
                 globalForPrisma.prisma = undefined;
               }
@@ -110,7 +111,8 @@ export const prisma = new Proxy({} as PrismaClient, {
           if (
             err?.message?.includes("Connection terminated") ||
             err?.message?.includes("closed") ||
-            err?.message?.includes("socket")
+            err?.message?.includes("socket") ||
+            err?.message?.includes("timeout")
           ) {
             cachedClient = null;
             globalForPrisma.prisma = undefined;

@@ -15,5 +15,12 @@
     "NEXTAUTH_URL": "https://track.mo-saudi19-145.workers.dev",
     "NEXTAUTH_SECRET": "Pm6UPRT2v4Cy1uVxamD1BXmnZGas+2sWONNe1BR+uy0=",
     "AUTH_TRUST_HOST": "true"
-  }
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "0b8cd40f5a654ca795bf3989e497b3e2",
+      "localConnectionString": "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres"
+    }
+  ]
 }
