@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && node scripts/patch-nextauth.js",
     "dev": "next dev",
-    "build": "prisma generate && opennextjs-cloudflare build",
+    "build": "prisma generate && node scripts/patch-nextauth.js && opennextjs-cloudflare build",
     "next:build": "next build",
     "start": "next start",
     "lint": "next lint",
