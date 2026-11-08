@@ -42,10 +42,7 @@ function getConnectionString(): string {
 }
 
 function createPrismaClient(connStr?: string): PrismaClient {
-  let connectionString = connStr || getConnectionString();
-  if (connectionString && !connectionString.includes("pgbouncer=true")) {
-    connectionString += (connectionString.includes("?") ? "&" : "?") + "pgbouncer=true";
-  }
+  const connectionString = connStr || getConnectionString();
 
   const pool = new Pool({
     connectionString,
