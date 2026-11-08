@@ -42,7 +42,11 @@ function getConnectionString(): string {
 }
 
 function createPrismaClient(connStr?: string): PrismaClient {
-  const connectionString = connStr || getConnectionString();
+  let connectionString = connStr || getConnectionString();
+  if (connectionString && !connectionString.includes("pgbouncer=true")) {
+    connectionString += (connectionString.includes("?") ? "&" : "?") + "pgbouncer=true";
+  }
+
   const pool = new Pool({
     connectionString,
     max: 5,
@@ -53,6 +57,9 @@ function createPrismaClient(connStr?: string): PrismaClient {
 
   pool.on("error", (err) => {
     console.warn("[PG POOL ERROR]:", err?.message);
+    // تفريغ الكاش لإعادة بناء مسبح اتصالات سليم تلقائياً في الطلب التالي عند حدوث أي خطأ في الاتصال
+    cachedClient = null;
+    globalForPrisma.prisma = undefined;
   });
 
   const adapter = new PrismaPg(pool);
