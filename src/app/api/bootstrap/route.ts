@@ -138,7 +138,7 @@ export async function GET() {
       },
     ];
 
-    const results = [];
+    const results: { email: string; name: string; role: string; status: string }[] = [];
     for (const acc of accounts) {
       const user = await prisma.user.upsert({
         where: { email: acc.email },
