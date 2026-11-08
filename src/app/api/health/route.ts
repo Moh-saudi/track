@@ -26,26 +26,10 @@ export async function GET() {
       debugInfo = { error: e.message };
     }
 
-    let benchmark: any = {};
     try {
-      const tStart = Date.now();
       await prisma.$queryRaw`SELECT 1`;
-      const tRaw = Date.now() - tStart;
-
-      const tC0 = Date.now();
-      const count = await prisma.case.count();
-      const tCount = Date.now() - tC0;
-
-      const tF0 = Date.now();
-      const cases = await prisma.case.findMany({
-        take: 10,
-        select: { id: true, caseNumber: true, registrationType: true },
-      });
-      const tFind = Date.now() - tF0;
-
       latencyMs = Date.now() - startTime;
       dbStatus = "connected";
-      benchmark = { tRaw, tCount, tFind, count, casesCount: cases.length };
     } catch (err: any) {
       latencyMs = Date.now() - startTime;
       dbStatus = "disconnected";
@@ -62,7 +46,6 @@ export async function GET() {
           status: dbStatus,
           latencyMs: `${latencyMs}ms`,
           error: dbError,
-          benchmark,
         },
         hyperdrive: debugInfo.hasHyperdriveConn,
         environment: process.env.NODE_ENV || "production",

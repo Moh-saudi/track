@@ -282,8 +282,6 @@ export async function GET(req: NextRequest) {
       CLOSED: filteredCases.filter((c: any) => c.status === "CLOSED").length,
     };
 
-    const totalFiltered = filteredCases.length;
-
     // ─── 1. التقرير العددي للمحافظات مفصلاً بالأنواع (Governorates Numerical Breakdown) ───
     const govMap: Record<
       string,
