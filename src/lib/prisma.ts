@@ -45,8 +45,8 @@ function createPrismaClient(connStr?: string): PrismaClient {
   const connectionString = connStr || getConnectionString();
   const pool = new Pool({
     connectionString,
-    max: 1,
-    idleTimeoutMillis: 100,
+    max: 5,
+    idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
     ssl: false,
   });
@@ -59,12 +59,10 @@ function createPrismaClient(connStr?: string): PrismaClient {
   return new PrismaClient({ adapter, log: ["error"] });
 }
 
-// عميل Prisma موحد على مستوى Isolate (Singleton) لمنع تكرار تحميل WASM واستهلاك وقت المعالج
+// عميل Prisma موحد على مستوى Isolate (Singleton) مع تفضيل فوري لـ Cloudflare Hyperdrive
 let cachedClient: PrismaClient | null = null;
 
 function getClient(): PrismaClient {
-  if (cachedClient) return cachedClient;
-
   let hyperdriveUrl: string | null = null;
   try {
     const { getCloudflareContext } = require("@opennextjs/cloudflare");
@@ -74,8 +72,24 @@ function getClient(): PrismaClient {
     }
   } catch {}
 
-  const url = hyperdriveUrl || getConnectionString();
-  cachedClient = createPrismaClient(url);
+  // إذا كان العميل المخزن يعمل بالفعل عبر Hyperdrive، نستخدمه فورا
+  if (cachedClient && (cachedClient as any).__usesHyperdrive) {
+    return cachedClient;
+  }
+
+  // إذا توفر Hyperdrive في هذا الطلب، نقوم بإنشاء العميل وتثبيته في الذاكرة
+  if (hyperdriveUrl) {
+    const client = createPrismaClient(hyperdriveUrl);
+    (client as any).__usesHyperdrive = true;
+    cachedClient = client;
+    globalForPrisma.prisma = client;
+    return cachedClient;
+  }
+
+  if (cachedClient) return cachedClient;
+
+  const fallbackUrl = getConnectionString();
+  cachedClient = createPrismaClient(fallbackUrl);
   globalForPrisma.prisma = cachedClient;
   return cachedClient;
 }

@@ -7,19 +7,18 @@ import { OFFICIAL_PROSECUTIONS_LIST } from "@/lib/constants/prosecutions";
 import { EGYPT_GOVERNORATES } from "@/lib/constants/governorates";
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-
-  const user = session.user as any;
-  const currentUserId = user.id;
-  const allowedRoles = ["REGISTRATION_CLERK", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER", "SUPREME_SUPERVISOR"];
-  if (!allowedRoles.includes(user.role)) {
-    return NextResponse.json({ error: "غير مصرح لك بالاطلاع على تقارير وإحصائيات قيد السجلات" }, { status: 403 });
-  }
-
-  await ensureSchemaMigrated();
-
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+
+    const user = session.user as any;
+    const currentUserId = user.id;
+    const allowedRoles = ["REGISTRATION_CLERK", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER", "SUPREME_SUPERVISOR"];
+    if (!allowedRoles.includes(user.role)) {
+      return NextResponse.json({ error: "غير مصرح لك بالاطلاع على تقارير وإحصائيات قيد السجلات" }, { status: 403 });
+    }
+
+    await ensureSchemaMigrated();
     const url = new URL(req.url);
     const startDateStr = url.searchParams.get("startDate");
     const endDateStr = url.searchParams.get("endDate");
