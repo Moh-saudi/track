@@ -5,7 +5,8 @@
   "scripts": {
     "postinstall": "prisma generate && node scripts/patch-nextauth.js",
     "dev": "next dev",
-    "build": "prisma generate && node scripts/patch-nextauth.js && opennextjs-cloudflare build",
+    "build": "prisma generate && next build",
+    "build:cloudflare": "prisma generate && node scripts/patch-nextauth.js && opennextjs-cloudflare build",
     "next:build": "next build",
     "start": "next start",
     "lint": "next lint",

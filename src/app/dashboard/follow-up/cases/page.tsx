@@ -122,8 +122,8 @@ export default async function FollowUpCasesPage() {
     respondents: Array.isArray(c.respondents) && c.respondents.length > 0
       ? (c.respondents as any)
       : c.respondentName
-      ? [{ name: c.respondentName, phone: c.respondentPhone }]
-      : [],
+        ? [{ name: c.respondentName, phone: c.respondentPhone }]
+        : [],
     entityType: c.entityType || null,
     entityName: c.entityName || c.hospitalName || null,
     hospitalName: c.entityName || c.hospitalName || null,
@@ -132,8 +132,8 @@ export default async function FollowUpCasesPage() {
     complainants: Array.isArray(c.complainants) && c.complainants.length > 0
       ? (c.complainants as any)
       : c.complainantName
-      ? [{ name: c.complainantName, phone: c.complainantPhone }]
-      : [],
+        ? [{ name: c.complainantName, phone: c.complainantPhone }]
+        : [],
     prosecution: c.prosecution,
     partialProsecution: c.partialProsecution,
     attachmentsCount: c.attachmentsCount,

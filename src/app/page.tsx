@@ -4,15 +4,13 @@ import { authOptions } from "@/lib/auth";
 import { defaultDashboardPath } from "@/lib/rbac";
 
 export default async function HomePage() {
-  let session = null;
-  try {
-    session = await getServerSession(authOptions);
-  } catch (err) {
+  const session = await getServerSession(authOptions).catch((err) => {
     console.error("HomePage session error:", err);
-  }
+    return null;
+  });
 
   if (!session?.user) {
     redirect("/login");
   }
-  redirect(defaultDashboardPath((session!.user as any).role));
+  redirect(defaultDashboardPath((session.user as any).role));
 }
