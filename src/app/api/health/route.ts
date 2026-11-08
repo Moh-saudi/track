@@ -32,7 +32,7 @@ export async function GET() {
       const t0 = Date.now();
       const u = await prisma.user.findUnique({
         where: { id: "cmtt6giaj002t68bdvsu2ra64" },
-        include: { subCommittee: true, specialty: true },
+        select: { id: true, email: true, fullName: true },
       });
       userTest = { tUserMs: Date.now() - t0, found: !!u, email: u?.email };
       latencyMs = Date.now() - startTime;
