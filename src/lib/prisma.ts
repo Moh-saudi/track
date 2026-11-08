@@ -46,6 +46,7 @@ function createPrismaClient(connStr?: string): PrismaClient {
   const pool = new Pool({
     connectionString,
     max: 1,
+    idleTimeoutMillis: 100,
     connectionTimeoutMillis: 5000,
     ssl: false,
   });
@@ -58,39 +59,25 @@ function createPrismaClient(connStr?: string): PrismaClient {
   return new PrismaClient({ adapter, log: ["error"] });
 }
 
-// تخزين عميل Prisma لكل سياق طلب في Cloudflare Workers (Request-scoped WeakMap)
-// يمنع نهائياً تسريب مقابس TCP أو محاولة إعادة استخدام مقابس مغلقة بين الطلبات المنفصلة (Error 1101 / 1102)
-const contextClientMap = new WeakMap<object, PrismaClient>();
-let fallbackClient: PrismaClient | null = null;
+// عميل Prisma موحد على مستوى Isolate (Singleton) لمنع تكرار تحميل WASM واستهلاك وقت المعالج
+let cachedClient: PrismaClient | null = null;
 
 function getClient(): PrismaClient {
+  if (cachedClient) return cachedClient;
+
+  let hyperdriveUrl: string | null = null;
   try {
     const { getCloudflareContext } = require("@opennextjs/cloudflare");
-    const cfContext = getCloudflareContext();
-    if (cfContext) {
-      const key = (cfContext.ctx || cfContext) as object;
-      if (key && typeof key === "object") {
-        let client = contextClientMap.get(key);
-        if (!client) {
-          const url =
-            cfContext.env?.HYPERDRIVE?.connectionString ||
-            cfContext.env?.DATABASE_URL ||
-            getConnectionString();
-          client = createPrismaClient(url);
-          contextClientMap.set(key, client);
-        }
-        return client;
-      }
+    const ctx = getCloudflareContext();
+    if (ctx?.env?.HYPERDRIVE?.connectionString) {
+      hyperdriveUrl = ctx.env.HYPERDRIVE.connectionString;
     }
-  } catch {
-    // خارج سياق طلب Cloudflare (أثناء البناء أو في بيئة Node)
-  }
+  } catch {}
 
-  if (!fallbackClient) {
-    fallbackClient = globalForPrisma.prisma ?? createPrismaClient();
-    globalForPrisma.prisma = fallbackClient;
-  }
-  return fallbackClient;
+  const url = hyperdriveUrl || getConnectionString();
+  cachedClient = createPrismaClient(url);
+  globalForPrisma.prisma = cachedClient;
+  return cachedClient;
 }
 
 export const prisma = new Proxy({} as PrismaClient, {

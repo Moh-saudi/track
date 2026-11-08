@@ -167,65 +167,88 @@ export async function GET(req: NextRequest) {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    // استعلامات متزامنة خفيفة وسريعة
-    const [
-      globalTotalCases,
-      myTotalCases,
-      globalTodayCount,
-      myTodayCount,
-      filteredCases,
-      usersList,
-      dbProsecutions,
-      subCommitteesList,
-      totalByUserGroup,
-      todayByUserGroup,
-    ] = await Promise.all([
-      // الإجمالي العام للسيستم بدون أي فلتر وبدون مراحل
-      prisma.case.count().catch(() => 0),
-      currentUserId ? prisma.case.count({ where: { createdById: currentUserId } }).catch(() => 0) : 0,
-      prisma.case.count({ where: { createdAt: { gte: todayStart, lte: todayEnd } } }).catch(() => 0),
-      currentUserId ? prisma.case.count({ where: { createdById: currentUserId, createdAt: { gte: todayStart, lte: todayEnd } } }).catch(() => 0) : 0,
-      prisma.case.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        include: {
-          prosecutionRel: { select: { id: true, name: true, governorate: true } },
-          partialProsecutionRel: { select: { id: true, name: true } },
-          createdBy: { select: { id: true, fullName: true, email: true, role: true } },
-          subCommittee: { select: { id: true, name: true } },
-        },
-        take: 2000,
-      }).catch((e) => {
-        console.error("Error fetching filtered cases:", e);
-        return [];
-      }),
-      prisma.user.findMany({
-        where: {
-          role: { in: ["REGISTRATION_CLERK", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER"] },
-        },
-        select: { id: true, fullName: true, email: true, role: true },
-        orderBy: { fullName: "asc" },
-      }).catch(() => []),
-      prisma.prosecution.findMany({
-        orderBy: { name: "asc" },
-        select: { id: true, name: true, governorate: true },
-        take: 300,
-      }).catch(() => []),
-      prisma.subCommittee.findMany({
-        where: { active: true },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true },
-      }).catch(() => []),
-      prisma.case.groupBy({
-        by: ["createdById"],
-        _count: { id: true },
-      }).catch(() => []),
-      prisma.case.groupBy({
-        by: ["createdById"],
-        where: { createdAt: { gte: todayStart, lte: todayEnd } },
-        _count: { id: true },
-      }).catch(() => []),
-    ]);
+    // استعلامات متتالية خفيفة وسريعة لتفادي استنزاف موارد المعالج وخنق مسبح الاتصالات
+    const globalTotalCases = await prisma.case.count().catch(() => 0);
+    const myTotalCases = currentUserId
+      ? await prisma.case.count({ where: { createdById: currentUserId } }).catch(() => 0)
+      : 0;
+    const globalTodayCount = await prisma.case.count({
+      where: { createdAt: { gte: todayStart, lte: todayEnd } },
+    }).catch(() => 0);
+    const myTodayCount = currentUserId
+      ? await prisma.case.count({
+          where: { createdById: currentUserId, createdAt: { gte: todayStart, lte: todayEnd } },
+        }).catch(() => 0)
+      : 0;
+
+    const filteredCases = await prisma.case.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        caseNumber: true,
+        caseYear: true,
+        prosecutionCaseNumber: true,
+        registrationType: true,
+        complainantName: true,
+        complainantPhone: true,
+        respondentName: true,
+        respondentPhone: true,
+        entityType: true,
+        entityName: true,
+        hospitalName: true,
+        governorate: true,
+        prosecution: true,
+        prosecutionId: true,
+        description: true,
+        incomingDate: true,
+        attachmentsCount: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        createdById: true,
+        subCommitteeId: true,
+        prosecutionRel: { select: { id: true, name: true, governorate: true } },
+        partialProsecutionRel: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, fullName: true, email: true, role: true } },
+        subCommittee: { select: { id: true, name: true } },
+      },
+      take: 500,
+    }).catch((e) => {
+      console.error("Error fetching filtered cases:", e);
+      return [];
+    });
+
+    const usersList = await prisma.user.findMany({
+      where: {
+        role: { in: ["REGISTRATION_CLERK", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER"] },
+      },
+      select: { id: true, fullName: true, email: true, role: true },
+      orderBy: { fullName: "asc" },
+    }).catch(() => []);
+
+    const dbProsecutions = await prisma.prosecution.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, governorate: true },
+      take: 300,
+    }).catch(() => []);
+
+    const subCommitteesList = await prisma.subCommittee.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }).catch(() => []);
+
+    const totalByUserGroup = await prisma.case.groupBy({
+      by: ["createdById"],
+      _count: { id: true },
+    }).catch(() => []);
+
+    const todayByUserGroup = await prisma.case.groupBy({
+      by: ["createdById"],
+      where: { createdAt: { gte: todayStart, lte: todayEnd } },
+      _count: { id: true },
+    }).catch(() => []);
 
     // خرائط الإحصائيات في الذاكرة لتفادي استهلاك الموارد
     const totalMap = new Map<string, number>();
