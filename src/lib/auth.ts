@@ -14,6 +14,9 @@ if (!process.env.NEXTAUTH_URL) {
 if (!process.env.NEXTAUTH_SECRET) {
   process.env.NEXTAUTH_SECRET = "Pm6UPRT2v4Cy1uVxamD1BXmnZGas+2sWONNe1BR+uy0=";
 }
+if (!process.env.AUTH_TRUST_HOST) {
+  process.env.AUTH_TRUST_HOST = "true";
+}
 
 const SESSION_MAX_AGE_SECONDS = Math.max(
   15 * 60,
@@ -21,6 +24,8 @@ const SESSION_MAX_AGE_SECONDS = Math.max(
 );
 
 export const authOptions: NextAuthOptions = {
+  // @ts-ignore NextAuth v4 trusts Cloudflare edge reverse proxy host header
+  trustHost: true,
   secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt",
