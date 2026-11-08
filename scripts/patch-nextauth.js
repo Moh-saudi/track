@@ -66,27 +66,18 @@ function patchIndex() {
     });
   }`;
 
-  // If already properly patched with explicit status 200
-  if (content.includes("status: 200,\n      headers: resHeaders")) {
-    console.log("[PATCH] next-auth/next/index.js is already properly patched with status 200.");
+  // If already properly patched with mutable resHeaders and status 200
+  if (content.includes("const resHeaders = new Headers(response.headers);") && content.includes("status: 200,")) {
+    console.log("[PATCH] next-auth/next/index.js is already properly patched.");
     return;
   }
 
-  // If patched previously with internalResponse.status
-  if (content.includes("status: internalResponse.status || 200,") || content.includes("status: internalResponse.status,")) {
-    content = content.replace("status: internalResponse.status || 200,", "status: 200,");
-    content = content.replace("status: internalResponse.status,", "status: 200,");
+  // Replace any existing json redirect block with the fixed pattern
+  const blockRegex = /if\s*\(\s*\(body\s*===[\s\S]*?url:\s*redirect\s*\}\)[\s\S]*?\}\);\s*\}/;
+  if (blockRegex.test(content)) {
+    content = content.replace(blockRegex, fixedPattern);
     fs.writeFileSync(targetFile, content, "utf8");
-    console.log("[PATCH] Updated next-auth/next/index.js to enforce status 200 for JSON response.");
-    return;
-  }
-
-  // Regex fallback from unpatched original
-  const regex = /if\s*\(\s*\(body\s*===[\s\S]*?response\.headers\.delete\("Location"\);[\s\S]*?headers:\s*response\.headers\s*\}\);\s*\}/;
-  if (regex.test(content)) {
-    content = content.replace(regex, fixedPattern);
-    fs.writeFileSync(targetFile, content, "utf8");
-    console.log("[PATCH] Successfully patched next-auth/next/index.js via regex.");
+    console.log("[PATCH] Successfully patched next-auth/next/index.js with robust block replacement.");
   } else {
     console.warn("[PATCH WARNING] Could not match target in next-auth/next/index.js");
   }
