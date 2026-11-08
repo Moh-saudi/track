@@ -74,15 +74,17 @@ function createPrismaClient(): PrismaClient {
   }
 }
 
-// استخدام Lazy Proxy يضمن عدم محاولة الاتصال بقاعدة البيانات أثناء الـ Build على السيرفر
+// في Cloudflare Workers، تجميد الـ Isolates بين الطلبات يؤدي إلى موت الـ Sockets مع Supabase إذا تم تخزين العميل عالمياً.
+// لذلك في بيئة الإنتاج السحابية، ننشئ عميلاً جديداً خفيفاً لضمان وجود Socket سليم ونشط دون اتصالات ميتة.
 let cachedClient: PrismaClient | null = null;
 
 function getClient(): PrismaClient {
+  if (process.env.NODE_ENV === "production") {
+    return createPrismaClient();
+  }
   if (!cachedClient) {
     cachedClient = globalForPrisma.prisma ?? createPrismaClient();
-    if (process.env.NODE_ENV !== "production") {
-      globalForPrisma.prisma = cachedClient;
-    }
+    globalForPrisma.prisma = cachedClient;
   }
   return cachedClient;
 }
