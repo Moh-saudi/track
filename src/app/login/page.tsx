@@ -31,11 +31,18 @@ export default function LoginPage() {
 
     startTransition(async () => {
       try {
-        const res = await signIn("credentials", {
-          redirect: false,
-          email: email.trim().toLowerCase(),
-          password,
-        });
+        const timeoutPromise = new Promise<{ error: string }>((_, reject) =>
+          setTimeout(() => reject(new Error("TIMEOUT")), 15000)
+        );
+
+        const res: any = await Promise.race([
+          signIn("credentials", {
+            redirect: false,
+            email: email.trim().toLowerCase(),
+            password,
+          }),
+          timeoutPromise,
+        ]);
 
         if (res?.error) {
           if (res.error.includes("LOCKED_SUBCOMMITTEE")) {
@@ -57,7 +64,11 @@ export default function LoginPage() {
           setError("تعذر إكمال عملية الدخول، يرجى المحاولة مرة أخرى.");
         }
       } catch (err: any) {
-        setError("حدث خطأ في الاتصال، يرجى التحقق من اتصالك والمحاولة مجدداً.");
+        if (err?.message === "TIMEOUT") {
+          setError("استغرقت عملية التحقق وقتاً أطول من المتوقع، يرجى إعادة المحاولة.");
+        } else {
+          setError("حدث خطأ في الاتصال، يرجى التحقق من اتصالك والمحاولة مجدداً.");
+        }
       }
     });
   }

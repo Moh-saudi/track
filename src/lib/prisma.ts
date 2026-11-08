@@ -72,10 +72,33 @@ function createPrismaClient(customConnStr?: string): PrismaClient {
   }
 }
 
-// عميل موحد (Isolate Singleton) لمنع إعادة تشغيل محرك Prisma واستنزاف الذاكرة
+// عميل موحد (Isolate Singleton) مع تفضيل تلقائي لـ Cloudflare Hyperdrive
 let cachedClient: PrismaClient | null = null;
 
 function getClient(): PrismaClient {
+  if (cachedClient && (cachedClient as any).__usesHyperdrive) {
+    return cachedClient;
+  }
+
+  let hyperdriveUrl: string | null = null;
+  try {
+    const { getCloudflareContext } = require("@opennextjs/cloudflare");
+    const ctx = getCloudflareContext();
+    if (ctx?.env?.HYPERDRIVE?.connectionString) {
+      hyperdriveUrl = ctx.env.HYPERDRIVE.connectionString;
+    }
+  } catch {}
+
+  if (hyperdriveUrl) {
+    if (!cachedClient || !(cachedClient as any).__usesHyperdrive) {
+      const client = createPrismaClient(hyperdriveUrl);
+      (client as any).__usesHyperdrive = true;
+      cachedClient = client;
+      globalForPrisma.prisma = client;
+    }
+    return cachedClient;
+  }
+
   if (cachedClient) return cachedClient;
   cachedClient = globalForPrisma.prisma ?? createPrismaClient();
   globalForPrisma.prisma = cachedClient;
