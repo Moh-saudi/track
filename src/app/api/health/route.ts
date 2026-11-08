@@ -35,6 +35,36 @@ export async function GET() {
     dbError = err?.message || "تعذر الاتصال بقاعدة البيانات";
   }
 
+  // فحص وإلغاء أي قفل معلق على جدول المستخدمين (Locks Cleanup)
+  let locksCleanup: any = null;
+  try {
+    const blockingProcesses: any = await prisma.$queryRawUnsafe(`
+      SELECT pid, state, query, wait_event_type, wait_event, (now() - query_start) as duration
+      FROM pg_stat_activity
+      WHERE state <> 'idle'
+        AND pid <> pg_backend_pid()
+        AND (query ILIKE '%User%' OR query ILIKE '%ALTER TABLE%' OR query ILIKE '%LoginThrottle%')
+    `);
+
+    let terminatedCount = 0;
+    if (Array.isArray(blockingProcesses) && blockingProcesses.length > 0) {
+      for (const proc of blockingProcesses) {
+        if (proc.pid) {
+          await prisma.$executeRawUnsafe(`SELECT pg_terminate_backend(${proc.pid})`).catch(() => {});
+          terminatedCount++;
+        }
+      }
+    }
+
+    locksCleanup = {
+      found: blockingProcesses?.length || 0,
+      terminatedCount,
+      details: blockingProcesses,
+    };
+  } catch (lockErr: any) {
+    locksCleanup = { error: lockErr?.message };
+  }
+
   // اختبار جلب المستخدم المشرف للتأكد من دالة تسجيل الدخول
   let adminCheck: any = null;
   try {
@@ -65,6 +95,7 @@ export async function GET() {
         error: dbError,
       },
       debugInfo,
+      locksCleanup,
       adminCheck,
       environment: process.env.NODE_ENV || "production",
       version: "0.1.0",
