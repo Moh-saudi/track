@@ -71,6 +71,7 @@ export async function GET() {
     const cases = await prisma.case.findMany({
       where,
       orderBy: { createdAt: "desc" },
+      take: 200,
       include: {
         subCommittee: true,
         prosecutionRel: true,
