@@ -72,69 +72,42 @@ function createPrismaClient(customConnStr?: string): PrismaClient {
   }
 }
 
-// في بيئة Cloudflare Workers يتم ربط العميل بسياق الطلب (Request Context) لتجنب تجمد المقابس (Frozen Sockets) عبر الطلبات
-let cachedClient: PrismaClient | null = null;
+// استخدام WeakMap لربط عميل Prisma بسياق طلب Cloudflare دون تعديل كائن البيئة المجمد (Frozen Context)
+const contextClientMap = new WeakMap<object, PrismaClient>();
+let fallbackClient: PrismaClient | null = null;
 
 function getClient(): PrismaClient {
   try {
     const { getCloudflareContext } = require("@opennextjs/cloudflare");
-    const ctx = getCloudflareContext();
-    if (ctx) {
-      if (!(ctx as any).__prisma) {
-        const url = ctx.env?.HYPERDRIVE?.connectionString || ctx.env?.DATABASE_URL;
-        (ctx as any).__prisma = createPrismaClient(url);
+    const cfContext = getCloudflareContext();
+    if (cfContext) {
+      const key = (cfContext.ctx || cfContext.env || cfContext) as object;
+      if (key && typeof key === "object") {
+        let client = contextClientMap.get(key);
+        if (!client) {
+          const url =
+            cfContext.env?.HYPERDRIVE?.connectionString ||
+            cfContext.env?.DATABASE_URL;
+          client = createPrismaClient(url);
+          contextClientMap.set(key, client);
+        }
+        return client;
       }
-      return (ctx as any).__prisma;
     }
   } catch {
-    // خارج سياق الطلب في بيئة Node أو أثناء البناء
+    // خارج سياق الطلب (أثناء البناء أو في بيئة Node)
   }
 
-  if (!cachedClient) {
-    cachedClient = globalForPrisma.prisma ?? createPrismaClient();
-    globalForPrisma.prisma = cachedClient;
+  if (!fallbackClient) {
+    fallbackClient = globalForPrisma.prisma ?? createPrismaClient();
+    globalForPrisma.prisma = fallbackClient;
   }
-  return cachedClient;
+  return fallbackClient;
 }
 
 export const prisma = new Proxy({} as PrismaClient, {
   get(_target, prop) {
     const client = getClient();
-    const value = (client as any)[prop];
-    if (typeof value === "function") {
-      return (...args: any[]) => {
-        try {
-          const result = value.apply(client, args);
-          if (result && typeof result.catch === "function") {
-            return result.catch((err: any) => {
-              if (
-                err?.message?.includes("Connection terminated") ||
-                err?.message?.includes("closed") ||
-                err?.message?.includes("socket") ||
-                err?.message?.includes("timeout")
-              ) {
-                console.warn("[PRISMA RESET] Resetting cached client due to connection/timeout error:", err?.message);
-                cachedClient = null;
-                globalForPrisma.prisma = undefined;
-              }
-              throw err;
-            });
-          }
-          return result;
-        } catch (err: any) {
-          if (
-            err?.message?.includes("Connection terminated") ||
-            err?.message?.includes("closed") ||
-            err?.message?.includes("socket") ||
-            err?.message?.includes("timeout")
-          ) {
-            cachedClient = null;
-            globalForPrisma.prisma = undefined;
-          }
-          throw err;
-        }
-      };
-    }
-    return value;
+    return (client as any)[prop];
   },
 });
