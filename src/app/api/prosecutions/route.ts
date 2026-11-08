@@ -40,108 +40,13 @@ export async function GET(req: NextRequest) {
       where.type = type;
     }
 
-    let prosecutions = await prisma.prosecution.findMany({
+    const prosecutions = await prisma.prosecution.findMany({
       where,
       orderBy: [{ governorate: "asc" }, { name: "asc" }],
       include: {
         parent: { select: { id: true, name: true } },
       },
     });
-
-    // التحقق مما إذا كانت النيابات بحاجة لتحديث وربط التبعية الهرمية
-    const districtCount = prosecutions.filter((p) => p.type === "DISTRICT" || p.parentId).length;
-    const adminCount = prosecutions.filter((p) => p.type === "ADMINISTRATIVE").length;
-    if (prosecutions.length < 80 || districtCount < 20 || adminCount < 3) {
-      try {
-        const plenaryMap: Record<string, string> = {};
-
-        // 1. إنشاء وتحديث النيابات الكلية
-        for (const item of OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "PLENARY")) {
-          const existing = await prisma.prosecution.findUnique({ where: { name: item.name } }).catch(() => null);
-          if (existing) {
-            plenaryMap[item.name] = existing.id;
-            if (!existing.governorate || existing.type !== "PLENARY") {
-              await prisma.prosecution.update({
-                where: { id: existing.id },
-                data: { governorate: item.governorate, type: "PLENARY", active: true },
-              }).catch(() => null);
-            }
-          } else {
-            const created = await prisma.prosecution.create({
-              data: { name: item.name, governorate: item.governorate, type: "PLENARY", active: true },
-            }).catch(() => null);
-            if (created) plenaryMap[item.name] = created.id;
-          }
-        }
-
-        // 2. إنشاء وتحديث النيابات الإدارية
-        for (const item of OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "ADMINISTRATIVE")) {
-          const parentId = item.parentName ? plenaryMap[item.parentName] || null : null;
-          const existing = await prisma.prosecution.findUnique({ where: { name: item.name } }).catch(() => null);
-          if (existing) {
-            plenaryMap[item.name] = existing.id;
-            if (!existing.governorate || existing.type !== "ADMINISTRATIVE") {
-              await prisma.prosecution.update({
-                where: { id: existing.id },
-                data: {
-                  governorate: item.governorate,
-                  type: "ADMINISTRATIVE",
-                  parentId: parentId || existing.parentId,
-                  active: true,
-                },
-              }).catch(() => null);
-            }
-          } else {
-            const created = await prisma.prosecution.create({
-              data: {
-                name: item.name,
-                governorate: item.governorate,
-                type: "ADMINISTRATIVE",
-                parentId,
-                active: true,
-              },
-            }).catch(() => null);
-            if (created) plenaryMap[item.name] = created.id;
-          }
-        }
-
-        // 3. إنشاء وتحديث النيابات الجزئية وربطها بالنيابة الكلية التابعة لها
-        for (const item of OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "DISTRICT")) {
-          const parentId = item.parentName ? plenaryMap[item.parentName] || null : null;
-          const existing = await prisma.prosecution.findUnique({ where: { name: item.name } }).catch(() => null);
-          if (existing) {
-            await prisma.prosecution.update({
-              where: { id: existing.id },
-              data: {
-                governorate: item.governorate,
-                type: "DISTRICT",
-                parentId: parentId || existing.parentId,
-                active: true,
-              },
-            }).catch(() => null);
-          } else {
-            await prisma.prosecution.create({
-              data: {
-                name: item.name,
-                governorate: item.governorate,
-                type: "DISTRICT",
-                parentId,
-                active: true,
-              },
-            }).catch(() => null);
-          }
-        }
-
-        await prisma.prosecution.updateMany({ data: { active: true } }).catch(() => {});
-        prosecutions = await prisma.prosecution.findMany({
-          where: all ? {} : { active: true },
-          orderBy: [{ governorate: "asc" }, { name: "asc" }],
-          include: { parent: { select: { id: true, name: true } } },
-        });
-      } catch (innerErr) {
-        console.warn("Auto-seed prosecutions error:", innerErr);
-      }
-    }
 
     if (prosecutions.length > 0) {
       return NextResponse.json(prosecutions);
@@ -169,8 +74,6 @@ export async function GET(req: NextRequest) {
       ? { id: parentMapByName[item.parentName] || "", name: item.parentName }
       : null,
   }));
-
-  return NextResponse.json(fallback);
 
   return NextResponse.json(fallback);
 }
