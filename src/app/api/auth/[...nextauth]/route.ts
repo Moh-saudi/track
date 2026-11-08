@@ -11,9 +11,6 @@ if (!process.env.AUTH_TRUST_HOST) {
   process.env.AUTH_TRUST_HOST = "true";
 }
 
-async function authHandler(req: any, ctx: any) {
-  const resolvedParams = ctx?.params ? await ctx.params : undefined;
-  return NextAuth(req, { ...ctx, params: resolvedParams }, authOptions);
-}
+const handler = NextAuth(authOptions);
 
-export { authHandler as GET, authHandler as POST };
+export { handler as GET, handler as POST };
