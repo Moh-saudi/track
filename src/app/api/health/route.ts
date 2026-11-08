@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -36,24 +37,36 @@ export async function GET() {
       dbError = err?.message || "تعذر الاتصال بقاعدة البيانات";
     }
 
-    // اختبار جلب المستخدم المشرف للتأكد من جاهزية المصادقة
-    let adminCheck: any = null;
+    // اختبار جلب المستخدم المشرف واختبار المصادقة فعلياً
+    let authCheck: any = null;
     try {
-      const tAdmin = Date.now();
-      const admin = await prisma.user.findFirst({
-        where: { email: { equals: "admin@example.local", mode: "insensitive" } },
-        select: { id: true, email: true, active: true },
-      });
-      adminCheck = {
-        found: !!admin,
-        active: admin?.active,
-        durationMs: Date.now() - tAdmin,
+      const tAuth = Date.now();
+      const credentialsProvider = authOptions.providers.find(
+        (p: any) => p.id === "credentials" || p.name === "credentials"
+      ) as any;
+
+      if (credentialsProvider?.authorize) {
+        const authorizedUser = await credentialsProvider.authorize({
+          email: "admin@example.local",
+          password: "ChangeMe123!",
+        });
+        authCheck = {
+          success: !!authorizedUser,
+          userId: authorizedUser?.id,
+          role: authorizedUser?.role,
+          durationMs: Date.now() - tAuth,
+        };
+      } else {
+        authCheck = { error: "No authorize function on provider" };
+      }
+    } catch (authErr: any) {
+      authCheck = {
+        error: authErr?.message,
+        stack: authErr?.stack,
       };
-    } catch (adminErr: any) {
-      adminCheck = { error: adminErr?.message };
     }
 
-    const isHealthy = dbStatus === "connected" && adminCheck?.found === true;
+    const isHealthy = dbStatus === "connected" && authCheck?.success === true;
 
     return NextResponse.json(
       {
@@ -65,7 +78,7 @@ export async function GET() {
           error: dbError,
         },
         hyperdrive: debugInfo.hasHyperdriveConn,
-        authReady: adminCheck?.found,
+        auth: authCheck,
         environment: process.env.NODE_ENV || "production",
         version: "0.1.0",
       },
