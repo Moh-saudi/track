@@ -37,9 +37,13 @@ export default async function ProfileAccountPage() {
   const userId = (session.user as any).id;
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: {
-      subCommittee: true,
-      specialty: true,
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      employer: true,
+      subCommittee: { select: { id: true, name: true } },
     },
   });
 

@@ -26,15 +26,8 @@ export async function GET() {
       debugInfo = { error: e.message };
     }
 
-    let userTest: any = null;
     try {
       await prisma.$queryRaw`SELECT 1`;
-      const t0 = Date.now();
-      const u = await prisma.user.findUnique({
-        where: { id: "cmtt6giaj002t68bdvsu2ra64" },
-        select: { id: true, email: true, fullName: true },
-      });
-      userTest = { tUserMs: Date.now() - t0, found: !!u, email: u?.email };
       latencyMs = Date.now() - startTime;
       dbStatus = "connected";
     } catch (err: any) {
@@ -53,7 +46,6 @@ export async function GET() {
           status: dbStatus,
           latencyMs: `${latencyMs}ms`,
           error: dbError,
-          userTest,
         },
         hyperdrive: debugInfo.hasHyperdriveConn,
         environment: process.env.NODE_ENV || "production",

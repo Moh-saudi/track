@@ -46,7 +46,27 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
     try {
       caseRecord = await prisma.case.findUnique({
         where: { id: id },
-        include: {
+        select: {
+          id: true,
+          caseNumber: true,
+          caseYear: true,
+          prosecutionCaseNumber: true,
+          registrationType: true,
+          complainantName: true,
+          respondentName: true,
+          entityType: true,
+          entityName: true,
+          hospitalName: true,
+          governorate: true,
+          prosecution: true,
+          description: true,
+          incomingDate: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          createdById: true,
+          subCommitteeId: true,
+          meetingDate: true,
           subCommittee: { select: { id: true, name: true, code: true } },
           specialties: {
             select: {
@@ -55,7 +75,6 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
             },
           },
           createdBy: { select: { id: true, fullName: true, email: true, role: true } },
-          followUpOfficer: { select: { id: true, fullName: true } },
           attachments: {
             select: {
               id: true,
@@ -65,6 +84,7 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
               uploadedBy: { select: { fullName: true } },
             },
             orderBy: { uploadedAt: "desc" },
+            take: 20,
           },
         },
       });
