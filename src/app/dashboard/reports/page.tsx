@@ -36,7 +36,7 @@ export default async function UnifiedReportsPage() {
     const res = await Promise.all([
       prisma.case.findMany({
         orderBy: { createdAt: "desc" },
-        take: 100,
+        take: 3000,
         include: {
           subCommittee: { select: { id: true, name: true } },
           specialties: { select: { id: true, specialty: { select: { id: true, name: true } } } },

@@ -34,7 +34,7 @@ export default async function SupremeCasesPage() {
         },
       },
       orderBy: { updatedAt: "desc" },
-      take: 100,
+      take: 3000,
       include: {
         subCommittee: { select: { id: true, name: true } },
         specialties: {

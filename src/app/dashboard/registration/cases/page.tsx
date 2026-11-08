@@ -20,6 +20,8 @@ export default async function RegistrationCasesPage() {
   }
 
   const currentUserId = (session.user as any)?.id;
+  const userRole = (session?.user as any)?.role;
+  const canSeeAll = ["ADMIN", "FOLLOW_UP_OFFICER", "SUPREME_SUPERVISOR", "REGISTRATION_CLERK"].includes(userRole);
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -32,9 +34,8 @@ export default async function RegistrationCasesPage() {
   ] = await Promise.all([
     (async () => {
       try {
-        if (!currentUserId) return [];
         return await prisma.case.findMany({
-          where: { createdById: currentUserId },
+          where: canSeeAll ? {} : { createdById: currentUserId },
           orderBy: { createdAt: "desc" },
           select: {
             id: true,
@@ -57,7 +58,7 @@ export default async function RegistrationCasesPage() {
             subCommittee: { select: { id: true, name: true } },
             createdBy: { select: { id: true, fullName: true } },
           },
-          take: 50,
+          take: 3000,
         });
       } catch {
         return [];

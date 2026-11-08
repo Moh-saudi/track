@@ -21,6 +21,8 @@ export default async function RegistrationDashboard() {
     }
 
     const currentUserId = (session.user as any)?.id;
+    const userRole = (session?.user as any)?.role;
+    const canSeeAll = ["ADMIN", "FOLLOW_UP_OFFICER", "SUPREME_SUPERVISOR", "REGISTRATION_CLERK"].includes(userRole);
 
     // حساب بداية اليوم للتسجيلات
     const todayStart = new Date();
@@ -28,33 +30,31 @@ export default async function RegistrationDashboard() {
 
     let cases: any[] = [];
     try {
-      if (currentUserId) {
-        cases = await prisma.case.findMany({
-          where: { createdById: currentUserId },
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            caseNumber: true,
-            caseYear: true,
-            registrationType: true,
-            status: true,
-            createdAt: true,
-            updatedAt: true,
-            incomingDate: true,
-            prosecution: true,
-            prosecutionCaseNumber: true,
-            complainantName: true,
-            respondentName: true,
-            entityName: true,
-            hospitalName: true,
-            createdById: true,
-            subCommittee: { select: { id: true, name: true } },
-            specialties: { select: { specialty: { select: { id: true, name: true } } } },
-            createdBy: { select: { id: true, fullName: true } },
-          },
-          take: 100,
-        });
-      }
+      cases = await prisma.case.findMany({
+        where: canSeeAll ? {} : { createdById: currentUserId },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          caseNumber: true,
+          caseYear: true,
+          registrationType: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          incomingDate: true,
+          prosecution: true,
+          prosecutionCaseNumber: true,
+          complainantName: true,
+          respondentName: true,
+          entityName: true,
+          hospitalName: true,
+          createdById: true,
+          subCommittee: { select: { id: true, name: true } },
+          specialties: { select: { specialty: { select: { id: true, name: true } } } },
+          createdBy: { select: { id: true, fullName: true } },
+        },
+        take: 3000,
+      });
     } catch {
       cases = [];
     }

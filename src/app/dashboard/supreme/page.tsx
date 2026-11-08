@@ -83,7 +83,7 @@ export default async function SupremeDashboard({ searchParams }: SupremeDashboar
       prisma.case.findMany({
         where: whereClause,
         orderBy: { updatedAt: "desc" },
-        take: 80,
+        take: 3000,
         include: {
           subCommittee: { select: { id: true, name: true, code: true } },
           prosecutionRel: { select: { id: true, name: true } },
