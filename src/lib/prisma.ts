@@ -49,8 +49,8 @@ function createPrismaClient(customConnStr?: string): PrismaClient {
   try {
     const pool = new Pool({
       connectionString,
-      max: 1,
-      idleTimeoutMillis: 1000,
+      max: 10,
+      idleTimeoutMillis: 15000,
       connectionTimeoutMillis: 5000,
       ssl: false,
     });
