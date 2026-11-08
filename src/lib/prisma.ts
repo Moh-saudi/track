@@ -9,20 +9,21 @@ const SUPABASE_FALLBACK_URL =
   "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require";
 
 function getConnectionString(): string {
-  let url = "";
-  if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== "") {
-    url = process.env.DATABASE_URL.trim();
-  } else {
-    try {
-      const { getCloudflareContext } = require("@opennextjs/cloudflare");
-      const ctx = getCloudflareContext();
-      if (ctx?.env?.DATABASE_URL) {
-        url = ctx.env.DATABASE_URL.trim();
-      }
-    } catch {
-      // getCloudflareContext is only available inside Cloudflare Workers request context
+  try {
+    const { getCloudflareContext } = require("@opennextjs/cloudflare");
+    const ctx = getCloudflareContext();
+    if (ctx?.env?.HYPERDRIVE?.connectionString) {
+      console.log("[PRISMA] Using Cloudflare Hyperdrive connection string");
+      return ctx.env.HYPERDRIVE.connectionString;
     }
+    if (ctx?.env?.DATABASE_URL) {
+      return ctx.env.DATABASE_URL.trim();
+    }
+  } catch {
+    // getCloudflareContext is only available inside Cloudflare Workers request context
   }
+
+  let url = process.env.DATABASE_URL ? process.env.DATABASE_URL.trim() : "";
 
   if (!url) {
     url = SUPABASE_FALLBACK_URL;
@@ -44,17 +45,18 @@ function getConnectionString(): string {
 
 function createPrismaClient(): PrismaClient {
   const connectionString = getConnectionString();
-  const isLocal =
-    connectionString.includes("localhost") || connectionString.includes("127.0.0.1");
+  const isHyperdriveOrLocal =
+    connectionString.includes("localhost") ||
+    connectionString.includes("127.0.0.1") ||
+    connectionString.includes("hyperdrive");
 
   try {
     const pool = new Pool({
       connectionString,
-      max: 1,
-      maxUses: 1,
-      idleTimeoutMillis: 1000,
+      max: isHyperdriveOrLocal ? 5 : 1,
+      idleTimeoutMillis: isHyperdriveOrLocal ? 30000 : 3000,
       connectionTimeoutMillis: 10000,
-      ssl: isLocal ? false : { rejectUnauthorized: false },
+      ssl: isHyperdriveOrLocal ? false : { rejectUnauthorized: false },
     });
 
     pool.on("error", (err) => {
@@ -79,6 +81,16 @@ function createPrismaClient(): PrismaClient {
 let cachedClient: PrismaClient | null = null;
 
 function getClient(): PrismaClient {
+  const url = getConnectionString();
+  const isHyperdrive = url.includes("hyperdrive") || url.includes("127.0.0.1");
+
+  if (isHyperdrive) {
+    if (!cachedClient) {
+      cachedClient = createPrismaClient();
+    }
+    return cachedClient;
+  }
+
   if (process.env.NODE_ENV === "production") {
     return createPrismaClient();
   }

@@ -5,65 +5,38 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET() {
-  const connectionString =
-    process.env.DATABASE_URL ||
-    "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require";
+  let hyperdriveUrl = "";
+  try {
+    const { getCloudflareContext } = require("@opennextjs/cloudflare");
+    const ctx = getCloudflareContext();
+    if (ctx?.env?.HYPERDRIVE?.connectionString) {
+      hyperdriveUrl = ctx.env.HYPERDRIVE.connectionString;
+    }
+  } catch {}
 
   const diagnostics: any = {
-    hasEnv: !!process.env.DATABASE_URL,
-    urlRedacted: connectionString.replace(/:[^:@]+@/, ":***@"),
+    hasHyperdrive: !!hyperdriveUrl,
     timestamp: new Date().toISOString(),
   };
 
-  const tests: any[] = [
-    {
-      name: "pooler_6543_ssl_true",
-      url: "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true",
-      ssl: true,
-    },
-    {
-      name: "pooler_6543_ssl_false",
-      url: "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true",
-      ssl: false,
-    },
-    {
-      name: "direct_5432_ssl_true",
-      url: "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:5432/postgres",
-      ssl: true,
-    },
-  ];
-
-  const results: any[] = [];
-
-  for (const t of tests) {
-    const client = new Client({
-      connectionString: t.url,
-      ssl: t.ssl,
-      connectionTimeoutMillis: 5000,
-    });
-
+  if (hyperdriveUrl) {
     try {
+      const client = new Client({ connectionString: hyperdriveUrl });
       await client.connect();
-      const res = await client.query('SELECT 1 as connected;');
-      results.push({ name: t.name, status: "SUCCESS", rows: res.rows });
+      const res = await client.query('SELECT 1 as connected, NOW() as server_time;');
+      diagnostics.hyperdrive = { status: "SUCCESS", rows: res.rows };
       await client.end();
-      break; // Stop on first success!
+      return NextResponse.json(diagnostics, { status: 200 });
     } catch (err: any) {
-      results.push({
-        name: t.name,
+      diagnostics.hyperdrive = {
         status: "ERROR",
         message: err?.message,
         code: err?.code,
-      });
-      try {
-        await client.end();
-      } catch {}
+      };
     }
   }
 
-  diagnostics.results = results;
-
   return NextResponse.json(diagnostics, {
-    status: results.some((r) => r.status === "SUCCESS") ? 200 : 500,
+    status: diagnostics.hyperdrive?.status === "SUCCESS" ? 200 : 500,
   });
 }
