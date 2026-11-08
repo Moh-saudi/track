@@ -27,9 +27,19 @@ export async function GET() {
     }
 
     try {
-      await prisma.$queryRaw`SELECT 1`;
+      const testCase = await prisma.case.findUnique({
+        where: { id: "cmvf7bcwe000zasa0129mk117" },
+        select: {
+          id: true,
+          caseNumber: true,
+          caseYear: true,
+          subCommittee: { select: { id: true, name: true, code: true } },
+          createdBy: { select: { id: true, fullName: true, email: true, role: true } },
+        },
+      });
       latencyMs = Date.now() - startTime;
       dbStatus = "connected";
+      debugInfo.testCase = testCase;
     } catch (err: any) {
       latencyMs = Date.now() - startTime;
       dbStatus = "disconnected";
@@ -47,6 +57,7 @@ export async function GET() {
           latencyMs: `${latencyMs}ms`,
           error: dbError,
         },
+        debug: debugInfo,
         hyperdrive: debugInfo.hasHyperdriveConn,
         environment: process.env.NODE_ENV || "production",
         version: "0.1.0",
