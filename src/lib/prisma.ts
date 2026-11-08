@@ -22,7 +22,9 @@ function getConnectionString(): string {
     // getCloudflareContext is only available inside Cloudflare Workers request context
   }
 
-  let url = process.env.DATABASE_URL ? process.env.DATABASE_URL.trim() : "";
+  let url = process.env.DATABASE_URL
+    ? process.env.DATABASE_URL.trim().replace(/^["']|["']$/g, "")
+    : "";
 
   if (!url) {
     url = SUPABASE_FALLBACK_URL;
