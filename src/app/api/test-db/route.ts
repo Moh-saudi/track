@@ -15,33 +15,55 @@ export async function GET() {
     timestamp: new Date().toISOString(),
   };
 
-  const client = new Client({
-    connectionString,
-    ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 8000,
-  });
+  const tests: any[] = [
+    {
+      name: "pooler_6543_ssl_true",
+      url: "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true",
+      ssl: true,
+    },
+    {
+      name: "pooler_6543_ssl_false",
+      url: "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true",
+      ssl: false,
+    },
+    {
+      name: "direct_5432_ssl_true",
+      url: "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:5432/postgres",
+      ssl: true,
+    },
+  ];
 
-  try {
-    await client.connect();
-    diagnostics.clientConnect = "OK";
+  const results: any[] = [];
 
-    const res = await client.query('SELECT email, "fullName", role, active FROM "User" LIMIT 3;');
-    diagnostics.users = res.rows;
-    diagnostics.status = "SUCCESS";
+  for (const t of tests) {
+    const client = new Client({
+      connectionString: t.url,
+      ssl: t.ssl,
+      connectionTimeoutMillis: 5000,
+    });
 
-    await client.end();
-  } catch (err: any) {
-    diagnostics.status = "CLIENT_ERROR";
-    diagnostics.errorMessage = err?.message;
-    diagnostics.errorCode = err?.code;
-    diagnostics.errorStack = err?.stack;
-    diagnostics.errorDetails = String(err);
     try {
+      await client.connect();
+      const res = await client.query('SELECT 1 as connected;');
+      results.push({ name: t.name, status: "SUCCESS", rows: res.rows });
       await client.end();
-    } catch {}
+      break; // Stop on first success!
+    } catch (err: any) {
+      results.push({
+        name: t.name,
+        status: "ERROR",
+        message: err?.message,
+        code: err?.code,
+      });
+      try {
+        await client.end();
+      } catch {}
+    }
   }
 
+  diagnostics.results = results;
+
   return NextResponse.json(diagnostics, {
-    status: diagnostics.status === "SUCCESS" ? 200 : 500,
+    status: results.some((r) => r.status === "SUCCESS") ? 200 : 500,
   });
 }
