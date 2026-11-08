@@ -65,6 +65,11 @@ function createPrismaClient(connStr?: string): PrismaClient {
 // عميل Prisma موحد على مستوى Isolate (Singleton) مع تفضيل فوري لـ Cloudflare Hyperdrive
 let cachedClient: PrismaClient | null = null;
 
+export function resetPrismaClient() {
+  cachedClient = null;
+  globalForPrisma.prisma = undefined;
+}
+
 function getClient(): PrismaClient {
   let hyperdriveUrl: string | null = null;
   try {

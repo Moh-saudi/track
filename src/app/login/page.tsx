@@ -52,6 +52,8 @@ export default function LoginPage() {
           );
         } else if (res.error.includes("LOGIN_TEMPORARILY_BLOCKED")) {
           setError("تم قفل تسجيل الدخول مؤقتاً لتكرار المحاولات الخاطئة. يرجى الانتظار بضع دقائق والمحاولة مجدداً.");
+        } else if (res.error.includes("DATABASE_CONNECTION_ERROR")) {
+          setError("تعذر الاتصال بقاعدة البيانات حالياً، يرجى إعادة المحاولة بعد لحظات.");
         } else {
           setError("بيانات الدخول غير صحيحة — يرجى التحقق من البريد الإلكتروني وكلمة المرور");
         }

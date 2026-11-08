@@ -1,7 +1,7 @@
 import { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+import { prisma, resetPrismaClient } from "@/lib/prisma";
 import {
   assertLoginAllowed,
   clearLoginFailures,
@@ -48,8 +48,8 @@ export const authOptions: NextAuthOptions = {
         const inputEmail = credentials.email.trim().toLowerCase();
 
         let user;
-        try {
-          user = await prisma.user.findFirst({
+        const getUserQuery = () =>
+          prisma.user.findFirst({
             where: {
               email: { equals: inputEmail, mode: "insensitive" },
             },
@@ -75,9 +75,19 @@ export const authOptions: NextAuthOptions = {
               },
             },
           });
+
+        try {
+          user = await getUserQuery();
         } catch (dbErr: any) {
-          console.error("[AUTH] Database error during login for:", inputEmail, dbErr);
-          throw new Error("DATABASE_CONNECTION_ERROR");
+          console.warn("[AUTH] First login DB attempt failed, resetting pool and retrying...", dbErr?.message);
+          resetPrismaClient();
+          try {
+            await new Promise((r) => setTimeout(r, 150));
+            user = await getUserQuery();
+          } catch (retryErr: any) {
+            console.error("[AUTH] Database retry error during login for:", inputEmail, retryErr);
+            throw new Error("DATABASE_CONNECTION_ERROR");
+          }
         }
 
         if (!user || !user.active) {
