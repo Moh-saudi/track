@@ -10,15 +10,16 @@ export const revalidate = 0;
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ tab?: string }> ;
+  searchParams?: Promise<{ tab?: string }>;
 }) {
-  const resolvedSearchParams = await searchParams;
-  const session = await getServerSession(authOptions);
-  const role = (session?.user as any)?.role;
+  try {
+    const resolvedSearchParams = await searchParams;
+    const session = await getServerSession(authOptions);
+    const role = (session?.user as any)?.role;
 
-  if (!session?.user || (role !== "ADMIN" && role !== "RISK_OFFICER")) {
-    redirect("/dashboard");
-  }
+    if (!session?.user || (role !== "ADMIN" && role !== "RISK_OFFICER")) {
+      redirect("/dashboard");
+    }
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -224,4 +225,14 @@ export default async function AdminDashboardPage({
       initialTab={resolvedSearchParams?.tab === "users" ? "users" : "overview"}
     />
   );
+  } catch (err: any) {
+    if (err?.digest?.startsWith("NEXT_REDIRECT")) throw err;
+    console.error("[ADMIN_DASHBOARD_ERROR]:", err);
+    return (
+      <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-900 m-6">
+        <h2 className="text-base font-bold font-heading mb-2">تعذر تحميل بيانات لوحة التحكم الإدارية</h2>
+        <p className="text-xs text-rose-700 font-mono">{err?.message}</p>
+      </div>
+    );
+  }
 }

@@ -34,56 +34,57 @@ interface Props {
 }
 
 export default async function RegistrationCaseDetailsPage({ params }: Props) {
-  const { id } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  let caseRecord: any = null;
-  let caseAuditLogs: any[] = [];
   try {
-    caseRecord = await prisma.case.findUnique({
-      where: { id: id },
-      include: {
-        subCommittee: { select: { id: true, name: true, code: true } },
-        specialties: {
-          select: {
-            id: true,
-            specialty: { select: { id: true, name: true } },
-          },
-        },
-        createdBy: { select: { id: true, fullName: true, email: true, role: true } },
-        followUpOfficer: { select: { id: true, fullName: true } },
-        attachments: {
-          select: {
-            id: true,
-            fileName: true,
-            fileSize: true,
-            uploadedAt: true,
-            uploadedBy: { select: { fullName: true } },
-          },
-          orderBy: { uploadedAt: "desc" },
-        },
-      },
-    });
-
-    if (caseRecord) {
-      caseAuditLogs = await prisma.auditLog.findMany({
-        where: { entityType: "Case", entityId: id },
-        select: {
-          id: true,
-          action: true,
-          createdAt: true,
-          user: { select: { fullName: true } },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 10,
-      });
+    const { id } = await params;
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      redirect("/login");
     }
-  } catch (err) {
-    console.error("Error fetching case details:", err);
-  }
+
+    let caseRecord: any = null;
+    let caseAuditLogs: any[] = [];
+    try {
+      caseRecord = await prisma.case.findUnique({
+        where: { id: id },
+        include: {
+          subCommittee: { select: { id: true, name: true, code: true } },
+          specialties: {
+            select: {
+              id: true,
+              specialty: { select: { id: true, name: true } },
+            },
+          },
+          createdBy: { select: { id: true, fullName: true, email: true, role: true } },
+          followUpOfficer: { select: { id: true, fullName: true } },
+          attachments: {
+            select: {
+              id: true,
+              fileName: true,
+              fileSize: true,
+              uploadedAt: true,
+              uploadedBy: { select: { fullName: true } },
+            },
+            orderBy: { uploadedAt: "desc" },
+          },
+        },
+      });
+
+      if (caseRecord) {
+        caseAuditLogs = await prisma.auditLog.findMany({
+          where: { entityType: "Case", entityId: id },
+          select: {
+            id: true,
+            action: true,
+            createdAt: true,
+            user: { select: { fullName: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching case details:", err);
+    }
 
   if (!caseRecord) {
     notFound();
@@ -533,4 +534,22 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
       </div>
     </div>
   );
+  } catch (err: any) {
+    if (err?.digest?.startsWith("NEXT_REDIRECT") || err?.digest?.startsWith("NEXT_NOT_FOUND")) {
+      throw err;
+    }
+    console.error("[REGISTRATION_CASE_DETAILS_ERROR]:", err);
+    return (
+      <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-900 m-6 font-body" dir="rtl">
+        <h2 className="text-base font-bold font-heading mb-2">تعذر تحميل بيانات السجل</h2>
+        <p className="text-xs text-rose-700 font-mono mb-4">{err?.message}</p>
+        <Link
+          href="/dashboard/registration"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold font-heading transition-colors"
+        >
+          <span>العودة لقائمة السجلات</span>
+        </Link>
+      </div>
+    );
+  }
 }
