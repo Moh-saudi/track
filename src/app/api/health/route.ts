@@ -41,24 +41,30 @@ export async function GET() {
     let authCheck: any = null;
     try {
       const tAuth = Date.now();
-      const credentialsProvider = authOptions.providers.find(
-        (p: any) => p.id === "credentials" || p.name === "credentials"
-      ) as any;
+      const inputEmail = "admin@example.local";
+      const user = await prisma.user.findFirst({
+        where: { email: { equals: inputEmail, mode: "insensitive" } },
+        select: {
+          id: true,
+          email: true,
+          active: true,
+          passwordHash: true,
+          role: true,
+        },
+      });
 
-      if (credentialsProvider?.authorize) {
-        const authorizedUser = await credentialsProvider.authorize({
-          email: "admin@example.local",
-          password: "ChangeMe123!",
-        });
-        authCheck = {
-          success: !!authorizedUser,
-          userId: authorizedUser?.id,
-          role: authorizedUser?.role,
-          durationMs: Date.now() - tAuth,
-        };
-      } else {
-        authCheck = { error: "No authorize function on provider" };
-      }
+      const bcrypt = require("bcryptjs");
+      const isPasswordMatch = user ? await bcrypt.compare("ChangeMe123!", user.passwordHash) : false;
+
+      authCheck = {
+        userFound: !!user,
+        userActive: user?.active,
+        hasHash: !!user?.passwordHash,
+        hashPrefix: user?.passwordHash ? user.passwordHash.substring(0, 7) : null,
+        passwordMatches: isPasswordMatch,
+        role: user?.role,
+        durationMs: Date.now() - tAuth,
+      };
     } catch (authErr: any) {
       authCheck = {
         error: authErr?.message,
@@ -66,7 +72,7 @@ export async function GET() {
       };
     }
 
-    const isHealthy = dbStatus === "connected" && authCheck?.success === true;
+    const isHealthy = dbStatus === "connected" && authCheck?.passwordMatches === true;
 
     return NextResponse.json(
       {
