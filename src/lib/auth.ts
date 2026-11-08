@@ -46,12 +46,6 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         const inputEmail = credentials.email.trim().toLowerCase();
-        try {
-          await assertLoginAllowed(inputEmail);
-        } catch (throttleErr: any) {
-          console.warn("[AUTH] Throttle blocked login for:", inputEmail, throttleErr?.message);
-          throw new Error("LOGIN_TEMPORARILY_BLOCKED");
-        }
 
         let user;
         try {
@@ -87,13 +81,11 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (!user || !user.active) {
-          await recordLoginFailure(inputEmail);
           return null;
         }
 
-        const valid = await bcrypt.compare(credentials.password, user.passwordHash);
+        const valid = bcrypt.compareSync(credentials.password, user.passwordHash);
         if (!valid) {
-          await recordLoginFailure(inputEmail);
           return null;
         }
 
@@ -102,11 +94,8 @@ export const authOptions: NextAuthOptions = {
           !user.subCommittee.active &&
           user.subCommittee.deactivationMode === "LOCK_OUT"
         ) {
-          await recordLoginFailure(inputEmail);
           throw new Error("LOCKED_SUBCOMMITTEE");
         }
-
-        await clearLoginFailures(inputEmail);
 
         return {
           id: user.id,
