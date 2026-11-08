@@ -10,5 +10,9 @@
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
+  },
+  "vars": {
+    "NEXTAUTH_URL": "https://track.mo-saudi19-145.workers.dev",
+    "NEXTAUTH_SECRET": "Pm6UPRT2v4Cy1uVxamD1BXmnZGas+2sWONNe1BR+uy0="
   }
 }

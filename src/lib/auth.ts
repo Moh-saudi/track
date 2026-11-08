@@ -8,13 +8,20 @@ import {
   recordLoginFailure,
 } from "@/lib/auth-rate-limit";
 
+if (!process.env.NEXTAUTH_URL) {
+  process.env.NEXTAUTH_URL = "https://track.mo-saudi19-145.workers.dev";
+}
+if (!process.env.NEXTAUTH_SECRET) {
+  process.env.NEXTAUTH_SECRET = "Pm6UPRT2v4Cy1uVxamD1BXmnZGas+2sWONNe1BR+uy0=";
+}
+
 const SESSION_MAX_AGE_SECONDS = Math.max(
   15 * 60,
   Number(process.env.SESSION_MAX_AGE_SECONDS || 8 * 60 * 60)
 );
 
 export const authOptions: NextAuthOptions = {
-  secret: process.env.NEXTAUTH_SECRET || "Pm6UPRT2v4Cy1uVxamD1BXmnZGas+2sWONNe1BR+uy0=",
+  secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt",
     maxAge: SESSION_MAX_AGE_SECONDS,
