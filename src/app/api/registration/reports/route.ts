@@ -7,9 +7,8 @@ import { OFFICIAL_PROSECUTIONS_LIST } from "@/lib/constants/prosecutions";
 import { EGYPT_GOVERNORATES } from "@/lib/constants/governorates";
 
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url);
-
   try {
+    const searchParams = req.nextUrl.searchParams;
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
@@ -21,18 +20,18 @@ export async function GET(req: NextRequest) {
     }
 
     await ensureSchemaMigrated();
-    const startDateStr = url.searchParams.get("startDate");
-    const endDateStr = url.searchParams.get("endDate");
-    const prosecutionId = url.searchParams.get("prosecutionId");
-    const registrationType = url.searchParams.get("registrationType");
-    const complainantName = url.searchParams.get("complainantName");
-    const respondentName = url.searchParams.get("respondentName");
-    const createdById = url.searchParams.get("createdById");
-    const governorate = url.searchParams.get("governorate");
-    const subCommitteeId = url.searchParams.get("subCommitteeId");
-    const status = url.searchParams.get("status");
-    const entityType = url.searchParams.get("entityType");
-    const branchOrHospital = url.searchParams.get("branchOrHospital");
+    const startDateStr = searchParams.get("startDate");
+    const endDateStr = searchParams.get("endDate");
+    const prosecutionId = searchParams.get("prosecutionId");
+    const registrationType = searchParams.get("registrationType");
+    const complainantName = searchParams.get("complainantName");
+    const respondentName = searchParams.get("respondentName");
+    const createdById = searchParams.get("createdById");
+    const governorate = searchParams.get("governorate");
+    const subCommitteeId = searchParams.get("subCommitteeId");
+    const status = searchParams.get("status");
+    const entityType = searchParams.get("entityType");
+    const branchOrHospital = searchParams.get("branchOrHospital");
 
     const where: any = {};
 

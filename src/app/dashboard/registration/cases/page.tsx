@@ -41,18 +41,10 @@ export default async function RegistrationCasesPage() {
             specialties: { include: { specialty: { select: { id: true, name: true } } } },
             createdBy: { select: { id: true, fullName: true } },
           },
-          take: 300,
+          take: 50,
         });
       } catch {
-        try {
-          return await prisma.case.findMany({
-            where: { createdById: currentUserId },
-            orderBy: { createdAt: "desc" },
-            take: 300,
-          });
-        } catch {
-          return [];
-        }
+        return [];
       }
     })(),
     (async () => {

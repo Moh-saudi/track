@@ -87,7 +87,24 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
     }
 
   if (!caseRecord) {
-    notFound();
+    return (
+      <div className="p-6 sm:p-12 max-w-lg mx-auto text-center space-y-4 font-body" dir="rtl">
+        <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto border border-amber-200">
+          <AlertCircle className="w-7 h-7" />
+        </div>
+        <h1 className="text-lg font-bold font-heading text-slate-900">السجل غير موجود</h1>
+        <p className="text-xs text-slate-500">
+          لم يتم العثور على هذا السجل في المنظومة، قد يكون معرّف السجل غير صحيح أو تم نقله.
+        </p>
+        <Link
+          href="/dashboard/registration"
+          className="inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold font-heading transition-colors"
+        >
+          <span>العودة لقائمة السجلات</span>
+          <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+    );
   }
 
   const currentRole = (session.user as any)?.role;
