@@ -535,7 +535,7 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
             </h3>
             {caseRecord.attachments.length > 0 && (
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                {caseRecord.attachments.map((att) => (
+                {caseRecord.attachments.map((att: { id: string; fileName: string; fileSize?: number | null }) => (
                   <div key={att.id} className="p-2 rounded bg-slate-50 border border-slate-200 text-xs flex items-center justify-between gap-2">
                     <div className="min-w-0 flex items-center gap-1.5 truncate">
                       <span className="truncate max-w-[130px] font-bold text-slate-700">{att.fileName}</span>
