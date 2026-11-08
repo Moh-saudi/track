@@ -14,24 +14,4 @@ if (!process.env.AUTH_TRUST_HOST) {
 
 const handler = NextAuth(authOptions);
 
-async function authRoute(req: NextRequest, ctx: any) {
-  try {
-    const res = await handler(req, ctx);
-    return res;
-  } catch (err: any) {
-    console.error("[AUTH_ROUTE_FATAL]:", err);
-    return new Response(
-      JSON.stringify({
-        error: "AUTH_FATAL",
-        message: err?.message || String(err),
-        stack: err?.stack || null,
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  }
-}
-
-export { authRoute as GET, authRoute as POST };
+export { handler as GET, handler as POST };
