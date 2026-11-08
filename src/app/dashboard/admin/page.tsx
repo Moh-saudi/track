@@ -27,120 +27,100 @@ export default async function AdminDashboardPage({
   const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
   const nowMs = Date.now();
 
-  const [
-    cases,
-    subCommittees,
-    specialties,
-    users,
-    totalLogsCount,
-    todayLogsCount,
-    todaySessionsCount,
-    recentLogs,
-  ] = await Promise.all([
-    (async () => {
-      try {
-        return await prisma.case.findMany({
-          take: 500,
+  // استعلامات متتالية خفيفة لتفادي إجهاد مجمع اتصالات TCP في Cloudflare Workers
+  let cases: any[] = [];
+  try {
+    cases = await prisma.case.findMany({
+      take: 200,
+      select: {
+        id: true,
+        status: true,
+        assignedAt: true,
+        isRiskOverridden: true,
+      },
+    });
+  } catch {
+    cases = [];
+  }
+
+  let subCommittees: any[] = [];
+  try {
+    subCommittees = await prisma.subCommittee.findMany({
+      where: { active: true },
+      orderBy: { code: "asc" },
+      select: { id: true, name: true, code: true },
+    });
+  } catch {
+    subCommittees = [];
+  }
+
+  let specialties: any[] = [];
+  try {
+    specialties = await prisma.specialty.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, code: true },
+    });
+  } catch {
+    specialties = [];
+  }
+
+  let users: any[] = [];
+  try {
+    users = await prisma.user.findMany({
+      take: 100,
+      orderBy: { fullName: "asc" },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        employer: true,
+        active: true,
+        phone: true,
+        nationalId: true,
+        initialPassword: true,
+        lastSeenAt: true,
+        todayActiveMinutes: true,
+        createdAt: true,
+        subCommitteeId: true,
+        specialtyId: true,
+        subCommittee: { select: { name: true } },
+        specialty: { select: { name: true } },
+      },
+    });
+  } catch {
+    users = [];
+  }
+
+  let recentLogs: any[] = [];
+  try {
+    recentLogs = await prisma.auditLog.findMany({
+      where: { entityType: { not: "Payment" } },
+      take: 8,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        entityType: true,
+        entityId: true,
+        action: true,
+        createdAt: true,
+        user: {
           select: {
-            id: true,
-            status: true,
-            assignedAt: true,
-            isRiskOverridden: true,
-          },
-        });
-      } catch {
-        try {
-          return await prisma.case.findMany({
-            select: {
-              id: true,
-              status: true,
-              assignedAt: true,
-            },
-          });
-        } catch {
-          return [];
-        }
-      }
-    })(),
-    (async () => {
-      try {
-        return await prisma.subCommittee.findMany({
-          where: { active: true },
-          orderBy: { code: "asc" },
-          select: { id: true, name: true, code: true },
-        });
-      } catch {
-        return [];
-      }
-    })(),
-    (async () => {
-      try {
-        return await prisma.specialty.findMany({
-          where: { active: true },
-          orderBy: { name: "asc" },
-          select: { id: true, name: true, code: true },
-        });
-      } catch {
-        return [];
-      }
-    })(),
-    (async () => {
-      try {
-        return await prisma.user.findMany({
-          orderBy: { fullName: "asc" },
-          select: {
-            id: true,
             fullName: true,
-            email: true,
             role: true,
             employer: true,
-            active: true,
-            phone: true,
-            nationalId: true,
-            initialPassword: true,
-            lastSeenAt: true,
-            todayActiveMinutes: true,
-            createdAt: true,
-            subCommitteeId: true,
-            specialtyId: true,
-            subCommittee: { select: { name: true } },
-            specialty: { select: { name: true } },
           },
-        });
-      } catch {
-        return [];
-      }
-    })(),
-    prisma.auditLog.count().catch(() => 0),
-    prisma.auditLog.count({ where: { createdAt: { gte: todayStart } } }).catch(() => 0),
-    (async () => {
-      try {
-        return await prisma.userSession.count({ where: { createdAt: { gte: todayStart } } });
-      } catch {
-        return 0;
-      }
-    })(),
-    (async () => {
-      try {
-        return await prisma.auditLog.findMany({
-          where: { entityType: { not: "Payment" } },
-          take: 8,
-          orderBy: { createdAt: "desc" },
-          include: {
-            user: {
-              select: {
-                fullName: true,
-                role: true,
-                employer: true,
-              },
-            },
-          },
-        });
-      } catch {
-        return [];
-      }
-    })(),
-  ]);
+        },
+      },
+    });
+  } catch {
+    recentLogs = [];
+  }
+
+  const totalLogsCount = recentLogs.length;
+  const todayLogsCount = recentLogs.filter((l: any) => l.createdAt && new Date(l.createdAt) >= todayStart).length;
+  const todaySessionsCount = users.filter((u: any) => u.lastSeenAt && new Date(u.lastSeenAt) >= todayStart).length;
 
   const totalCasesCount = cases.length;
   const overdueCasesCount = cases.filter((c: any) => {

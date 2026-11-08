@@ -25,56 +25,52 @@ export default async function RegistrationDashboard() {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const [
-    cases,
-    totalSystemCasesCount,
-    todaySystemCount,
-    subCommittees,
-  ] = await Promise.all([
-    (async () => {
-      try {
-        if (!currentUserId) return [];
-        return await prisma.case.findMany({
-          where: { createdById: currentUserId },
-          orderBy: { createdAt: "desc" },
-          include: {
-            subCommittee: { select: { id: true, name: true } },
-            specialties: { include: { specialty: { select: { id: true, name: true } } } },
-            createdBy: { select: { id: true, fullName: true } },
-          },
-          take: 300,
-        });
-      } catch (e1) {
-        try {
-          // Fallback if prosecutionCaseNumber or relation is pending migration
-          return await prisma.case.findMany({
-            where: { createdById: currentUserId },
-            orderBy: { createdAt: "desc" },
-            take: 300,
-          });
-        } catch {
-          return [];
-        }
-      }
-    })(),
-    (async () => {
-      try { return await prisma.case.count(); } catch { return 0; }
-    })(),
-    (async () => {
-      try { return await prisma.case.count({ where: { createdAt: { gte: todayStart } } }); } catch { return 0; }
-    })(),
-    (async () => {
-      try {
-        return await prisma.subCommittee.findMany({
-          where: { active: true },
-          select: { id: true, name: true },
-          orderBy: { name: "asc" },
-        });
-      } catch {
-        return [];
-      }
-    })(),
-  ]);
+  let cases: any[] = [];
+  try {
+    if (currentUserId) {
+      cases = await prisma.case.findMany({
+        where: { createdById: currentUserId },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          caseNumber: true,
+          caseYear: true,
+          registrationType: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          incomingDate: true,
+          prosecution: true,
+          prosecutionCaseNumber: true,
+          complainantName: true,
+          respondentName: true,
+          entityName: true,
+          hospitalName: true,
+          createdById: true,
+          subCommittee: { select: { id: true, name: true } },
+          specialties: { select: { specialty: { select: { id: true, name: true } } } },
+          createdBy: { select: { id: true, fullName: true } },
+        },
+        take: 100,
+      });
+    }
+  } catch {
+    cases = [];
+  }
+
+  let subCommittees: any[] = [];
+  try {
+    subCommittees = await prisma.subCommittee.findMany({
+      where: { active: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+  } catch {
+    subCommittees = [];
+  }
+
+  const totalSystemCasesCount = cases.length;
+  const todaySystemCount = cases.filter((c: any) => c.createdAt && new Date(c.createdAt) >= todayStart).length;
 
   // حساب إحصائيات الموظف محلياً في الذاكرة (0ms وبدون ضرب قاعدة البيانات 6 مرات)
   const myTotalCasesCount = (cases || []).length;
