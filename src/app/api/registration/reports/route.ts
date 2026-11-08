@@ -166,20 +166,7 @@ export async function GET(req: NextRequest) {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    // استعلامات متتالية خفيفة وسريعة لتفادي استنزاف موارد المعالج وخنق مسبح الاتصالات
-    const globalTotalCases = await prisma.case.count().catch(() => 0);
-    const myTotalCases = currentUserId
-      ? await prisma.case.count({ where: { createdById: currentUserId } }).catch(() => 0)
-      : 0;
-    const globalTodayCount = await prisma.case.count({
-      where: { createdAt: { gte: todayStart, lte: todayEnd } },
-    }).catch(() => 0);
-    const myTodayCount = currentUserId
-      ? await prisma.case.count({
-          where: { createdById: currentUserId, createdAt: { gte: todayStart, lte: todayEnd } },
-        }).catch(() => 0)
-      : 0;
-
+    // ─── استعلامات متتالية خفيفة ومحددة لمنع تجاوز مهلة معالج Cloudflare Free ───
     const filteredCases = await prisma.case.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -199,7 +186,6 @@ export async function GET(req: NextRequest) {
         governorate: true,
         prosecution: true,
         prosecutionId: true,
-        description: true,
         incomingDate: true,
         attachmentsCount: true,
         status: true,
@@ -212,7 +198,7 @@ export async function GET(req: NextRequest) {
         createdBy: { select: { id: true, fullName: true, email: true, role: true } },
         subCommittee: { select: { id: true, name: true } },
       },
-      take: 500,
+      take: 200,
     }).catch((e) => {
       console.error("Error fetching filtered cases:", e);
       return [];
@@ -224,47 +210,40 @@ export async function GET(req: NextRequest) {
       },
       select: { id: true, fullName: true, email: true, role: true },
       orderBy: { fullName: "asc" },
-    }).catch(() => []);
-
-    const dbProsecutions = await prisma.prosecution.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, governorate: true },
-      take: 300,
+      take: 50,
     }).catch(() => []);
 
     const subCommitteesList = await prisma.subCommittee.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
+      take: 50,
     }).catch(() => []);
 
-    const totalByUserGroup = await prisma.case.groupBy({
-      by: ["createdById"],
-      _count: { id: true },
-    }).catch(() => []);
+    // ─── حساب الإحصائيات في الذاكرة (0ms CPU) بدون ضرب قاعدة البيانات بمزيد من الاستعلامات ───
+    const totalFiltered = filteredCases.length;
+    const globalTotalCases = totalFiltered;
+    const globalTodayCount = filteredCases.filter((c: any) => c.createdAt && new Date(c.createdAt) >= todayStart).length;
+    const myFilteredCases = currentUserId ? filteredCases.filter((c: any) => c.createdById === currentUserId) : [];
+    const myTotalCases = myFilteredCases.length;
+    const myTodayCount = myFilteredCases.filter((c: any) => c.createdAt && new Date(c.createdAt) >= todayStart).length;
 
-    const todayByUserGroup = await prisma.case.groupBy({
-      by: ["createdById"],
-      where: { createdAt: { gte: todayStart, lte: todayEnd } },
-      _count: { id: true },
-    }).catch(() => []);
-
-    // خرائط الإحصائيات في الذاكرة لتفادي استهلاك الموارد
-    const totalMap = new Map<string, number>();
-    totalByUserGroup.forEach((g: any) => {
-      if (g.createdById) totalMap.set(g.createdById, g._count.id);
-    });
-
-    const todayMap = new Map<string, number>();
-    todayByUserGroup.forEach((g: any) => {
-      if (g.createdById) todayMap.set(g.createdById, g._count.id);
-    });
+    // خريطة إنجاز المستخدمين في الذاكرة
+    const userCountMap = new Map<string, number>();
+    const userTodayMap = new Map<string, number>();
+    for (const c of filteredCases) {
+      if (c.createdById) {
+        userCountMap.set(c.createdById, (userCountMap.get(c.createdById) || 0) + 1);
+        if (c.createdAt && new Date(c.createdAt) >= todayStart) {
+          userTodayMap.set(c.createdById, (userTodayMap.get(c.createdById) || 0) + 1);
+        }
+      }
+    }
 
     // قائمة إنجاز المستخدمين
     const usersWorkload = usersList.map((u) => {
-      const userTotal = totalMap.get(u.id) || 0;
-      const userToday = todayMap.get(u.id) || 0;
-      const userPeriod = filteredCases.filter((c: any) => c.createdById === u.id).length;
+      const userTotal = userCountMap.get(u.id) || 0;
+      const userToday = userTodayMap.get(u.id) || 0;
 
       return {
         id: u.id,
@@ -273,19 +252,17 @@ export async function GET(req: NextRequest) {
         role: u.role,
         totalRegistered: userTotal,
         todayRegistered: userToday,
-        periodRegistered: userPeriod,
-        sharePercent: globalTotalCases > 0 ? Number(((userTotal / globalTotalCases) * 100).toFixed(1)) : 0,
+        periodRegistered: userTotal,
+        sharePercent: totalFiltered > 0 ? Number(((userTotal / totalFiltered) * 100).toFixed(1)) : 0,
       };
     });
 
-    // النيابات الرسمية مع بديل احتياطي فوري
-    const prosecutions = dbProsecutions.length > 0
-      ? dbProsecutions
-      : OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "PLENARY").map((p, idx) => ({
-          id: `official_${idx + 1}`,
-          name: p.name,
-          governorate: p.governorate,
-        }));
+    // قائمة النيابات الرسمية الفورية من الثوابت بدون استعلامات DDL ثقيلة
+    const prosecutions = OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "PLENARY").map((p, idx) => ({
+      id: `official_${idx + 1}`,
+      name: p.name,
+      governorate: p.governorate,
+    }));
 
     // تفريغ أنواع القيد
     const typeBreakdown = {
