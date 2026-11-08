@@ -25,6 +25,7 @@ export default async function FollowUpDashboard() {
   try {
     const res = await Promise.all([
       prisma.case.findMany({
+        take: 300,
         orderBy: { createdAt: "desc" },
         include: {
           subCommittee: true,

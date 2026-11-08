@@ -43,29 +43,44 @@ export default async function RegistrationCaseDetailsPage({ params }: Props) {
   let caseRecord: any = null;
   let caseAuditLogs: any[] = [];
   try {
-    const res = await Promise.all([
-      prisma.case.findUnique({
-        where: { id: id },
-        include: {
-          subCommittee: true,
-          specialties: { include: { specialty: true } },
-          createdBy: { select: { id: true, fullName: true, email: true, role: true } },
-          followUpOfficer: { select: { id: true, fullName: true } },
-          attachments: {
-            include: { uploadedBy: { select: { fullName: true } } },
-            orderBy: { uploadedAt: "desc" },
+    caseRecord = await prisma.case.findUnique({
+      where: { id: id },
+      include: {
+        subCommittee: { select: { id: true, name: true, code: true } },
+        specialties: {
+          select: {
+            id: true,
+            specialty: { select: { id: true, name: true } },
           },
         },
-      }),
-      prisma.auditLog.findMany({
+        createdBy: { select: { id: true, fullName: true, email: true, role: true } },
+        followUpOfficer: { select: { id: true, fullName: true } },
+        attachments: {
+          select: {
+            id: true,
+            fileName: true,
+            fileSize: true,
+            uploadedAt: true,
+            uploadedBy: { select: { fullName: true } },
+          },
+          orderBy: { uploadedAt: "desc" },
+        },
+      },
+    });
+
+    if (caseRecord) {
+      caseAuditLogs = await prisma.auditLog.findMany({
         where: { entityType: "Case", entityId: id },
-        include: { user: { select: { fullName: true } } },
+        select: {
+          id: true,
+          action: true,
+          createdAt: true,
+          user: { select: { fullName: true } },
+        },
         orderBy: { createdAt: "desc" },
         take: 10,
-      }),
-    ]);
-    caseRecord = res[0];
-    caseAuditLogs = res[1] || [];
+      });
+    }
   } catch (err) {
     console.error("Error fetching case details:", err);
   }

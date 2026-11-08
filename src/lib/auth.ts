@@ -145,9 +145,9 @@ export const authOptions: NextAuthOptions = {
         return token;
       }
 
-      // ترشيد استعلامات Supabase: إذا تم التحقق خلال آخر 30 ثانية والجلسة صالحة، لا نعيد ضرب قاعدة البيانات
+      // ترشيد استعلامات Supabase: إذا تم التحقق خلال آخر 5 دقائق والجلسة صالحة، لا نعيد ضرب قاعدة البيانات
       const lastCheck = Number((token as any).lastCheckedAt || 0);
-      if (token.id && now - lastCheck < 30_000 && !(token as any).authInvalid) {
+      if (token.id && now - lastCheck < 5 * 60 * 1000 && !(token as any).authInvalid) {
         return token;
       }
 

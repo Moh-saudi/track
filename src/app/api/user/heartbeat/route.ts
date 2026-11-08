@@ -38,6 +38,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "المستخدم غير موجود" }, { status: 404 });
   }
 
+  // ترشيد استهلاك المعالج: إذا تم تحديث التواجد خلال آخر دقيقتين، نتخطى بقية استعلامات الجلسة
+  if (user.lastSeenAt) {
+    const diffMs = now.getTime() - new Date(user.lastSeenAt).getTime();
+    if (diffMs < 2 * 60 * 1000) {
+      return NextResponse.json({
+        success: true,
+        lastSeenAt: user.lastSeenAt,
+        todayActiveMinutes: user.todayActiveMinutes,
+      });
+    }
+  }
+
   let newMinutes = user.todayActiveMinutes;
   if (user.lastActiveDate !== todayStr) {
     newMinutes = 1;

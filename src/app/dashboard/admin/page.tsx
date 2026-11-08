@@ -40,6 +40,7 @@ export default async function AdminDashboardPage({
     (async () => {
       try {
         return await prisma.case.findMany({
+          take: 500,
           select: {
             id: true,
             status: true,

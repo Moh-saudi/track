@@ -29,12 +29,6 @@ export default async function RegistrationDashboard() {
     cases,
     totalSystemCasesCount,
     todaySystemCount,
-    myTotalCasesCount,
-    myTodayCount,
-    myPendingRoutingCount,
-    myComplaintsCount,
-    myProsecutionCasesCount,
-    myReportsCount,
     subCommittees,
   ] = await Promise.all([
     (async () => {
@@ -70,24 +64,6 @@ export default async function RegistrationDashboard() {
       try { return await prisma.case.count({ where: { createdAt: { gte: todayStart } } }); } catch { return 0; }
     })(),
     (async () => {
-      try { return currentUserId ? await prisma.case.count({ where: { createdById: currentUserId } }) : 0; } catch { return 0; }
-    })(),
-    (async () => {
-      try { return currentUserId ? await prisma.case.count({ where: { createdById: currentUserId, createdAt: { gte: todayStart } } }) : 0; } catch { return 0; }
-    })(),
-    (async () => {
-      try { return currentUserId ? await prisma.case.count({ where: { createdById: currentUserId, status: "REGISTERED" } }) : 0; } catch { return 0; }
-    })(),
-    (async () => {
-      try { return currentUserId ? await prisma.case.count({ where: { createdById: currentUserId, registrationType: "COMPLAINT" } }) : 0; } catch { return 0; }
-    })(),
-    (async () => {
-      try { return currentUserId ? await prisma.case.count({ where: { createdById: currentUserId, registrationType: "CASE" } }) : 0; } catch { return 0; }
-    })(),
-    (async () => {
-      try { return currentUserId ? await prisma.case.count({ where: { createdById: currentUserId, registrationType: "REPORT" } }) : 0; } catch { return 0; }
-    })(),
-    (async () => {
       try {
         return await prisma.subCommittee.findMany({
           where: { active: true },
@@ -99,6 +75,30 @@ export default async function RegistrationDashboard() {
       }
     })(),
   ]);
+
+  // حساب إحصائيات الموظف محلياً في الذاكرة (0ms وبدون ضرب قاعدة البيانات 6 مرات)
+  const myTotalCasesCount = (cases || []).length;
+  let myTodayCount = 0;
+  let myPendingRoutingCount = 0;
+  let myComplaintsCount = 0;
+  let myProsecutionCasesCount = 0;
+  let myReportsCount = 0;
+
+  for (const c of cases || []) {
+    if (c.createdAt && new Date(c.createdAt) >= todayStart) {
+      myTodayCount++;
+    }
+    if (c.status === "REGISTERED") {
+      myPendingRoutingCount++;
+    }
+    if (c.registrationType === "COMPLAINT") {
+      myComplaintsCount++;
+    } else if (c.registrationType === "CASE") {
+      myProsecutionCasesCount++;
+    } else if (c.registrationType === "REPORT") {
+      myReportsCount++;
+    }
+  }
 
   const serializedCases: SerializedCase[] = (cases || []).map((c: any) => {
     const isCreatedByMe = c.createdById === currentUserId;

@@ -28,13 +28,14 @@ export function PresenceTracker() {
       }
     }
 
-    // إرسال أول نبضة بعد تحميل الواجهة
-    sendHeartbeat();
+    // تأخير إرسال أول نبضة 30 ثانية بعد فتح الصفحة حتى لا يتزامن مع استعلامات الصفحة الأولى
+    const initialTimer = setTimeout(sendHeartbeat, 30 * 1000);
 
     // فحص دوري كل 10 دقائق فقط بدلاً من كل 60 ثانية
     const interval = setInterval(sendHeartbeat, 10 * 60 * 1000);
 
     return () => {
+      clearTimeout(initialTimer);
       clearInterval(interval);
     };
   }, []);
