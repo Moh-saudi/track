@@ -61,22 +61,23 @@ function patchIndex() {
     return new Response(JSON.stringify({
       url: redirect
     }), {
-      status: internalResponse.status || 200,
+      status: 200,
       headers: resHeaders
     });
   }`;
 
-  // If already properly patched with fallback status 200
-  if (content.includes("status: internalResponse.status || 200,")) {
-    console.log("[PATCH] next-auth/next/index.js is already properly patched.");
+  // If already properly patched with explicit status 200
+  if (content.includes("status: 200,\n      headers: resHeaders")) {
+    console.log("[PATCH] next-auth/next/index.js is already properly patched with status 200.");
     return;
   }
 
-  // If patched previously without || 200
-  if (content.includes("status: internalResponse.status,")) {
-    content = content.replace("status: internalResponse.status,", "status: internalResponse.status || 200,");
+  // If patched previously with internalResponse.status
+  if (content.includes("status: internalResponse.status || 200,") || content.includes("status: internalResponse.status,")) {
+    content = content.replace("status: internalResponse.status || 200,", "status: 200,");
+    content = content.replace("status: internalResponse.status,", "status: 200,");
     fs.writeFileSync(targetFile, content, "utf8");
-    console.log("[PATCH] Updated next-auth/next/index.js to include status || 200.");
+    console.log("[PATCH] Updated next-auth/next/index.js to enforce status 200 for JSON response.");
     return;
   }
 
