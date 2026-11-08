@@ -15,11 +15,53 @@ if (!process.env.AUTH_TRUST_HOST) {
 const handler = NextAuth(authOptions);
 
 async function GET(req: NextRequest, ctx: any) {
-  return handler(req, ctx);
+  try {
+    const res = await handler(req, ctx);
+    const headers = new Headers(res.headers);
+    return new Response(res.body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers,
+    });
+  } catch (err: any) {
+    return new Response(
+      JSON.stringify({
+        status: "caught_error",
+        error: err?.name,
+        message: err?.message,
+        stack: err?.stack,
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
 }
 
 async function POST(req: NextRequest, ctx: any) {
-  return handler(req, ctx);
+  try {
+    const res = await handler(req, ctx);
+    const headers = new Headers(res.headers);
+    return new Response(res.body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers,
+    });
+  } catch (err: any) {
+    return new Response(
+      JSON.stringify({
+        status: "caught_error",
+        error: err?.name,
+        message: err?.message,
+        stack: err?.stack,
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
 }
 
 export { GET, POST };
