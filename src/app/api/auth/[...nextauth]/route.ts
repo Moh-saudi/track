@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { NextRequest } from "next/server";
 
 if (!process.env.NEXTAUTH_URL) {
   process.env.NEXTAUTH_URL = "https://track.mo-saudi19-145.workers.dev";
@@ -13,4 +14,12 @@ if (!process.env.AUTH_TRUST_HOST) {
 
 const handler = NextAuth(authOptions);
 
-export { handler as GET, handler as POST };
+async function GET(req: NextRequest, ctx: any) {
+  return handler(req, ctx);
+}
+
+async function POST(req: NextRequest, ctx: any) {
+  return handler(req, ctx);
+}
+
+export { GET, POST };

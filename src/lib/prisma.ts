@@ -72,37 +72,14 @@ function createPrismaClient(customConnStr?: string): PrismaClient {
   }
 }
 
-// استخدام WeakMap لربط عميل Prisma بسياق طلب Cloudflare دون تعديل كائن البيئة المجمد (Frozen Context)
-const contextClientMap = new WeakMap<object, PrismaClient>();
-let fallbackClient: PrismaClient | null = null;
+// عميل موحد (Isolate Singleton) لمنع إعادة تشغيل محرك Prisma واستنزاف الذاكرة
+let cachedClient: PrismaClient | null = null;
 
 function getClient(): PrismaClient {
-  try {
-    const { getCloudflareContext } = require("@opennextjs/cloudflare");
-    const cfContext = getCloudflareContext();
-    if (cfContext) {
-      const key = (cfContext.ctx || cfContext.env || cfContext) as object;
-      if (key && typeof key === "object") {
-        let client = contextClientMap.get(key);
-        if (!client) {
-          const url =
-            cfContext.env?.HYPERDRIVE?.connectionString ||
-            cfContext.env?.DATABASE_URL;
-          client = createPrismaClient(url);
-          contextClientMap.set(key, client);
-        }
-        return client;
-      }
-    }
-  } catch {
-    // خارج سياق الطلب (أثناء البناء أو في بيئة Node)
-  }
-
-  if (!fallbackClient) {
-    fallbackClient = globalForPrisma.prisma ?? createPrismaClient();
-    globalForPrisma.prisma = fallbackClient;
-  }
-  return fallbackClient;
+  if (cachedClient) return cachedClient;
+  cachedClient = globalForPrisma.prisma ?? createPrismaClient();
+  globalForPrisma.prisma = cachedClient;
+  return cachedClient;
 }
 
 export const prisma = new Proxy({} as PrismaClient, {
