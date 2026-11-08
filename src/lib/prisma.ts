@@ -6,7 +6,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 const SUPABASE_FALLBACK_URL =
-  "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=disable";
+  "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true";
 
 function getConnectionString(): string {
   try {
@@ -34,22 +34,20 @@ function getConnectionString(): string {
   if (url.includes("pooler.supabase.com") && !url.includes("pgbouncer=true")) {
     url += (url.includes("?") ? "&" : "?") + "pgbouncer=true";
   }
-  if (url.includes("sslmode=require")) {
-    url = url.replace("sslmode=require", "sslmode=disable");
-  }
 
   return url;
 }
 
 function createPrismaClient(connStr?: string): PrismaClient {
   const connectionString = connStr || getConnectionString();
+  const isLocal = connectionString.includes("localhost") || connectionString.includes("127.0.0.1");
 
   const pool = new Pool({
     connectionString,
     max: 5,
     idleTimeoutMillis: 1000,
-    connectionTimeoutMillis: 4000,
-    ssl: false,
+    connectionTimeoutMillis: 6000,
+    ssl: isLocal ? false : { rejectUnauthorized: false },
   });
 
   pool.on("error", (err) => {

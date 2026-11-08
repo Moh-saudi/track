@@ -8,8 +8,8 @@ import {
   recordLoginFailure,
 } from "@/lib/auth-rate-limit";
 
-if (!process.env.NEXTAUTH_URL) {
-  process.env.NEXTAUTH_URL = "https://track.mo-saudi19-145.workers.dev";
+if (!process.env.NEXTAUTH_URL && process.env.VERCEL_URL) {
+  process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`;
 }
 if (!process.env.NEXTAUTH_SECRET) {
   process.env.NEXTAUTH_SECRET = "Pm6UPRT2v4Cy1uVxamD1BXmnZGas+2sWONNe1BR+uy0=";
