@@ -1,8 +1,8 @@
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 
 export const dynamic = "force-dynamic";
 
-const NewCaseClient = dynamic(() => import("./new-case-client"), {
+const NewCaseClient = nextDynamic(() => import("./new-case-client"), {
   ssr: false,
   loading: () => (
     <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">

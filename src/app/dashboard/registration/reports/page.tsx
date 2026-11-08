@@ -1,8 +1,8 @@
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 
 export const dynamic = "force-dynamic";
 
-const RegistrationReportsClient = dynamic(
+const RegistrationReportsClient = nextDynamic(
   () => import("./registration-reports-client"),
   {
     ssr: false,
