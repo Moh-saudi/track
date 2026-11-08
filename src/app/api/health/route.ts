@@ -53,8 +53,14 @@ export async function GET() {
         },
       });
 
-      const bcrypt = require("bcryptjs");
-      const isPasswordMatch = user ? await bcrypt.compare("ChangeMe123!", user.passwordHash) : false;
+      let isPasswordMatch = false;
+      let bcryptError: string | null = null;
+      try {
+        const bcrypt = require("bcryptjs");
+        isPasswordMatch = user ? bcrypt.compareSync("ChangeMe123!", user.passwordHash) : false;
+      } catch (bcErr: any) {
+        bcryptError = bcErr?.message;
+      }
 
       authCheck = {
         userFound: !!user,
@@ -62,6 +68,7 @@ export async function GET() {
         hasHash: !!user?.passwordHash,
         hashPrefix: user?.passwordHash ? user.passwordHash.substring(0, 7) : null,
         passwordMatches: isPasswordMatch,
+        bcryptError: bcryptError,
         role: user?.role,
         durationMs: Date.now() - tAuth,
       };

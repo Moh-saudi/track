@@ -84,7 +84,12 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const valid = await bcrypt.compare(credentials.password, user.passwordHash);
+        let valid = false;
+        try {
+          valid = bcrypt.compareSync(credentials.password, user.passwordHash);
+        } catch (bcErr) {
+          console.error("[AUTH] bcrypt comparison error:", bcErr);
+        }
         if (!valid) {
           return null;
         }
