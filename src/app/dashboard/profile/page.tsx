@@ -28,6 +28,8 @@ const ROLE_LABELS: Record<string, string> = {
   RISK_OFFICER: "مسؤول إدارة المخاطر وتصحيح المسار",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function ProfileAccountPage() {
   try {
     const session = await getServerSession(authOptions);

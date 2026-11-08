@@ -51,7 +51,7 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
   const session = await getServerSession(authOptions);
   const currentUserId = (session?.user as any)?.id;
 
-  const [caseRecord, specialties, attachments, actions, supremeDecisions, meetingReschedules] = await Promise.all([
+  const [rawCaseRecord, specialties, attachments, actions, supremeDecisions, meetingReschedules] = await Promise.all([
     prisma.case.findUnique({
       where: { id: id },
       include: {
@@ -92,12 +92,16 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
     }),
   ]);
 
-  if (!caseRecord) notFound();
-  (caseRecord as any).specialties = specialties;
-  (caseRecord as any).attachments = attachments;
-  (caseRecord as any).actions = actions;
-  (caseRecord as any).supremeDecisions = supremeDecisions;
-  (caseRecord as any).meetingReschedules = meetingReschedules;
+  if (!rawCaseRecord) notFound();
+
+  const caseRecord: any = {
+    ...rawCaseRecord,
+    specialties,
+    attachments,
+    actions,
+    supremeDecisions,
+    meetingReschedules,
+  };
 
   const statusInfo = STATUS_CONFIG[caseRecord.status] ?? { label: caseRecord.status, badge: "badge-registered" };
   const hasMeetingDate = !!caseRecord.meetingDate;
@@ -277,7 +281,7 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
               </div>
 
               <div className="space-y-3">
-                {caseRecord.supremeDecisions.map((dec) => {
+                {caseRecord.supremeDecisions.map((dec: any) => {
                   const cfg = SUPREME_DECISION_CONFIG[dec.decisionType] ?? { label: dec.decisionType, badgeClass: "bg-slate-100 text-slate-800 border-slate-300" };
                   return (
                     <div key={dec.id} className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-3 text-xs font-body">
@@ -366,7 +370,7 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
               <div>
                 <span className="text-xs font-semibold text-slate-600 block mb-1.5 font-body">التخصصات الطبية المعنية بالفحص:</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {caseRecord.specialties.map((s) => (
+                  {caseRecord.specialties.map((s: any) => (
                     <span key={s.id} className="px-2.5 py-1 rounded-full bg-teal-50 text-teal-800 font-medium text-xs border border-teal-200 flex items-center gap-1 font-body">
                       <Stethoscope className="w-3 h-3 text-teal-600" />
                       <span>{s.specialty?.name || "تخصص غير محدد"}</span>
@@ -395,7 +399,7 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
               initialMeetingDate={caseRecord.meetingDate ? caseRecord.meetingDate.toISOString() : null}
               initialReason={caseRecord.meetingDateReason}
               initialUpdatedAt={caseRecord.meetingDateUpdatedAt ? caseRecord.meetingDateUpdatedAt.toISOString() : null}
-              initialReschedules={caseRecord.meetingReschedules.map((r) => ({
+              initialReschedules={caseRecord.meetingReschedules.map((r: any) => ({
                 id: r.id,
                 oldDate: r.oldDate ? r.oldDate.toISOString() : null,
                 newDate: r.newDate.toISOString(),
@@ -465,7 +469,7 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-3">
               <h2 className="text-sm font-bold font-heading text-slate-900">سجل الإجراءات والتقارير الصادرة ({caseRecord.actions.length})</h2>
               <div className="space-y-3">
-                {caseRecord.actions.map((act) => (
+                {caseRecord.actions.map((act: any) => (
                   <div key={act.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2 text-xs font-body">
                     <div className="flex items-center justify-between text-slate-500 font-semibold border-b border-slate-200 pb-2">
                       <span>مُعد التقرير: {act.recordedBy.fullName}</span>
