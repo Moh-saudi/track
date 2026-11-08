@@ -43,14 +43,14 @@ function getConnectionString(): string {
   return url;
 }
 
-function createPrismaClient(): PrismaClient {
-  const connectionString = getConnectionString();
+function createPrismaClient(customConnStr?: string): PrismaClient {
+  const connectionString = customConnStr || getConnectionString();
 
   try {
     const pool = new Pool({
       connectionString,
-      max: 5,
-      idleTimeoutMillis: 15000,
+      max: 1,
+      idleTimeoutMillis: 1000,
       connectionTimeoutMillis: 5000,
       ssl: false,
     });
@@ -72,10 +72,24 @@ function createPrismaClient(): PrismaClient {
   }
 }
 
-// إعادة استخدام العميل (Cached Singleton) لمنع استنزاف ذاكرة ومعالج Cloudflare Workers (Error 1102)
+// في بيئة Cloudflare Workers يتم ربط العميل بسياق الطلب (Request Context) لتجنب تجمد المقابس (Frozen Sockets)
 let cachedClient: PrismaClient | null = null;
 
 function getClient(): PrismaClient {
+  try {
+    const { getCloudflareContext } = require("@opennextjs/cloudflare");
+    const ctx = getCloudflareContext();
+    if (ctx) {
+      if (!(ctx as any).__prisma) {
+        const url = ctx.env?.HYPERDRIVE?.connectionString || ctx.env?.DATABASE_URL;
+        (ctx as any).__prisma = createPrismaClient(url);
+      }
+      return (ctx as any).__prisma;
+    }
+  } catch {
+    // خارج سياق الطلب في بيئة Node أو أثناء البناء
+  }
+
   if (!cachedClient) {
     cachedClient = globalForPrisma.prisma ?? createPrismaClient();
     globalForPrisma.prisma = cachedClient;
