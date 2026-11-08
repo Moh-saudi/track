@@ -54,17 +54,6 @@ function patchIndex() {
 
   let content = fs.readFileSync(targetFile, "utf8");
 
-  const badPattern = `  if ((body === null || body === void 0 ? void 0 : body.json) === "true" && redirect) {
-    response.headers.delete("Location");
-    response.headers.set("Content-Type", "application/json");
-    return new Response(JSON.stringify({
-      url: redirect
-    }), {
-      status: internalResponse.status,
-      headers: response.headers
-    });
-  }`;
-
   const fixedPattern = `  if ((body === null || body === void 0 ? void 0 : body.json) === "true" && redirect) {
     const resHeaders = new Headers(response.headers);
     resHeaders.delete("Location");
@@ -72,27 +61,33 @@ function patchIndex() {
     return new Response(JSON.stringify({
       url: redirect
     }), {
-      status: internalResponse.status,
+      status: internalResponse.status || 200,
       headers: resHeaders
     });
   }`;
 
-  if (content.includes("const resHeaders = new Headers(response.headers);")) {
-    console.log("[PATCH] next-auth/next/index.js is already patched.");
-  } else if (content.includes(badPattern)) {
-    content = content.replace(badPattern, fixedPattern);
+  // If already properly patched with fallback status 200
+  if (content.includes("status: internalResponse.status || 200,")) {
+    console.log("[PATCH] next-auth/next/index.js is already properly patched.");
+    return;
+  }
+
+  // If patched previously without || 200
+  if (content.includes("status: internalResponse.status,")) {
+    content = content.replace("status: internalResponse.status,", "status: internalResponse.status || 200,");
     fs.writeFileSync(targetFile, content, "utf8");
-    console.log("[PATCH] Successfully patched next-auth/next/index.js for Cloudflare Workers.");
+    console.log("[PATCH] Updated next-auth/next/index.js to include status || 200.");
+    return;
+  }
+
+  // Regex fallback from unpatched original
+  const regex = /if\s*\(\s*\(body\s*===[\s\S]*?response\.headers\.delete\("Location"\);[\s\S]*?headers:\s*response\.headers\s*\}\);\s*\}/;
+  if (regex.test(content)) {
+    content = content.replace(regex, fixedPattern);
+    fs.writeFileSync(targetFile, content, "utf8");
+    console.log("[PATCH] Successfully patched next-auth/next/index.js via regex.");
   } else {
-    // Regex fallback
-    const regex = /if\s*\(\s*\(body\s*===[\s\S]*?response\.headers\.delete\("Location"\);[\s\S]*?headers:\s*response\.headers\s*\}\);\s*\}/;
-    if (regex.test(content)) {
-      content = content.replace(regex, fixedPattern);
-      fs.writeFileSync(targetFile, content, "utf8");
-      console.log("[PATCH] Successfully patched next-auth/next/index.js via regex.");
-    } else {
-      console.warn("[PATCH WARNING] Could not match target in next-auth/next/index.js");
-    }
+    console.warn("[PATCH WARNING] Could not match target in next-auth/next/index.js");
   }
 }
 
