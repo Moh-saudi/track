@@ -47,16 +47,14 @@ function createPrismaClient(connStr?: string): PrismaClient {
   const pool = new Pool({
     connectionString,
     max: 5,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 15000,
+    maxUses: 1, // إغلاق مقبس الاتصال فور انتهاء الاستعلام لمنع تراكم المقابس الميتة عند تجميد Isolate
+    idleTimeoutMillis: 500,
+    connectionTimeoutMillis: 6000,
     ssl: false,
   });
 
   pool.on("error", (err) => {
     console.warn("[PG POOL ERROR]:", err?.message);
-    // تفريغ الكاش لإعادة بناء مسبح اتصالات سليم تلقائياً في الطلب التالي عند حدوث أي خطأ في الاتصال
-    cachedClient = null;
-    globalForPrisma.prisma = undefined;
   });
 
   const adapter = new PrismaPg(pool);
