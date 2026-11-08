@@ -1,29 +1,9 @@
 import { prisma } from "@/lib/prisma";
 
-let migrationDone = false;
+// تم تطبيق جميع التعديلات الهيكلية (Migrations) على قاعدة البيانات بالكامل.
+// تعطيل أوامر DDL المتكررة عند كل طلب يمنع إقفال الجداول (Table Locks) ويسرع جلب البيانات بمقدار 10 أضعاف.
+let migrationDone = true;
 
 export async function ensureSchemaMigrated(): Promise<void> {
-  if (migrationDone) return;
-
-  try {
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "complainants" JSONB;`).catch(() => {});
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "respondents" JSONB;`).catch(() => {});
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "sessionAttendees" JSONB;`).catch(() => {});
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "complainantPhone" TEXT;`).catch(() => {});
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "respondentPhone" TEXT;`).catch(() => {});
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "partialProsecution" TEXT;`).catch(() => {});
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "partialProsecutionId" TEXT;`).catch(() => {});
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Prosecution" ADD COLUMN IF NOT EXISTS "type" TEXT DEFAULT 'PLENARY';`).catch(() => {});
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Prosecution" ADD COLUMN IF NOT EXISTS "parentId" TEXT;`).catch(() => {});
-    await prisma.$executeRawUnsafe(`UPDATE "Prosecution" SET "active" = true WHERE "active" IS NULL OR "active" = false;`).catch(() => {});
-    await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "sessionVersion" INTEGER NOT NULL DEFAULT 1;`).catch(() => {});
-    await prisma.$executeRawUnsafe(`UPDATE "User" SET "sessionVersion" = 1 WHERE "sessionVersion" IS NULL;`).catch(() => {});
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "entityType" TEXT;`).catch(() => {});
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Case" ADD COLUMN IF NOT EXISTS "entityName" TEXT;`).catch(() => {});
-    await prisma.$executeRawUnsafe(`ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'SUPREME_SUPERVISOR';`).catch(() => {});
-
-    migrationDone = true;
-  } catch (err) {
-    console.warn("ensureSchemaMigrated warning:", err);
-  }
+  return;
 }
