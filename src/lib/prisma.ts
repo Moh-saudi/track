@@ -49,8 +49,8 @@ function createPrismaClient(customConnStr?: string): PrismaClient {
   try {
     const pool = new Pool({
       connectionString,
-      max: 5,
-      idleTimeoutMillis: 2000,
+      max: 1,
+      idleTimeoutMillis: 10000,
       connectionTimeoutMillis: 3000,
       ssl: false,
     });
@@ -62,49 +62,35 @@ function createPrismaClient(customConnStr?: string): PrismaClient {
     const adapter = new PrismaPg(pool);
     return new PrismaClient({
       adapter,
-      log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
+      log: ["error"],
     });
   } catch (e) {
     console.warn("PrismaPg adapter initialization failed:", e);
     return new PrismaClient({
-      log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
+      log: ["error"],
     });
   }
 }
 
-// تخزين عميل Prisma بسياق الطلب الحالي في Cloudflare Workers (Request-scoped WeakMap)
-// يمنع نهائياً إعادة استخدام مقابس TCP المغلقة بين الطلبات المنفصلة لتفادي التعليق وخطأ 1102
-const contextClientMap = new WeakMap<object, PrismaClient>();
-let fallbackClient: PrismaClient | null = null;
+// عميل Prisma موحد على مستوى Isolate (Singleton) لمنع تكرار تحميل WASM واستهلاك ذاكرة ومعالج Cloudflare Free
+let cachedClient: PrismaClient | null = null;
 
 function getClient(): PrismaClient {
+  if (cachedClient) return cachedClient;
+
+  let hyperdriveUrl: string | null = null;
   try {
     const { getCloudflareContext } = require("@opennextjs/cloudflare");
-    const cfContext = getCloudflareContext();
-    if (cfContext) {
-      const key = (cfContext.ctx || cfContext) as object;
-      if (key && typeof key === "object") {
-        let client = contextClientMap.get(key);
-        if (!client) {
-          const url =
-            cfContext.env?.HYPERDRIVE?.connectionString ||
-            cfContext.env?.DATABASE_URL ||
-            getConnectionString();
-          client = createPrismaClient(url);
-          contextClientMap.set(key, client);
-        }
-        return client;
-      }
+    const ctx = getCloudflareContext();
+    if (ctx?.env?.HYPERDRIVE?.connectionString) {
+      hyperdriveUrl = ctx.env.HYPERDRIVE.connectionString;
     }
-  } catch {
-    // خارج سياق طلب Cloudflare (أثناء البناء أو في بيئة Node)
-  }
+  } catch {}
 
-  if (!fallbackClient) {
-    fallbackClient = globalForPrisma.prisma ?? createPrismaClient();
-    globalForPrisma.prisma = fallbackClient;
-  }
-  return fallbackClient;
+  const url = hyperdriveUrl || getConnectionString();
+  cachedClient = createPrismaClient(url);
+  globalForPrisma.prisma = cachedClient;
+  return cachedClient;
 }
 
 export const prisma = new Proxy({} as PrismaClient, {

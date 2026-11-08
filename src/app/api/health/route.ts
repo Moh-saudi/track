@@ -27,7 +27,7 @@ export async function GET() {
     }
 
     try {
-      // اختبار استعلام خفيف جداً للتأكد من استجابة قاعدة البيانات
+      // استعلام فحص اتصال فائق الخفة والسرعة (أقل من 5ms) لتجنب استنزاف موارد معالج Cloudflare Free
       await prisma.$queryRaw`SELECT 1`;
       latencyMs = Date.now() - startTime;
       dbStatus = "connected";
@@ -37,77 +37,7 @@ export async function GET() {
       dbError = err?.message || "تعذر الاتصال بقاعدة البيانات";
     }
 
-    // اختبار جلب المستخدم المشرف واختبار المصادقة فعلياً
-    let authCheck: any = null;
-    try {
-      const tAuth = Date.now();
-      const inputEmail = "admin@example.local";
-      const user = await prisma.user.findFirst({
-        where: { email: { equals: inputEmail, mode: "insensitive" } },
-        select: {
-          id: true,
-          email: true,
-          active: true,
-          passwordHash: true,
-          role: true,
-        },
-      });
-
-      let isPasswordMatch = false;
-      let bcryptError: string | null = null;
-      try {
-        const bcrypt = require("bcryptjs");
-        isPasswordMatch = user ? bcrypt.compareSync("ChangeMe123!", user.passwordHash) : false;
-      } catch (bcErr: any) {
-        bcryptError = bcErr?.message;
-      }
-
-      let jwtToken: string | null = null;
-      let jwtError: string | null = null;
-      try {
-        const { encode } = require("next-auth/jwt");
-        jwtToken = await encode({
-          token: { id: user?.id, role: user?.role, email: user?.email },
-          secret: process.env.NEXTAUTH_SECRET || "Pm6UPRT2v4Cy1uVxamD1BXmnZGas+2sWONNe1BR+uy0=",
-        });
-      } catch (jErr: any) {
-        jwtError = jErr?.message + " " + (jErr?.stack || "");
-      }
-
-      const tAdminQueries = Date.now();
-      const testCases = await prisma.case.findMany({
-        take: 20,
-        select: { id: true, status: true },
-      });
-      const testUsers = await prisma.user.findMany({
-        take: 20,
-        select: { id: true, fullName: true },
-      });
-      const queriesDurationMs = Date.now() - tAdminQueries;
-
-      authCheck = {
-        userFound: !!user,
-        userActive: user?.active,
-        hasHash: !!user?.passwordHash,
-        hashPrefix: user?.passwordHash ? user.passwordHash.substring(0, 7) : null,
-        passwordMatches: isPasswordMatch,
-        bcryptError: bcryptError,
-        jwtEncoded: !!jwtToken,
-        jwtError: jwtError,
-        testCasesCount: testCases.length,
-        testUsersCount: testUsers.length,
-        queriesDurationMs: queriesDurationMs,
-        role: user?.role,
-        durationMs: Date.now() - tAuth,
-      };
-    } catch (authErr: any) {
-      authCheck = {
-        error: authErr?.message,
-        stack: authErr?.stack,
-      };
-    }
-
-    const isHealthy = dbStatus === "connected" && authCheck?.passwordMatches === true;
+    const isHealthy = dbStatus === "connected";
 
     return NextResponse.json(
       {
@@ -119,7 +49,6 @@ export async function GET() {
           error: dbError,
         },
         hyperdrive: debugInfo.hasHyperdriveConn,
-        auth: authCheck,
         environment: process.env.NODE_ENV || "production",
         version: "0.1.0",
       },
@@ -130,7 +59,6 @@ export async function GET() {
       {
         status: "fatal_error",
         message: fatalError?.message || "Unknown error",
-        stack: fatalError?.stack,
       },
       { status: 500 }
     );
