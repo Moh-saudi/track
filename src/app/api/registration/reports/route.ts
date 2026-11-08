@@ -166,64 +166,66 @@ export async function GET(req: NextRequest) {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    // ─── استعلامات متتالية خفيفة ومحددة لمنع تجاوز مهلة معالج Cloudflare Free ───
-    const filteredCases = await prisma.case.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        caseNumber: true,
-        caseYear: true,
-        prosecutionCaseNumber: true,
-        registrationType: true,
-        complainantName: true,
-        complainantPhone: true,
-        respondentName: true,
-        respondentPhone: true,
-        entityType: true,
-        entityName: true,
-        hospitalName: true,
-        governorate: true,
-        prosecution: true,
-        prosecutionId: true,
-        incomingDate: true,
-        attachmentsCount: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-        createdById: true,
-        subCommitteeId: true,
-        prosecutionRel: { select: { id: true, name: true, governorate: true } },
-        partialProsecutionRel: { select: { id: true, name: true } },
-        createdBy: { select: { id: true, fullName: true, email: true, role: true } },
-        subCommittee: { select: { id: true, name: true } },
-      },
-      take: 200,
-    }).catch((e) => {
-      console.error("Error fetching filtered cases:", e);
-      return [];
-    });
+    // ─── استعلام شامل لكافة السجلات بدون تقييد Cloudflare السابق ───
+    const [filteredCases, globalTotalCasesCount, globalTodayCasesCount, usersList, subCommitteesList] = await Promise.all([
+      prisma.case.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          caseNumber: true,
+          caseYear: true,
+          prosecutionCaseNumber: true,
+          registrationType: true,
+          complainantName: true,
+          complainantPhone: true,
+          respondentName: true,
+          respondentPhone: true,
+          entityType: true,
+          entityName: true,
+          hospitalName: true,
+          governorate: true,
+          prosecution: true,
+          prosecutionId: true,
+          incomingDate: true,
+          attachmentsCount: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          createdById: true,
+          subCommitteeId: true,
+          prosecutionRel: { select: { id: true, name: true, governorate: true } },
+          partialProsecutionRel: { select: { id: true, name: true } },
+          createdBy: { select: { id: true, fullName: true, email: true, role: true } },
+          subCommittee: { select: { id: true, name: true } },
+        },
+        take: 5000,
+      }).catch((e) => {
+        console.error("Error fetching filtered cases:", e);
+        return [];
+      }),
+      prisma.case.count().catch(() => 0),
+      prisma.case.count({ where: { createdAt: { gte: todayStart } } }).catch(() => 0),
+      prisma.user.findMany({
+        where: {
+          role: { in: ["REGISTRATION_CLERK", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER"] },
+        },
+        select: { id: true, fullName: true, email: true, role: true },
+        orderBy: { fullName: "asc" },
+        take: 200,
+      }).catch(() => []),
+      prisma.subCommittee.findMany({
+        where: { active: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+        take: 200,
+      }).catch(() => []),
+    ]);
 
-    const usersList = await prisma.user.findMany({
-      where: {
-        role: { in: ["REGISTRATION_CLERK", "ADMIN", "FOLLOW_UP_OFFICER", "RISK_OFFICER"] },
-      },
-      select: { id: true, fullName: true, email: true, role: true },
-      orderBy: { fullName: "asc" },
-      take: 50,
-    }).catch(() => []);
-
-    const subCommitteesList = await prisma.subCommittee.findMany({
-      where: { active: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-      take: 50,
-    }).catch(() => []);
-
-    // ─── حساب الإحصائيات في الذاكرة (0ms CPU) بدون ضرب قاعدة البيانات بمزيد من الاستعلامات ───
+    // ─── حساب الإحصائيات الشاملة ───
     const totalFiltered = filteredCases.length;
-    const globalTotalCases = totalFiltered;
-    const globalTodayCount = filteredCases.filter((c: any) => c.createdAt && new Date(c.createdAt) >= todayStart).length;
+    const globalTotalCases = globalTotalCasesCount || totalFiltered;
+    const globalTodayCount = globalTodayCasesCount || filteredCases.filter((c: any) => c.createdAt && new Date(c.createdAt) >= todayStart).length;
     const myFilteredCases = currentUserId ? filteredCases.filter((c: any) => c.createdById === currentUserId) : [];
     const myTotalCases = myFilteredCases.length;
     const myTodayCount = myFilteredCases.filter((c: any) => c.createdAt && new Date(c.createdAt) >= todayStart).length;
