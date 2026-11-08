@@ -65,14 +65,6 @@ function createPrismaClient(connStr?: string): PrismaClient {
 // عميل Prisma موحد على مستوى Isolate (Singleton) مع تفضيل فوري لـ Cloudflare Hyperdrive
 let cachedClient: PrismaClient | null = null;
 
-function resetCachedClient(reason?: string) {
-  if (reason) {
-    console.warn("[PRISMA RESET]:", reason);
-  }
-  cachedClient = null;
-  globalForPrisma.prisma = undefined;
-}
-
 function getClient(): PrismaClient {
   let hyperdriveUrl: string | null = null;
   try {
@@ -105,63 +97,9 @@ function getClient(): PrismaClient {
   return cachedClient;
 }
 
-function isConnectionError(err: any): boolean {
-  const msg = (err?.message || String(err)).toLowerCase();
-  return (
-    msg.includes("connect") ||
-    msg.includes("closed") ||
-    msg.includes("socket") ||
-    msg.includes("timeout") ||
-    msg.includes("terminated") ||
-    msg.includes("connection")
-  );
-}
-
-function wrapMethod(targetObj: any, fnName: string) {
-  const original = targetObj[fnName];
-  if (typeof original !== "function") return original;
-  return function (...args: any[]) {
-    try {
-      const res = original.apply(targetObj, args);
-      if (res && typeof res.then === "function") {
-        return res.catch((err: any) => {
-          if (isConnectionError(err)) {
-            resetCachedClient(err?.message);
-          }
-          throw err;
-        });
-      }
-      return res;
-    } catch (err: any) {
-      if (isConnectionError(err)) {
-        resetCachedClient(err?.message);
-      }
-      throw err;
-    }
-  };
-}
-
 export const prisma = new Proxy({} as PrismaClient, {
   get(_target, prop) {
     const client = getClient();
-    const value = (client as any)[prop];
-
-    if (typeof value === "function") {
-      return wrapMethod(client, prop as string);
-    }
-
-    if (value && typeof value === "object") {
-      return new Proxy(value, {
-        get(modelTarget, modelProp) {
-          const modelVal = modelTarget[modelProp];
-          if (typeof modelVal === "function") {
-            return wrapMethod(modelTarget, modelProp as string);
-          }
-          return modelVal;
-        },
-      });
-    }
-
-    return value;
+    return (client as any)[prop];
   },
 });
