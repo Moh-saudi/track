@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 // يمنع إنشاء اتصالات متعددة بقاعدة البيانات أثناء التطوير مع Hot Reload
@@ -40,6 +41,23 @@ function getConnectionString(): string {
   return url;
 }
 
+function createPrismaClient(connStr?: string): PrismaClient {
+  const connectionString = connStr || getConnectionString();
+  const pool = new Pool({
+    connectionString,
+    max: 1,
+    connectionTimeoutMillis: 5000,
+    ssl: false,
+  });
+
+  pool.on("error", (err) => {
+    console.warn("[PG POOL ERROR]:", err?.message);
+  });
+
+  const adapter = new PrismaPg(pool);
+  return new PrismaClient({ adapter, log: ["error"] });
+}
+
 // تخزين عميل Prisma لكل سياق طلب في Cloudflare Workers (Request-scoped WeakMap)
 // يمنع نهائياً تسريب مقابس TCP أو محاولة إعادة استخدام مقابس مغلقة بين الطلبات المنفصلة (Error 1101 / 1102)
 const contextClientMap = new WeakMap<object, PrismaClient>();
@@ -54,12 +72,11 @@ function getClient(): PrismaClient {
       if (key && typeof key === "object") {
         let client = contextClientMap.get(key);
         if (!client) {
-          const connectionString =
+          const url =
             cfContext.env?.HYPERDRIVE?.connectionString ||
             cfContext.env?.DATABASE_URL ||
             getConnectionString();
-          const adapter = new PrismaPg({ connectionString });
-          client = new PrismaClient({ adapter, log: ["error"] });
+          client = createPrismaClient(url);
           contextClientMap.set(key, client);
         }
         return client;
@@ -70,9 +87,7 @@ function getClient(): PrismaClient {
   }
 
   if (!fallbackClient) {
-    const connectionString = getConnectionString();
-    const adapter = new PrismaPg({ connectionString });
-    fallbackClient = new PrismaClient({ adapter, log: ["error"] });
+    fallbackClient = globalForPrisma.prisma ?? createPrismaClient();
     globalForPrisma.prisma = fallbackClient;
   }
   return fallbackClient;
