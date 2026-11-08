@@ -13,24 +13,4 @@ if (!process.env.AUTH_TRUST_HOST) {
 
 const handler = NextAuth(authOptions);
 
-async function authHandler(req: any, ctx: any) {
-  try {
-    return await handler(req, ctx);
-  } catch (err: any) {
-    console.error("[NEXTAUTH_CRASH]", err);
-    return new Response(
-      JSON.stringify({
-        status: "auth_error",
-        message: err?.message || String(err),
-        stack: err?.stack,
-        cause: err?.cause?.message,
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  }
-}
-
-export { authHandler as GET, authHandler as POST };
+export { handler as GET, handler as POST };
