@@ -1,5 +1,4 @@
 import { PrismaClient } from "@prisma/client";
-import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 // يمنع إنشاء اتصالات متعددة بقاعدة البيانات أثناء التطوير مع Hot Reload
@@ -13,7 +12,6 @@ function getConnectionString(): string {
     const { getCloudflareContext } = require("@opennextjs/cloudflare");
     const ctx = getCloudflareContext();
     if (ctx?.env?.HYPERDRIVE?.connectionString) {
-      console.log("[PRISMA] Using Cloudflare Hyperdrive connection string");
       return ctx.env.HYPERDRIVE.connectionString;
     }
     if (ctx?.env?.DATABASE_URL) {
@@ -29,7 +27,6 @@ function getConnectionString(): string {
     url = SUPABASE_FALLBACK_URL;
   }
 
-  // في البيئات السحابية Serverless (Cloudflare)، منفذ 6543 مع pgbouncer=true مطلوب لمجمع الاتصالات
   if (url.includes("pooler.supabase.com:5432")) {
     url = url.replace("pooler.supabase.com:5432", "pooler.supabase.com:6543");
   }
@@ -43,54 +40,42 @@ function getConnectionString(): string {
   return url;
 }
 
-function createPrismaClient(customConnStr?: string): PrismaClient {
-  const connectionString = customConnStr || getConnectionString();
-
-  try {
-    const pool = new Pool({
-      connectionString,
-      max: 1,
-      idleTimeoutMillis: 10000,
-      connectionTimeoutMillis: 3000,
-      ssl: false,
-    });
-
-    pool.on("error", (err) => {
-      console.warn("[PG POOL WARNING]:", err?.message);
-    });
-
-    const adapter = new PrismaPg(pool);
-    return new PrismaClient({
-      adapter,
-      log: ["error"],
-    });
-  } catch (e) {
-    console.warn("PrismaPg adapter initialization failed:", e);
-    return new PrismaClient({
-      log: ["error"],
-    });
-  }
-}
-
-// عميل Prisma موحد على مستوى Isolate (Singleton) لمنع تكرار تحميل WASM واستهلاك ذاكرة ومعالج Cloudflare Free
-let cachedClient: PrismaClient | null = null;
+// تخزين عميل Prisma لكل سياق طلب في Cloudflare Workers (Request-scoped WeakMap)
+// يمنع نهائياً تسريب مقابس TCP أو محاولة إعادة استخدام مقابس مغلقة بين الطلبات المنفصلة (Error 1101 / 1102)
+const contextClientMap = new WeakMap<object, PrismaClient>();
+let fallbackClient: PrismaClient | null = null;
 
 function getClient(): PrismaClient {
-  if (cachedClient) return cachedClient;
-
-  let hyperdriveUrl: string | null = null;
   try {
     const { getCloudflareContext } = require("@opennextjs/cloudflare");
-    const ctx = getCloudflareContext();
-    if (ctx?.env?.HYPERDRIVE?.connectionString) {
-      hyperdriveUrl = ctx.env.HYPERDRIVE.connectionString;
+    const cfContext = getCloudflareContext();
+    if (cfContext) {
+      const key = (cfContext.ctx || cfContext) as object;
+      if (key && typeof key === "object") {
+        let client = contextClientMap.get(key);
+        if (!client) {
+          const connectionString =
+            cfContext.env?.HYPERDRIVE?.connectionString ||
+            cfContext.env?.DATABASE_URL ||
+            getConnectionString();
+          const adapter = new PrismaPg({ connectionString });
+          client = new PrismaClient({ adapter, log: ["error"] });
+          contextClientMap.set(key, client);
+        }
+        return client;
+      }
     }
-  } catch {}
+  } catch {
+    // خارج سياق طلب Cloudflare (أثناء البناء أو في بيئة Node)
+  }
 
-  const url = hyperdriveUrl || getConnectionString();
-  cachedClient = createPrismaClient(url);
-  globalForPrisma.prisma = cachedClient;
-  return cachedClient;
+  if (!fallbackClient) {
+    const connectionString = getConnectionString();
+    const adapter = new PrismaPg({ connectionString });
+    fallbackClient = new PrismaClient({ adapter, log: ["error"] });
+    globalForPrisma.prisma = fallbackClient;
+  }
+  return fallbackClient;
 }
 
 export const prisma = new Proxy({} as PrismaClient, {
