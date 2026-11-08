@@ -28,20 +28,25 @@ export default async function AdminDashboardPage({
   const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
   const nowMs = Date.now();
 
-  // استعلامات متتالية خفيفة لتفادي إجهاد مجمع اتصالات TCP في Cloudflare Workers
   let cases: any[] = [];
+  let totalCasesInDb = 0;
   try {
-    cases = await prisma.case.findMany({
-      take: 200,
-      select: {
-        id: true,
-        status: true,
-        assignedAt: true,
-        isRiskOverridden: true,
-      },
-    });
+    const [fetchedCases, count] = await Promise.all([
+      prisma.case.findMany({
+        select: {
+          id: true,
+          status: true,
+          assignedAt: true,
+          isRiskOverridden: true,
+        },
+      }),
+      prisma.case.count(),
+    ]);
+    cases = fetchedCases || [];
+    totalCasesInDb = count;
   } catch {
     cases = [];
+    totalCasesInDb = 0;
   }
 
   let subCommittees: any[] = [];
@@ -123,7 +128,7 @@ export default async function AdminDashboardPage({
   const todayLogsCount = recentLogs.filter((l: any) => l.createdAt && new Date(l.createdAt) >= todayStart).length;
   const todaySessionsCount = users.filter((u: any) => u.lastSeenAt && new Date(u.lastSeenAt) >= todayStart).length;
 
-  const totalCasesCount = cases.length;
+  const totalCasesCount = totalCasesInDb || cases.length;
   const overdueCasesCount = cases.filter((c: any) => {
     if (c.status === "APPROVED" || c.status === "CLOSED") return false;
     if (c.status === "REFERRED_FOR_REVIEW") return true;

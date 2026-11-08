@@ -26,10 +26,15 @@ export async function GET() {
       debugInfo = { error: e.message };
     }
 
+    let totalCases: number | null = null;
     try {
-      await prisma.$queryRaw`SELECT 1`;
+      const [_, count] = await Promise.all([
+        prisma.$queryRaw`SELECT 1`,
+        prisma.case.count(),
+      ]);
       latencyMs = Date.now() - startTime;
       dbStatus = "connected";
+      totalCases = count;
     } catch (err: any) {
       latencyMs = Date.now() - startTime;
       dbStatus = "disconnected";
@@ -44,6 +49,7 @@ export async function GET() {
         timestamp: new Date().toISOString(),
         database: {
           status: dbStatus,
+          totalCasesInDatabase: totalCases,
           latencyMs: `${latencyMs}ms`,
           error: dbError,
         },
