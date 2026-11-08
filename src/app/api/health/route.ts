@@ -62,6 +62,18 @@ export async function GET() {
         bcryptError = bcErr?.message;
       }
 
+      let jwtToken: string | null = null;
+      let jwtError: string | null = null;
+      try {
+        const { encode } = require("next-auth/jwt");
+        jwtToken = await encode({
+          token: { id: user?.id, role: user?.role, email: user?.email },
+          secret: process.env.NEXTAUTH_SECRET || "Pm6UPRT2v4Cy1uVxamD1BXmnZGas+2sWONNe1BR+uy0=",
+        });
+      } catch (jErr: any) {
+        jwtError = jErr?.message + " " + (jErr?.stack || "");
+      }
+
       authCheck = {
         userFound: !!user,
         userActive: user?.active,
@@ -69,6 +81,8 @@ export async function GET() {
         hashPrefix: user?.passwordHash ? user.passwordHash.substring(0, 7) : null,
         passwordMatches: isPasswordMatch,
         bcryptError: bcryptError,
+        jwtEncoded: !!jwtToken,
+        jwtError: jwtError,
         role: user?.role,
         durationMs: Date.now() - tAuth,
       };
