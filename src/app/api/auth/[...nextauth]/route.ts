@@ -15,6 +15,15 @@ if (!process.env.AUTH_TRUST_HOST) {
 const handler = NextAuth(authOptions);
 
 async function authRoute(req: NextRequest, ctx: any) {
+  // Direct test probe: return immediate response to verify route execution
+  const url = new URL(req.url);
+  if (url.searchParams.get("probe") === "true") {
+    return new Response(JSON.stringify({ probe: "ok", method: req.method }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const res = await handler(req, ctx);
     return res;
