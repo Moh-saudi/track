@@ -51,30 +51,53 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
   const session = await getServerSession(authOptions);
   const currentUserId = (session?.user as any)?.id;
 
-  const caseRecord = await prisma.case.findUnique({
-    where: { id: id },
-    include: {
-      subCommittee: true,
-      prosecutionRel: true,
-      partialProsecutionRel: true,
-      specialties: { include: { specialty: true } },
-      attachments: { orderBy: { uploadedAt: "desc" } },
-      actions: { orderBy: { createdAt: "desc" }, include: { recordedBy: { select: { fullName: true } } } },
-      supremeDecisions: {
-        orderBy: { createdAt: "desc" },
-        include: {
-          decidedBy: { select: { fullName: true } },
-          referredSubCommittee: { select: { name: true } },
-        },
+  const [caseRecord, specialties, attachments, actions, supremeDecisions, meetingReschedules] = await Promise.all([
+    prisma.case.findUnique({
+      where: { id: id },
+      include: {
+        subCommittee: true,
+        prosecutionRel: true,
+        partialProsecutionRel: true,
       },
-      meetingReschedules: {
-        orderBy: { createdAt: "desc" },
-        include: { createdBy: { select: { fullName: true } } },
+    }),
+    prisma.caseSpecialty.findMany({
+      where: { caseId: id },
+      include: { specialty: true },
+    }),
+    prisma.attachment.findMany({
+      where: { caseId: id },
+      orderBy: { uploadedAt: "desc" },
+      take: 30,
+    }),
+    prisma.caseAction.findMany({
+      where: { caseId: id },
+      orderBy: { createdAt: "desc" },
+      include: { recordedBy: { select: { fullName: true } } },
+      take: 20,
+    }),
+    prisma.supremeDecision.findMany({
+      where: { caseId: id },
+      orderBy: { createdAt: "desc" },
+      include: {
+        decidedBy: { select: { fullName: true } },
+        referredSubCommittee: { select: { name: true } },
       },
-    },
-  });
+      take: 10,
+    }),
+    prisma.meetingReschedule.findMany({
+      where: { caseId: id },
+      orderBy: { createdAt: "desc" },
+      include: { createdBy: { select: { fullName: true } } },
+      take: 10,
+    }),
+  ]);
 
   if (!caseRecord) notFound();
+  (caseRecord as any).specialties = specialties;
+  (caseRecord as any).attachments = attachments;
+  (caseRecord as any).actions = actions;
+  (caseRecord as any).supremeDecisions = supremeDecisions;
+  (caseRecord as any).meetingReschedules = meetingReschedules;
 
   const statusInfo = STATUS_CONFIG[caseRecord.status] ?? { label: caseRecord.status, badge: "badge-registered" };
   const hasMeetingDate = !!caseRecord.meetingDate;

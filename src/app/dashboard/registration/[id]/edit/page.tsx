@@ -22,10 +22,6 @@ export default async function EditCasePage({ params }: Props) {
 
   const caseRecord = await prisma.case.findUnique({
     where: { id },
-    include: {
-      prosecutionRel: true,
-      partialProsecutionRel: true,
-    },
   });
 
   if (!caseRecord) {

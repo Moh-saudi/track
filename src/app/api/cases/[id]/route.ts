@@ -59,54 +59,83 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const userId = (session.user as any).id;
   const subCommitteeId = (session.user as any).subCommitteeId;
 
-  const item = await prisma.case.findUnique({
+  const caseRecord = await prisma.case.findUnique({
     where: { id: id },
     include: {
       subCommittee: true,
       prosecutionRel: true,
       partialProsecutionRel: true,
-      specialties: { include: { specialty: true } },
-      reviewers: {
-        include: {
-          doctor: {
-            select: { id: true, name: true, title: true, employer: true, phone: true, specialty: true },
-          },
-          user: {
-            select: { id: true, fullName: true, employer: true, role: true, email: true },
-          },
-        },
-      },
-      followUpOfficer: { select: { id: true, fullName: true } },
-      actions: {
-        include: { recordedBy: { select: { id: true, fullName: true, role: true } } },
-        orderBy: { createdAt: "desc" },
-      },
-      supremeDecisions: {
-        include: { decidedBy: { select: { id: true, fullName: true, role: true } } },
-        orderBy: { createdAt: "desc" },
-      },
-      attachments: {
-        select: {
-          id: true,
-          fileName: true,
-          fileType: true,
-          fileSize: true,
-          uploadedAt: true,
-          uploadedBy: { select: { id: true, fullName: true } },
-        },
-        orderBy: { uploadedAt: "desc" },
-      },
     },
   });
 
-  if (!item) return NextResponse.json({ error: "السجل غير موجود" }, { status: 404 });
+  if (!caseRecord) return NextResponse.json({ error: "السجل غير موجود" }, { status: 404 });
 
   const permitted =
-    (role === "REGISTRATION_CLERK" && item.createdById === userId) ||
-    (role === "SUBCOMMITTEE_MEMBER" && !!subCommitteeId && item.subCommitteeId === subCommitteeId) ||
+    (role === "REGISTRATION_CLERK" && caseRecord.createdById === userId) ||
+    (role === "SUBCOMMITTEE_MEMBER" && !!subCommitteeId && caseRecord.subCommitteeId === subCommitteeId) ||
     can(role, "VIEW_ALL_CASES");
 
   if (!permitted) return NextResponse.json({ error: "غير مصرح بالاطلاع على هذا السجل" }, { status: 403 });
+
+  // استعلامات فرعية خفيفة وموازية لا ترهق ذاكرة WASM وتمنع تجاوز حدود المعالج
+  const [specialties, reviewers, followUpOfficer, actions, supremeDecisions, attachments] = await Promise.all([
+    prisma.caseSpecialty.findMany({
+      where: { caseId: id },
+      include: { specialty: true },
+    }),
+    prisma.caseReviewer.findMany({
+      where: { caseId: id },
+      include: {
+        doctor: {
+          select: { id: true, name: true, title: true, employer: true, phone: true, specialty: true },
+        },
+        user: {
+          select: { id: true, fullName: true, employer: true, role: true, email: true },
+        },
+      },
+    }),
+    caseRecord.followUpOfficerId
+      ? prisma.user.findUnique({
+          where: { id: caseRecord.followUpOfficerId },
+          select: { id: true, fullName: true },
+        })
+      : Promise.resolve(null),
+    prisma.caseAction.findMany({
+      where: { caseId: id },
+      include: { recordedBy: { select: { id: true, fullName: true, role: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }),
+    prisma.supremeDecision.findMany({
+      where: { caseId: id },
+      include: { decidedBy: { select: { id: true, fullName: true, role: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+    prisma.attachment.findMany({
+      where: { caseId: id },
+      select: {
+        id: true,
+        fileName: true,
+        fileType: true,
+        fileSize: true,
+        uploadedAt: true,
+        uploadedBy: { select: { id: true, fullName: true } },
+      },
+      orderBy: { uploadedAt: "desc" },
+      take: 30,
+    }),
+  ]);
+
+  const item = {
+    ...caseRecord,
+    specialties,
+    reviewers,
+    followUpOfficer,
+    actions,
+    supremeDecisions,
+    attachments,
+  };
 
   return NextResponse.json(item);
 }

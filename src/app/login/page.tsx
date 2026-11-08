@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/Badge";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(false);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,50 +27,53 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isLoading) return;
     setError(null);
+    setIsLoading(true);
 
-    startTransition(async () => {
-      try {
-        const timeoutPromise = new Promise<{ error: string }>((_, reject) =>
-          setTimeout(() => reject(new Error("TIMEOUT")), 15000)
-        );
+    try {
+      const timeoutPromise = new Promise<{ error: string }>((_, reject) =>
+        setTimeout(() => reject(new Error("TIMEOUT")), 15000)
+      );
 
-        const res: any = await Promise.race([
-          signIn("credentials", {
-            redirect: false,
-            email: email.trim().toLowerCase(),
-            password,
-          }),
-          timeoutPromise,
-        ]);
+      const res: any = await Promise.race([
+        signIn("credentials", {
+          redirect: false,
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+        timeoutPromise,
+      ]);
 
-        if (res?.error) {
-          if (res.error.includes("LOCKED_SUBCOMMITTEE")) {
-            setError(
-              "عذراً، تم إيقاف نشاط هذه اللجنة الفرعية وقفل حساباتها مؤقتاً بقرار إداري. يُرجى مراجعة مدير النظام أو التواصل مع الدعم الفني مباشرة."
-            );
-          } else if (res.error.includes("LOGIN_TEMPORARILY_BLOCKED")) {
-            setError("تم قفل تسجيل الدخول مؤقتاً لتكرار المحاولات الخاطئة. يرجى الانتظار بضع دقائق والمحاولة مجدداً.");
-          } else {
-            setError("بيانات الدخول غير صحيحة — يرجى التحقق من البريد الإلكتروني وكلمة المرور");
-          }
-          return;
-        }
-
-        if (res?.ok) {
-          // انتقال كامل لضمان إرسال كوكيز الجلسة مع طلب الداشبورد
-          window.location.href = "/dashboard";
+      if (res?.error) {
+        if (res.error.includes("LOCKED_SUBCOMMITTEE")) {
+          setError(
+            "عذراً، تم إيقاف نشاط هذه اللجنة الفرعية وقفل حساباتها مؤقتاً بقرار إداري. يُرجى مراجعة مدير النظام أو التواصل مع الدعم الفني مباشرة."
+          );
+        } else if (res.error.includes("LOGIN_TEMPORARILY_BLOCKED")) {
+          setError("تم قفل تسجيل الدخول مؤقتاً لتكرار المحاولات الخاطئة. يرجى الانتظار بضع دقائق والمحاولة مجدداً.");
         } else {
-          setError("تعذر إكمال عملية الدخول، يرجى المحاولة مرة أخرى.");
+          setError("بيانات الدخول غير صحيحة — يرجى التحقق من البريد الإلكتروني وكلمة المرور");
         }
-      } catch (err: any) {
-        if (err?.message === "TIMEOUT") {
-          setError("استغرقت عملية التحقق وقتاً أطول من المتوقع، يرجى إعادة المحاولة.");
-        } else {
-          setError("حدث خطأ في الاتصال، يرجى التحقق من اتصالك والمحاولة مجدداً.");
-        }
+        setIsLoading(false);
+        return;
       }
-    });
+
+      if (res?.ok) {
+        const dest = res?.url && !res.url.includes("/login") ? res.url : "/dashboard";
+        window.location.href = dest;
+      } else {
+        setError("تعذر إكمال عملية الدخول، يرجى المحاولة مرة أخرى.");
+        setIsLoading(false);
+      }
+    } catch (err: any) {
+      if (err?.message === "TIMEOUT") {
+        setError("استغرقت عملية التحقق وقتاً أطول من المتوقع، يرجى إعادة المحاولة.");
+      } else {
+        setError("حدث خطأ في الاتصال، يرجى التحقق من اتصالك والمحاولة مجدداً.");
+      }
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -207,10 +210,11 @@ export default function LoginPage() {
                 type="submit"
                 variant="primary"
                 size="lg"
-                loading={isPending}
+                loading={isLoading}
+                disabled={isLoading}
                 className="w-full h-11 text-sm font-bold shadow-sm mt-2"
               >
-                {isPending ? "جارٍ التحقق والدخول..." : "دخول المنظومة"}
+                {isLoading ? "جارٍ التحقق والدخول..." : "دخول المنظومة"}
               </Button>
             </form>
 

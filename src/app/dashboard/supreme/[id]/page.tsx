@@ -21,20 +21,37 @@ const DECISION_LABELS: Record<string, string> = {
 
 export default async function SupremeCaseDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [caseRecord, subCommittees] = await Promise.all([
+  const [caseRecord, subCommittees, actions, attachments, supremeDecisions] = await Promise.all([
     prisma.case.findUnique({
       where: { id: id },
       include: {
-        subCommittee:     true,
-        actions:          { orderBy: { createdAt: "desc" }, include: { recordedBy: { select: { fullName: true } } } },
-        attachments:      { orderBy: { uploadedAt: "desc" } },
-        supremeDecisions: { orderBy: { createdAt: "desc" }, include: { decidedBy: { select: { fullName: true } } } },
+        subCommittee: true,
       },
     }),
     prisma.subCommittee.findMany({ where: { active: true }, orderBy: { code: "asc" } }),
+    prisma.caseAction.findMany({
+      where: { caseId: id },
+      orderBy: { createdAt: "desc" },
+      include: { recordedBy: { select: { fullName: true } } },
+      take: 20,
+    }),
+    prisma.attachment.findMany({
+      where: { caseId: id },
+      orderBy: { uploadedAt: "desc" },
+      take: 30,
+    }),
+    prisma.supremeDecision.findMany({
+      where: { caseId: id },
+      orderBy: { createdAt: "desc" },
+      include: { decidedBy: { select: { fullName: true } } },
+      take: 10,
+    }),
   ]);
 
   if (!caseRecord) notFound();
+  (caseRecord as any).actions = actions;
+  (caseRecord as any).attachments = attachments;
+  (caseRecord as any).supremeDecisions = supremeDecisions;
 
   const session = await getServerSession(authOptions);
   const userRole = (session?.user as any)?.role;
