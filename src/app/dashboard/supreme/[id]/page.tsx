@@ -49,15 +49,12 @@ export default async function SupremeCaseDetail({ params }: { params: Promise<{ 
   ]);
 
   if (!caseRecord) notFound();
-  (caseRecord as any).actions = actions;
-  (caseRecord as any).attachments = attachments;
-  (caseRecord as any).supremeDecisions = supremeDecisions;
 
   const session = await getServerSession(authOptions);
   const userRole = (session?.user as any)?.role;
   const isSupremeMember = userRole === "SUPREME_COMMITTEE";
 
-  const latestAction   = caseRecord.actions[0];
+  const latestAction   = actions[0];
   const canIssueDecision = caseRecord.status === "PENDING_SUPREME_REVIEW" && isSupremeMember;
 
   return (
@@ -180,11 +177,11 @@ export default async function SupremeCaseDetail({ params }: { params: Promise<{ 
           )}
           
           {/* سجل قرارات اللجنة العليا */}
-          {caseRecord.supremeDecisions.length > 0 && (
+          {supremeDecisions.length > 0 && (
             <div className="card">
               <h2 className="section-title">قرارات اللجنة العليا السابقة</h2>
               <div className="space-y-3">
-                {caseRecord.supremeDecisions.map(d => (
+                {supremeDecisions.map(d => (
                   <div key={d.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50">
                     <div className="flex items-center justify-between mb-2">
                       <span className={`badge ${
@@ -227,14 +224,14 @@ export default async function SupremeCaseDetail({ params }: { params: Promise<{ 
         {/* المرفقات */}
         <div>
           <div className="card sticky top-24">
-            <h2 className="section-title">المرفقات ({caseRecord.attachments.length})</h2>
-            {caseRecord.attachments.length === 0 ? (
+            <h2 className="section-title">المرفقات ({attachments.length})</h2>
+            {attachments.length === 0 ? (
               <div className="empty-state py-6">
                 <p className="text-xs">لا توجد مرفقات</p>
               </div>
             ) : (
               <ul className="space-y-2">
-                {caseRecord.attachments.map(a => (
+                {attachments.map(a => (
                   <li key={a.id} className="flex items-center justify-between gap-2 text-xs p-2 rounded-lg bg-gray-50 border border-gray-100">
                     <div className="flex items-center gap-2 min-w-0">
                       <svg className="w-4 h-4 text-teal-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
