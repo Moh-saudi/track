@@ -71,7 +71,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   ]);
 
   if (caseCount > 0 || doctorCount > 0) {
-    const details = [];
+    const details: string[] = [];
     if (caseCount > 0) details.push(`(${caseCount}) قضايا مسجلة`);
     if (doctorCount > 0) details.push(`(${doctorCount}) أطباء مسندين`);
 

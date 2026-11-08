@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "قائمة التحديثات فارغة" }, { status: 400 });
   }
 
-  const results = [];
+  const results: { id: string; success: boolean; error?: string }[] = [];
   for (const item of updates) {
     if (!item.caseId || !item.governorate) continue;
     try {

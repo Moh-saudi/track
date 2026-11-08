@@ -94,7 +94,7 @@ export async function DELETE(
   const totalDependencies = casesCount + doctorsCount + membersCount + referredCount;
 
   if (totalDependencies > 0) {
-    const details = [];
+    const details: string[] = [];
     if (casesCount > 0) details.push(`${casesCount} قضايا مسندة`);
     if (doctorsCount > 0) details.push(`${doctorsCount} أطباء مقيدين`);
     if (membersCount > 0) details.push(`${membersCount} أعضاء ومقررين`);
