@@ -36,7 +36,7 @@ if (isProduction) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ["@prisma/client", ".prisma/client"],
+  serverExternalPackages: ["@prisma/client", ".prisma/client", "pg", "pg-cloudflare"],
   experimental: {
     serverActions: { bodySizeLimit: "30mb" },
     optimizePackageImports: ["lucide-react"],

@@ -6,7 +6,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 const SUPABASE_FALLBACK_URL =
-  "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true";
+  "postgresql://postgres.wmgmikvjmsliizuagoer:142536475869Ph.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require";
 
 function getConnectionString(): string {
   let url = "";
@@ -28,12 +28,15 @@ function getConnectionString(): string {
     url = SUPABASE_FALLBACK_URL;
   }
 
-  // في البيئات السحابية Serverless (Cloudflare)، منفذ 6543 مع pgbouncer=true إلزامي لمنع انقطاع الاتصالات
+  // في البيئات السحابية Serverless (Cloudflare)، منفذ 6543 مع pgbouncer=true و sslmode=require إلزامي لمنع انقطاع الاتصالات
   if (url.includes("pooler.supabase.com:5432")) {
     url = url.replace("pooler.supabase.com:5432", "pooler.supabase.com:6543");
-    if (!url.includes("pgbouncer=true")) {
-      url += (url.includes("?") ? "&" : "?") + "pgbouncer=true";
-    }
+  }
+  if (url.includes("pooler.supabase.com") && !url.includes("pgbouncer=true")) {
+    url += (url.includes("?") ? "&" : "?") + "pgbouncer=true";
+  }
+  if (url.includes("pooler.supabase.com") && !url.includes("sslmode=")) {
+    url += (url.includes("?") ? "&" : "?") + "sslmode=require";
   }
 
   return url;
@@ -52,6 +55,10 @@ function createPrismaClient(): PrismaClient {
       idleTimeoutMillis: 1000,
       connectionTimeoutMillis: 10000,
       ssl: isLocal ? false : { rejectUnauthorized: false },
+    });
+
+    pool.on("error", (err) => {
+      console.warn("[PG POOL WARNING]:", err?.message);
     });
 
     const adapter = new PrismaPg(pool);
