@@ -94,8 +94,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       status: "UNDER_SUBCOMMITTEE_REVIEW",
     },
     include: {
-      subCommittee: true,
-      specialties: { include: { specialty: true } },
+      subCommittee: { select: { id: true, name: true, code: true } },
+      specialties: { select: { id: true, specialty: { select: { id: true, name: true } } } },
     },
   });
 

@@ -26,18 +26,21 @@ export default async function FollowUpCasesPage() {
     const res = await Promise.all([
       prisma.case.findMany({
         orderBy: { createdAt: "desc" },
+        take: 100,
         include: {
-          subCommittee: true,
-          specialties: { include: { specialty: true } },
+          subCommittee: { select: { id: true, name: true } },
+          specialties: { select: { id: true, specialty: { select: { id: true, name: true } } } },
           createdBy: { select: { fullName: true } },
           actions: { select: { reportDate: true, receivedDate: true, createdAt: true } },
           meetingReschedules: {
             orderBy: { createdAt: "desc" },
+            take: 5,
             include: {
               createdBy: { select: { fullName: true } },
             },
           },
           reviewers: {
+            take: 5,
             include: {
               user: { select: { fullName: true, employer: true } },
               doctor: { select: { name: true, employer: true } },

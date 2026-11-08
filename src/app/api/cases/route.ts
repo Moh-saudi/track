@@ -71,17 +71,11 @@ export async function GET() {
     const cases = await prisma.case.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      take: 200,
+      take: 100,
       include: {
-        subCommittee: true,
-        prosecutionRel: true,
-        partialProsecutionRel: true,
-        specialties: { include: { specialty: true } },
-        reviewers: {
-          include: {
-            user: { select: { id: true, fullName: true, employer: true, role: true } },
-          },
-        },
+        subCommittee: { select: { id: true, name: true, code: true } },
+        prosecutionRel: { select: { id: true, name: true } },
+        partialProsecutionRel: { select: { id: true, name: true } },
         followUpOfficer: { select: { id: true, fullName: true } },
       },
     });
@@ -202,9 +196,9 @@ export async function POST(req: NextRequest) {
         : undefined,
     },
     include: {
-      prosecutionRel: true,
-      partialProsecutionRel: true,
-      specialties: { include: { specialty: true } },
+      prosecutionRel: { select: { id: true, name: true } },
+      partialProsecutionRel: { select: { id: true, name: true } },
+      specialties: { select: { id: true, specialty: { select: { id: true, name: true } } } },
     },
   });
 

@@ -30,9 +30,9 @@ export default async function SubCommitteeReportPage({ params }: { params: Promi
   const caseRecord = await prisma.case.findUnique({
     where: { id: id },
     include: {
-      subCommittee: true,
-      specialties: { include: { specialty: true } },
-      actions: { orderBy: { createdAt: "desc" }, include: { recordedBy: { select: { fullName: true } } } },
+      subCommittee: { select: { id: true, name: true, code: true } },
+      specialties: { select: { id: true, specialty: { select: { id: true, name: true } } } },
+      actions: { orderBy: { createdAt: "desc" }, take: 10, include: { recordedBy: { select: { fullName: true } } } },
     },
   });
 

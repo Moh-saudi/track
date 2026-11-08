@@ -42,13 +42,16 @@ export default async function SubCommitteeDashboard({
       prisma.case.findMany({
         where: whereClause,
         orderBy: { createdAt: "desc" },
+        take: 80,
         include: {
-          subCommittee: true,
-          specialties: { include: { specialty: true } },
+          subCommittee: { select: { id: true, name: true, code: true } },
+          specialties: { select: { id: true, specialty: { select: { id: true, name: true } } } },
           actions: {
             orderBy: { createdAt: "desc" },
+            take: 5,
           },
           reviewers: {
+            take: 5,
             include: {
               doctor: { select: { name: true } },
               user: { select: { fullName: true } },
