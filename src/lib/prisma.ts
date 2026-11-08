@@ -45,17 +45,13 @@ function getConnectionString(): string {
 
 function createPrismaClient(): PrismaClient {
   const connectionString = getConnectionString();
-  const isHyperdriveOrLocal =
-    connectionString.includes("localhost") ||
-    connectionString.includes("127.0.0.1") ||
-    connectionString.includes("hyperdrive");
 
   try {
     const pool = new Pool({
       connectionString,
-      max: isHyperdriveOrLocal ? 5 : 1,
-      idleTimeoutMillis: isHyperdriveOrLocal ? 30000 : 3000,
-      connectionTimeoutMillis: 10000,
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 8000,
       ssl: false,
     });
 
@@ -76,24 +72,10 @@ function createPrismaClient(): PrismaClient {
   }
 }
 
-// في Cloudflare Workers، تجميد الـ Isolates بين الطلبات يؤدي إلى موت الـ Sockets مع Supabase إذا تم تخزين العميل عالمياً.
-// لذلك في بيئة الإنتاج السحابية، ننشئ عميلاً جديداً خفيفاً لضمان وجود Socket سليم ونشط دون اتصالات ميتة.
+// إعادة استخدام العميل (Cached Singleton) لمنع استنزاف ذاكرة ومعالج Cloudflare Workers (Error 1102)
 let cachedClient: PrismaClient | null = null;
 
 function getClient(): PrismaClient {
-  const url = getConnectionString();
-  const isHyperdrive = url.includes("hyperdrive") || url.includes("127.0.0.1");
-
-  if (isHyperdrive) {
-    if (!cachedClient) {
-      cachedClient = createPrismaClient();
-    }
-    return cachedClient;
-  }
-
-  if (process.env.NODE_ENV === "production") {
-    return createPrismaClient();
-  }
   if (!cachedClient) {
     cachedClient = globalForPrisma.prisma ?? createPrismaClient();
     globalForPrisma.prisma = cachedClient;
@@ -105,6 +87,38 @@ export const prisma = new Proxy({} as PrismaClient, {
   get(_target, prop) {
     const client = getClient();
     const value = (client as any)[prop];
-    return typeof value === "function" ? value.bind(client) : value;
+    if (typeof value === "function") {
+      return (...args: any[]) => {
+        try {
+          const result = value.apply(client, args);
+          if (result && typeof result.catch === "function") {
+            return result.catch((err: any) => {
+              if (
+                err?.message?.includes("Connection terminated") ||
+                err?.message?.includes("closed") ||
+                err?.message?.includes("socket")
+              ) {
+                console.warn("[PRISMA RESET] Resetting cached client due to socket error:", err?.message);
+                cachedClient = null;
+                globalForPrisma.prisma = undefined;
+              }
+              throw err;
+            });
+          }
+          return result;
+        } catch (err: any) {
+          if (
+            err?.message?.includes("Connection terminated") ||
+            err?.message?.includes("closed") ||
+            err?.message?.includes("socket")
+          ) {
+            cachedClient = null;
+            globalForPrisma.prisma = undefined;
+          }
+          throw err;
+        }
+      };
+    }
+    return value;
   },
 });
