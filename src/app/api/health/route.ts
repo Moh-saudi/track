@@ -74,6 +74,17 @@ export async function GET() {
         jwtError = jErr?.message + " " + (jErr?.stack || "");
       }
 
+      const tAdminQueries = Date.now();
+      const testCases = await prisma.case.findMany({
+        take: 20,
+        select: { id: true, status: true },
+      });
+      const testUsers = await prisma.user.findMany({
+        take: 20,
+        select: { id: true, fullName: true },
+      });
+      const queriesDurationMs = Date.now() - tAdminQueries;
+
       authCheck = {
         userFound: !!user,
         userActive: user?.active,
@@ -83,6 +94,9 @@ export async function GET() {
         bcryptError: bcryptError,
         jwtEncoded: !!jwtToken,
         jwtError: jwtError,
+        testCasesCount: testCases.length,
+        testUsersCount: testUsers.length,
+        queriesDurationMs: queriesDurationMs,
         role: user?.role,
         durationMs: Date.now() - tAuth,
       };
