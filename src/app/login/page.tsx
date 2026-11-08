@@ -30,27 +30,35 @@ export default function LoginPage() {
     setError(null);
 
     startTransition(async () => {
-      const res = await signIn("credentials", {
-        redirect: false,
-        email,
-        password,
-      });
+      try {
+        const res = await signIn("credentials", {
+          redirect: false,
+          email: email.trim().toLowerCase(),
+          password,
+        });
 
-      if (res?.error) {
-        if (res.error.includes("LOCKED_SUBCOMMITTEE")) {
-          setError(
-            "عذراً، تم إيقاف نشاط هذه اللجنة الفرعية وقفل حساباتها مؤقتاً بقرار إداري. يُرجى مراجعة مدير النظام أو التواصل مع الدعم الفني مباشرة."
-          );
-        } else if (res.error.includes("LOGIN_TEMPORARILY_BLOCKED")) {
-          setError("تم قفل تسجيل الدخول مؤقتاً لتكرار المحاولات الخاطئة. يرجى الانتظار بضع دقائق والمحاولة مجدداً.");
-        } else {
-          setError("بيانات الدخول غير صحيحة — يرجى التحقق من البريد الإلكتروني وكلمة المرور");
+        if (res?.error) {
+          if (res.error.includes("LOCKED_SUBCOMMITTEE")) {
+            setError(
+              "عذراً، تم إيقاف نشاط هذه اللجنة الفرعية وقفل حساباتها مؤقتاً بقرار إداري. يُرجى مراجعة مدير النظام أو التواصل مع الدعم الفني مباشرة."
+            );
+          } else if (res.error.includes("LOGIN_TEMPORARILY_BLOCKED")) {
+            setError("تم قفل تسجيل الدخول مؤقتاً لتكرار المحاولات الخاطئة. يرجى الانتظار بضع دقائق والمحاولة مجدداً.");
+          } else {
+            setError("بيانات الدخول غير صحيحة — يرجى التحقق من البريد الإلكتروني وكلمة المرور");
+          }
+          return;
         }
-        return;
-      }
 
-      router.push("/dashboard");
-      router.refresh();
+        if (res?.ok) {
+          // انتقال كامل لضمان إرسال كوكيز الجلسة مع طلب الداشبورد
+          window.location.href = "/dashboard";
+        } else {
+          setError("تعذر إكمال عملية الدخول، يرجى المحاولة مرة أخرى.");
+        }
+      } catch (err: any) {
+        setError("حدث خطأ في الاتصال، يرجى التحقق من اتصالك والمحاولة مجدداً.");
+      }
     });
   }
 

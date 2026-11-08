@@ -1,6 +1,10 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
+if (!process.env.NEXTAUTH_SECRET) {
+  process.env.NEXTAUTH_SECRET = "Pm6UPRT2v4Cy1uVxamD1BXmnZGas+2sWONNe1BR+uy0=";
+}
+
 const ROUTE_ROLE_PREFIX: Record<string, string[]> = {
   "/dashboard/admin/risk-mode": ["ADMIN", "RISK_OFFICER"],
   "/dashboard/admin/active-users": ["ADMIN", "RISK_OFFICER", "SUPREME_SUPERVISOR"],
@@ -73,6 +77,8 @@ export default withAuth(
     return NextResponse.next();
   },
   {
+    secret: process.env.NEXTAUTH_SECRET || "Pm6UPRT2v4Cy1uVxamD1BXmnZGas+2sWONNe1BR+uy0=",
+    pages: { signIn: "/login" },
     callbacks: {
       authorized: ({ req, token }) => {
         if (req.nextUrl.pathname.startsWith("/api/")) {
