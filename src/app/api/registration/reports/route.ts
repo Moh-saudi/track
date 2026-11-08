@@ -8,22 +8,9 @@ import { EGYPT_GOVERNORATES } from "@/lib/constants/governorates";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const isDebug = url.searchParams.get("debug") === "1";
 
   try {
-    const t0 = Date.now();
     const session = await getServerSession(authOptions);
-    const tSession = Date.now() - t0;
-
-    if (isDebug) {
-      return NextResponse.json({
-        step: "session_checked",
-        sessionTimeMs: tSession,
-        hasUser: !!session?.user,
-        role: (session?.user as any)?.role,
-      });
-    }
-
     if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
     const user = session.user as any;
@@ -34,7 +21,6 @@ export async function GET(req: NextRequest) {
     }
 
     await ensureSchemaMigrated();
-    const url = new URL(req.url);
     const startDateStr = url.searchParams.get("startDate");
     const endDateStr = url.searchParams.get("endDate");
     const prosecutionId = url.searchParams.get("prosecutionId");
