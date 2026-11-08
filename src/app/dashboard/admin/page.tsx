@@ -88,28 +88,27 @@ export default async function AdminDashboardPage({
       try {
         return await prisma.user.findMany({
           orderBy: { fullName: "asc" },
-          include: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
+            employer: true,
+            active: true,
+            phone: true,
+            nationalId: true,
+            initialPassword: true,
+            lastSeenAt: true,
+            todayActiveMinutes: true,
+            createdAt: true,
+            subCommitteeId: true,
+            specialtyId: true,
             subCommittee: { select: { name: true } },
             specialty: { select: { name: true } },
-            sessions: {
-              take: 1,
-              orderBy: { updatedAt: "desc" },
-              select: { screenTimes: true },
-            },
           },
         });
       } catch {
-        try {
-          return await prisma.user.findMany({
-            orderBy: { fullName: "asc" },
-            include: {
-              subCommittee: { select: { name: true } },
-              specialty: { select: { name: true } },
-            },
-          });
-        } catch {
-          return [];
-        }
+        return [];
       }
     })(),
     prisma.auditLog.count().catch(() => 0),
@@ -188,28 +187,15 @@ export default async function AdminDashboardPage({
     } : null,
   }));
 
-  const serializedLiveUsers = (liveUsers || []).map((u: any) => {
-    let currentScreen: string | null = null;
-    try {
-      const st = u.sessions?.[0]?.screenTimes;
-      if (st && typeof st === "object" && !Array.isArray(st)) {
-        const entries = Object.entries(st);
-        if (entries.length > 0) currentScreen = entries[entries.length - 1][0];
-      }
-    } catch {
-      currentScreen = null;
-    }
-
-    return {
-      id: String(u.id),
-      fullName: String(u.fullName || ""),
-      role: String(u.role || ""),
-      employer: u.employer ?? null,
-      currentPath: currentScreen,
-      lastSeenAt: u.lastSeenAt instanceof Date ? u.lastSeenAt.toISOString() : (u.lastSeenAt ? String(u.lastSeenAt) : null),
-      todayActiveMinutes: Number(u.todayActiveMinutes) || 0,
-    };
-  });
+  const serializedLiveUsers = (liveUsers || []).map((u: any) => ({
+    id: String(u.id),
+    fullName: String(u.fullName || ""),
+    role: String(u.role || ""),
+    employer: u.employer ?? null,
+    currentPath: null,
+    lastSeenAt: u.lastSeenAt instanceof Date ? u.lastSeenAt.toISOString() : (u.lastSeenAt ? String(u.lastSeenAt) : null),
+    todayActiveMinutes: Number(u.todayActiveMinutes) || 0,
+  }));
 
   const serializedUsers: UserItem[] = (users || []).map((u: any) => ({
     id: String(u.id),
