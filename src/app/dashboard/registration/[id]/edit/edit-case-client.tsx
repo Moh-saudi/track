@@ -44,7 +44,59 @@ interface PartyEntry {
   phone: string;
 }
 
+
+function normalizeProsName(str?: string | null): string {
+  if (!str) return "";
+  return str
+    .replace(/^(نيابة|النيابة)\s+/gi, "")
+    .replace(/[ً-ٟ]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function findProsecutionMatch(
+  list: Prosecution[],
+  idVal?: string | null,
+  nameVal?: string | null,
+  type?: "PLENARY" | "DISTRICT"
+): Prosecution | undefined {
+  if (!idVal && !nameVal) return undefined;
+  const filtered = type ? list.filter((p) => p.type === type || (type === "PLENARY" && (!p.parentId || p.type === "ADMINISTRATIVE"))) : list;
+
+  // 1. By ID
+  if (idVal) {
+    const byId = filtered.find((p) => p.id === idVal);
+    if (byId) return byId;
+  }
+
+  // 2. By Exact Name
+  if (nameVal) {
+    const trimmed = nameVal.trim();
+    const byExact = filtered.find((p) => p.name === trimmed);
+    if (byExact) return byExact;
+
+    // 3. By Normalized Name
+    const norm = normalizeProsName(trimmed);
+    const byNorm = filtered.find((p) => normalizeProsName(p.name) === norm);
+    if (byNorm) return byNorm;
+
+    // 4. By Includes/Substring
+    const byInc = filtered.find((p) => {
+      const pNorm = normalizeProsName(p.name);
+      return pNorm.includes(norm) || norm.includes(pNorm);
+    });
+    if (byInc) return byInc;
+  }
+  return undefined;
+}
+
 interface SearchableSelectProps {
+  fallbackName?: string;
+  allProsecutions?: Prosecution[];
   label: string;
   required?: boolean;
   value: string;
@@ -65,13 +117,19 @@ function SearchableSelect({
   emptyMessage = "لا توجد خيارات مطابقة",
   disabled = false,
   isInvalid = false,
+  fallbackName,
+  allProsecutions,
   onChange,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selectedItem = options.find((opt) => opt.id === value);
+  const selectedItem =
+    options.find((opt) => opt.id === value) ||
+    (allProsecutions && value ? allProsecutions.find((p) => p.id === value) : undefined) ||
+    (fallbackName ? options.find((opt) => normalizeProsName(opt.name) === normalizeProsName(fallbackName)) : undefined) ||
+    (allProsecutions && fallbackName ? allProsecutions.find((p) => normalizeProsName(p.name) === normalizeProsName(fallbackName)) : undefined);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -332,26 +390,71 @@ export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
 
   // مزامنة واختيار النيابة الحالية للسجل عند تحميل النيابات
   useEffect(() => {
-    if (mergedProsecutions.length > 0) {
-      if (!selectedPlenaryId && (initialCase.prosecution || initialCase.prosecutionId)) {
-        const match = mergedProsecutions.find(
-          (p) =>
-            (initialCase.prosecutionId && p.id === initialCase.prosecutionId) ||
-            p.name === initialCase.prosecution
-        );
-        if (match) setSelectedPlenaryId(match.id);
-      }
+    if (mergedProsecutions.length === 0) return;
 
-      if (!selectedDistrictId && (initialCase.partialProsecution || initialCase.partialProsecutionId)) {
-        const match = mergedProsecutions.find(
-          (p) =>
-            (initialCase.partialProsecutionId && p.id === initialCase.partialProsecutionId) ||
-            p.name === initialCase.partialProsecution
-        );
-        if (match) setSelectedDistrictId(match.id);
+    // 1. مزامنة النيابة الجزئية
+    const targetDistrictName = initialCase.partialProsecution;
+    const targetDistrictId = initialCase.partialProsecutionId;
+
+    let matchedDistrict: Prosecution | undefined = undefined;
+    if (targetDistrictId || targetDistrictName) {
+      matchedDistrict = findProsecutionMatch(
+        mergedProsecutions,
+        selectedDistrictId || targetDistrictId,
+        targetDistrictName,
+        "DISTRICT"
+      );
+      if (matchedDistrict) {
+        setSelectedDistrictId(matchedDistrict.id);
       }
     }
-  }, [mergedProsecutions, initialCase, selectedPlenaryId, selectedDistrictId]);
+
+    // 2. مزامنة النيابة الكلية
+    const targetPlenaryName = initialCase.prosecution;
+    const targetPlenaryId = initialCase.prosecutionId;
+
+    let matchedPlenary: Prosecution | undefined = undefined;
+    if (targetPlenaryId || targetPlenaryName) {
+      matchedPlenary = findProsecutionMatch(
+        mergedProsecutions,
+        selectedPlenaryId || targetPlenaryId,
+        targetPlenaryName,
+        "PLENARY"
+      );
+    }
+
+    // استنتاج النيابة الكلية من الجزئية إن لم تتطابق مباشرة
+    if (!matchedPlenary && matchedDistrict) {
+      if (matchedDistrict.parentId) {
+        matchedPlenary = mergedProsecutions.find((p) => p.id === matchedDistrict.parentId);
+      } else if (matchedDistrict.parent?.name) {
+        matchedPlenary = findProsecutionMatch(mergedProsecutions, null, matchedDistrict.parent.name, "PLENARY");
+      }
+    }
+
+    // أو إن كان السجل القديم خزن الجزئية في حقل النيابة الأساسي
+    if (!matchedPlenary && targetPlenaryName) {
+      const maybeDist = findProsecutionMatch(mergedProsecutions, null, targetPlenaryName, "DISTRICT");
+      if (maybeDist) {
+        matchedDistrict = maybeDist;
+        setSelectedDistrictId(maybeDist.id);
+        if (maybeDist.parentId) {
+          matchedPlenary = mergedProsecutions.find((p) => p.id === maybeDist.parentId);
+        } else if (maybeDist.parent?.name) {
+          matchedPlenary = findProsecutionMatch(mergedProsecutions, null, maybeDist.parent.name, "PLENARY");
+        }
+      }
+    }
+
+    if (matchedPlenary) {
+      setSelectedPlenaryId(matchedPlenary.id);
+      if (matchedPlenary.governorate && !governorate) {
+        setGovernorate(matchedPlenary.governorate);
+      }
+    } else if (matchedDistrict?.governorate && !governorate) {
+      setGovernorate(matchedDistrict.governorate);
+    }
+  }, [mergedProsecutions, initialCase]);
 
   const plenaryProsecutions = useMemo(() => {
     return mergedProsecutions.filter((p) => p.type === "PLENARY" || p.type === "ADMINISTRATIVE" || !p.parentId);
@@ -429,11 +532,25 @@ export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
 
   function handlePlenarySelect(procId: string) {
     setSelectedPlenaryId(procId);
-    setSelectedDistrictId("");
-    if (!procId) return;
+    if (!procId) {
+      setSelectedDistrictId("");
+      return;
+    }
     const p = mergedProsecutions.find((item) => item.id === procId);
     if (p?.governorate) {
       setGovernorate(p.governorate);
+    }
+    // لا نحذف النيابة الجزئية المحددة إذا كانت تابعة للنيابة الكلية الجديدة
+    if (selectedDistrictId) {
+      const curDist = mergedProsecutions.find((d) => d.id === selectedDistrictId);
+      const isChild =
+        curDist &&
+        (curDist.parentId === procId ||
+          curDist.parent?.id === procId ||
+          (p && curDist.parent?.name === p.name));
+      if (!isChild) {
+        setSelectedDistrictId("");
+      }
     }
   }
 
@@ -445,10 +562,10 @@ export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
       if (dist.parentId) {
         setSelectedPlenaryId(dist.parentId);
       } else if (dist.parent?.name) {
-        const parent = mergedProsecutions.find((p) => p.name === dist.parent?.name);
+        const parent = findProsecutionMatch(mergedProsecutions, null, dist.parent.name, "PLENARY");
         if (parent) setSelectedPlenaryId(parent.id);
       }
-      if (dist.governorate && !governorate) {
+      if (dist.governorate) {
         setGovernorate(dist.governorate);
       }
     }
@@ -999,6 +1116,8 @@ export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
                 isInvalid={registrationType !== "COMPLAINT" && !selectedPlenaryId && !!error && error.includes("النيابة")}
                 value={selectedPlenaryId}
                 options={filteredPlenaryOptions}
+                allProsecutions={mergedProsecutions}
+                fallbackName={initialCase.prosecution || undefined}
                 placeholder={
                   registrationType === "COMPLAINT"
                     ? `-- بدون نيابة محددة أو اختر النيابة (${filteredPlenaryOptions.length}) --`
@@ -1013,6 +1132,8 @@ export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
                 label="النيابة الجزئية (اختياري)"
                 value={selectedDistrictId}
                 options={filteredDistrictOptions}
+                allProsecutions={mergedProsecutions}
+                fallbackName={initialCase.partialProsecution || undefined}
                 placeholder={
                   selectedPlenaryObj
                     ? filteredDistrictOptions.length > 0
@@ -1027,15 +1148,18 @@ export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
           </div>
 
           {/* 6. ملخص الواقعة */}
-          <div className="form-group">
-            <label className="form-label form-label-required">ملخص الواقعة / تفاصيل الشكوى</label>
+          <div className="form-group w-full col-span-full">
+            <label className="form-label form-label-required block mb-1.5 text-xs font-bold text-slate-800">
+              ملخص الواقعة / تفاصيل الشكوى *
+            </label>
             <textarea
               required
-              rows={4}
+              rows={6}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="اكتب ملخصاً وافياً عن الواقعة وتفاصيل الشكوى المقدمة والإجراءات المتخذة..."
-              className="form-textarea text-xs leading-relaxed"
+              className="w-full form-input form-textarea text-xs sm:text-sm leading-relaxed p-3.5 rounded-xl border border-slate-300 focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20 bg-white min-h-[140px] block"
+              style={{ width: "100%", minWidth: "100%", display: "block" }}
             />
           </div>
 

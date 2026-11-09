@@ -281,10 +281,27 @@ export function CaseDetailsClient({
               </div>
 
               <div className="space-y-1">
-                <span className="text-slate-500 font-medium">جهة النيابة العامة الوارد منها:</span>
-                <p className="font-bold text-slate-900 text-sm font-heading">
-                  {caseRecord.prosecution || (caseRecord.registrationType === "COMPLAINT" ? "شكوى مباشرة (بدون نيابة)" : "غير محدد")}
+                <span className="text-slate-500 font-medium">النيابة الكلية المختصة:</span>
+                <p className="font-bold text-slate-900 text-sm font-heading flex items-center gap-1.5">
+                  <Scale className="w-4 h-4 text-teal-700 shrink-0" />
+                  <span>{caseRecord.prosecution || (caseRecord.registrationType === "COMPLAINT" ? "شكوى مباشرة (بدون نيابة)" : "غير محدد")}</span>
                 </p>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-500 font-medium">النيابة الجزئية:</span>
+                <div>
+                  {caseRecord.partialProsecution ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200/80 font-heading">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-600"></span>
+                      {caseRecord.partialProsecution}
+                    </span>
+                  ) : (
+                    <p className="text-slate-400 text-sm font-body">
+                      {caseRecord.registrationType === "COMPLAINT" ? "غير مرتبطة بنيابة جزئية" : "غير محددة"}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-1">

@@ -55,6 +55,7 @@ export interface SerializedCase {
   registrationType: string;
   complainantName: string | null;
   prosecution: string | null;
+  partialProsecution?: string | null;
   respondentName: string | null;
   respondents?: Array<{ name: string; phone?: string | null; profession?: string | null }>;
   complainants?: Array<{ name: string; phone?: string | null }>;
@@ -93,6 +94,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
       const matchProsCaseNum = c.prosecutionCaseNumber?.toLowerCase().includes(term);
       const matchComplainant = c.complainantName?.toLowerCase().includes(term);
       const matchProsecution = c.prosecution?.toLowerCase().includes(term);
+      const matchPartialPros = c.partialProsecution?.toLowerCase().includes(term);
       const matchRespondent = (c.respondentName || c.entityName || c.hospitalName || c.entityType)?.toLowerCase().includes(term);
 
       return Boolean(matchNum || matchProsCaseNum || matchComplainant || matchProsecution || matchRespondent);
@@ -239,9 +241,17 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                         <p className="font-semibold text-slate-800 truncate" title={c.complainantName || ""}>
                           {c.complainantName || "—"}
                         </p>
-                        <p className="text-[11px] text-slate-500 truncate" title={c.prosecution || ""}>
-                          {c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة (بدون نيابة)" : "—")}
-                        </p>
+                        <div className="flex flex-col gap-0.5">
+                          <p className="text-[11px] text-slate-700 font-medium truncate" title={`النيابة الكلية: ${c.prosecution || "—"}`}>
+                            {c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة (بدون نيابة)" : "—")}
+                          </p>
+                          {c.partialProsecution && (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-teal-800 bg-teal-50/90 px-1.5 py-0.5 rounded border border-teal-200/60 truncate font-body w-fit max-w-[190px]" title={`النيابة الجزئية: ${c.partialProsecution}`}>
+                              <span className="font-bold">جزئية:</span>
+                              <span className="truncate">{c.partialProsecution}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
 
@@ -409,7 +419,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                   <div className="flex items-start justify-between">
                     <span className="text-slate-500">الشاكي / الجهة:</span>
                     <span className="font-semibold text-slate-800 text-left">
-                      {c.complainantName || "—"} {c.prosecution ? `(${c.prosecution})` : c.registrationType === "COMPLAINT" ? "(شكوى مباشرة)" : ""}
+                      {c.complainantName || "—"} {c.prosecution ? `(${c.prosecution}${c.partialProsecution ? ` - ${c.partialProsecution}` : ""})` : c.registrationType === "COMPLAINT" ? "(شكوى مباشرة)" : ""}
                     </span>
                   </div>
 

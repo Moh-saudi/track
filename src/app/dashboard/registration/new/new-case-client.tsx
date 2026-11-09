@@ -983,15 +983,18 @@ export default function NewCasePage() {
           </div>
 
           {/* 6. ملخص الواقعة / موضوع الشكوى */}
-          <div className="form-group">
-            <label className="form-label form-label-required">ملخص الواقعة / موضوع الشكوى</label>
+          <div className="form-group w-full col-span-full">
+            <label className="form-label form-label-required block mb-1.5 text-xs font-bold text-slate-800">
+              ملخص الواقعة / موضوع الشكوى *
+            </label>
             <textarea
               required
-              rows={4}
+              rows={5}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="اكتب ملخص الإجراء الطبي المتنازع بشأنه وما ورد بتقرير النيابة أو عريضة الشكوى..."
-              className="form-input form-textarea text-xs"
+              className="w-full form-input form-textarea text-xs sm:text-sm leading-relaxed p-3.5 rounded-xl border border-slate-300 focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20 bg-white min-h-[140px] block"
+              style={{ width: "100%", minWidth: "100%", display: "block" }}
             />
           </div>
 

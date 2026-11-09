@@ -150,7 +150,14 @@ input:-webkit-autofill:focus {
   textarea.input,
   .form-textarea,
   .textarea {
-    @apply h-auto min-h-[110px] resize-y py-2.5 leading-relaxed;
+    @apply w-full rounded-lg border border-slate-400 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm
+           placeholder-slate-400 transition-colors font-body
+           hover:border-slate-500
+           focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-100
+           h-auto min-h-[120px] resize-y leading-relaxed;
+    width: 100% !important;
+    min-width: 100% !important;
+    display: block;
   }
 
   /* 5. الشارات الموحدة (Badges) */

@@ -187,6 +187,8 @@ export async function GET(req: NextRequest) {
           governorate: true,
           prosecution: true,
           prosecutionId: true,
+          partialProsecution: true,
+          partialProsecutionId: true,
           incomingDate: true,
           attachmentsCount: true,
           status: true,

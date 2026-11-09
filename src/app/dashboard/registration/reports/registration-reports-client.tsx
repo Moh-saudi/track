@@ -636,6 +636,7 @@ export default function RegistrationReportsPage() {
           prosecutionCaseNumber: prosNo,
           governorate: c.governorate || c.prosecutionRel?.governorate || "غير محدد",
           prosecution: c.prosecutionRel?.name || c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة" : "—"),
+          partialProsecution: c.partialProsecutionRel?.name || c.partialProsecution || "—",
           hospitalName: c.hospitalName || c.entityName || "—",
           complainantName: c.complainantName || "—",
           respondentName: c.respondentName || "—",
@@ -1627,7 +1628,17 @@ export default function RegistrationReportsPage() {
                               )}
                             </td>
                             <td className="text-xs text-slate-700">
-                              {c.prosecutionRel?.name || c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة" : "—")}
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-semibold text-slate-800">
+                                  {c.prosecutionRel?.name || c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة" : "—")}
+                                </span>
+                                {(c.partialProsecutionRel?.name || c.partialProsecution) && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200/80 w-fit max-w-[180px] truncate">
+                                    <span className="font-bold">جزئية:</span>
+                                    <span className="truncate">{c.partialProsecutionRel?.name || c.partialProsecution}</span>
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="text-xs">
                               {c.hospitalName || c.entityName || "—"}

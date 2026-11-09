@@ -43,6 +43,7 @@ export default async function RegistrationDashboard() {
           updatedAt: true,
           incomingDate: true,
           prosecution: true,
+          partialProsecution: true,
           prosecutionCaseNumber: true,
           complainantName: true,
           respondentName: true,
@@ -116,6 +117,7 @@ export default async function RegistrationDashboard() {
           ? [{ name: c.complainantName, phone: c.complainantPhone }]
           : [],
         prosecution: c.prosecution || null,
+        partialProsecution: c.partialProsecution || null,
         respondentName: c.respondentName || null,
         entityType: c.entityType || null,
         entityName: c.entityName || c.hospitalName || null,
