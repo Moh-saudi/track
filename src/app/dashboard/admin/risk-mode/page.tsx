@@ -26,33 +26,43 @@ export default async function AdminRiskModePage() {
     redirect("/dashboard");
   }
 
-  // جلب كافة السجلات بالمنظومة لتمكين غرفة إدارة المخاطر من المتابعة والتدخل الشامل
+  // جلب كافة السجلات واللجان بالمنظومة لتمكين غرفة إدارة المخاطر من المتابعة والتدخل الشامل
   let cases: any[] = [];
+  let subCommittees: any[] = [];
   try {
-    cases = await prisma.case.findMany({
-      orderBy: [{ isRiskOverridden: "desc" }, { updatedAt: "desc" }],
-      include: {
-        subCommittee: { select: { id: true, name: true } },
-        actions: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          select: {
-            receivedDate: true,
-            meetingDate: true,
-            reportDate: true,
+    const [casesRes, subCommsRes] = await Promise.all([
+      prisma.case.findMany({
+        orderBy: [{ isRiskOverridden: "desc" }, { updatedAt: "desc" }],
+        include: {
+          subCommittee: { select: { id: true, name: true } },
+          actions: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              receivedDate: true,
+              meetingDate: true,
+              reportDate: true,
+            },
+          },
+          supremeDecisions: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              decisionType: true,
+              meetingDate: true,
+              decisionDetails: true,
+            },
           },
         },
-        supremeDecisions: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          select: {
-            decisionType: true,
-            meetingDate: true,
-            decisionDetails: true,
-          },
-        },
-      },
-    });
+      }),
+      prisma.subCommittee.findMany({
+        where: { active: true },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      }),
+    ]);
+    cases = casesRes;
+    subCommittees = subCommsRes;
   } catch (dbErr) {
     console.error("AdminRiskModePage DB fetch error:", dbErr);
   }
@@ -154,7 +164,7 @@ export default async function AdminRiskModePage() {
         />
       </div>
 
-      <RiskModeClient cases={serializedCases as any} />
+      <RiskModeClient cases={serializedCases as any} subCommittees={subCommittees} />
     </div>
   );
 }

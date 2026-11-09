@@ -8,9 +8,11 @@ import { verifyRiskSessionToken } from "@/lib/risk-session";
 
 const schema = z.object({
   targetStatus: z.enum([
+    "REGISTERED",
     "UNDER_SUBCOMMITTEE_REVIEW",
     "PENDING_SUPREME_REVIEW",
     "REFERRED_FOR_REVIEW",
+    "CLOSED",
   ]),
   riskOverrideReason: z
     .string()
@@ -65,6 +67,7 @@ export async function POST(
       where: { id: id },
       data: {
         status: targetStatus as any,
+        ...(targetStatus === "REGISTERED" ? { subCommitteeId: null, assignedAt: null, meetingDate: null } : {}),
         isRiskOverridden: true,
         riskOverrideReason: riskOverrideReason.trim(),
         riskOverrideDocument: riskOverrideDocument.trim(),
