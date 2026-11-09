@@ -107,10 +107,18 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
 
-  // الفلاتر السريعة والتبويبات
+  // التبويبات السريعة
   const [activeTab, setActiveTab] = useState<string>("ALL");
-  const [searchTerm, setSearchTerm] = useState("");
+
+  // حقول البحث المخصصة المباشرة
+  const [searchCaseNumber, setSearchCaseNumber] = useState("");
+  const [searchProsCaseNumber, setSearchProsCaseNumber] = useState("");
+  const [searchPartyName, setSearchPartyName] = useState("");
+  const [searchTerm, setSearchTerm] = useState(""); // بحث شامل حر
+
+  // الفلاتر المنسدلة
   const [selectedGov, setSelectedGov] = useState("ALL");
+  const [selectedPros, setSelectedPros] = useState("ALL");
   const [selectedType, setSelectedType] = useState("ALL");
   const [selectedCommittee, setSelectedCommittee] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
@@ -208,7 +216,7 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
     }
   }
 
-  // استخراج اللجان الفرعية المتاحة والسنوات والمحافظات
+  // استخراج اللجان الفرعية المتاحة والسنوات والمحافظات والنيابات
   const availableCommittees = useMemo(() => {
     if (subCommittees && subCommittees.length > 0) return subCommittees;
     const map = new Map<string, string>();
@@ -236,24 +244,54 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
     return Array.from(set).sort();
   }, [cases]);
 
+  const availableProsecutions = useMemo(() => {
+    const set = new Set<string>();
+    cases.forEach((c) => {
+      if (c.prosecution) set.add(c.prosecution);
+      if (c.partialProsecution) set.add(c.partialProsecution);
+    });
+    return Array.from(set).sort();
+  }, [cases]);
+
   // عدد الفلاتر النشطة
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (activeTab !== "ALL") count++;
+    if (searchCaseNumber.trim()) count++;
+    if (searchProsCaseNumber.trim()) count++;
+    if (searchPartyName.trim()) count++;
     if (searchTerm.trim()) count++;
     if (selectedGov !== "ALL") count++;
+    if (selectedPros !== "ALL") count++;
     if (selectedType !== "ALL") count++;
     if (selectedCommittee !== "ALL") count++;
     if (selectedStatus !== "ALL") count++;
     if (selectedYear !== "ALL") count++;
     if (selectedRiskLevel !== "ALL") count++;
     return count;
-  }, [activeTab, searchTerm, selectedGov, selectedType, selectedCommittee, selectedStatus, selectedYear, selectedRiskLevel]);
+  }, [
+    activeTab,
+    searchCaseNumber,
+    searchProsCaseNumber,
+    searchPartyName,
+    searchTerm,
+    selectedGov,
+    selectedPros,
+    selectedType,
+    selectedCommittee,
+    selectedStatus,
+    selectedYear,
+    selectedRiskLevel,
+  ]);
 
   function handleResetFilters() {
     setActiveTab("ALL");
+    setSearchCaseNumber("");
+    setSearchProsCaseNumber("");
+    setSearchPartyName("");
     setSearchTerm("");
     setSelectedGov("ALL");
+    setSelectedPros("ALL");
     setSelectedType("ALL");
     setSelectedCommittee("ALL");
     setSelectedStatus("ALL");
@@ -289,13 +327,42 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
       if (activeTab === "SUPREME" && c.status !== "PENDING_SUPREME_REVIEW") return false;
       if (activeTab === "REGISTERED" && c.status !== "REGISTERED") return false;
 
-      // 2. فلتر نوع السجل
+      // 2. فلتر رقم السجل المخصص
+      if (searchCaseNumber.trim()) {
+        const q = searchCaseNumber.trim().toLowerCase();
+        if (!String(c.caseNumber).toLowerCase().includes(q)) return false;
+      }
+
+      // 3. فلتر رقم القضية أو المحضر المرتبط
+      if (searchProsCaseNumber.trim()) {
+        const q = normalizeSearchText(searchProsCaseNumber);
+        if (!normalizeSearchText(c.prosecutionCaseNumber).includes(q)) return false;
+      }
+
+      // 4. فلتر الاسم (الشاكي أو المشكو في حقه أو الطبيب)
+      if (searchPartyName.trim()) {
+        const q = normalizeSearchText(searchPartyName);
+        const matchC = normalizeSearchText(c.complainantName).includes(q);
+        const matchR = normalizeSearchText(c.respondentName).includes(q);
+        const matchH = normalizeSearchText(c.hospitalName || c.entityName).includes(q);
+        if (!matchC && !matchR && !matchH) return false;
+      }
+
+      // 5. فلتر نوع السجل
       if (selectedType !== "ALL" && c.registrationType !== selectedType) return false;
 
-      // 3. فلتر المحافظة
+      // 6. فلتر المحافظة
       if (selectedGov !== "ALL" && c.governorate !== selectedGov) return false;
 
-      // 4. فلتر اللجنة الفرعية
+      // 7. فلتر النيابة المختصة (كلية أو جزئية)
+      if (selectedPros !== "ALL") {
+        const pNorm = normalizeSearchText(selectedPros);
+        const matchPros = normalizeSearchText(c.prosecution).includes(pNorm);
+        const matchPartial = normalizeSearchText(c.partialProsecution).includes(pNorm);
+        if (!matchPros && !matchPartial) return false;
+      }
+
+      // 8. فلتر اللجنة الفرعية
       if (selectedCommittee !== "ALL") {
         if (selectedCommittee === "UNASSIGNED") {
           if (c.subCommittee?.id) return false;
@@ -304,19 +371,19 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
         }
       }
 
-      // 5. فلتر المرحلة / الحالة
+      // 9. فلتر المرحلة / الحالة
       if (selectedStatus !== "ALL" && c.status !== selectedStatus) return false;
 
-      // 6. فلتر سنة السجل
+      // 10. فلتر سنة السجل
       if (selectedYear !== "ALL" && String(c.caseYear) !== selectedYear) return false;
 
-      // 7. فلتر مستوى مؤشر الخطر
+      // 11. فلتر مستوى مؤشر الخطر
       if (selectedRiskLevel === "OVERDUE" && !isOverdue) return false;
       if (selectedRiskLevel === "OVERRIDDEN" && !c.isRiskOverridden) return false;
       if (selectedRiskLevel === "REFERRED_BACK" && !isReferredBack) return false;
       if (selectedRiskLevel === "NORMAL" && (isOverdue || c.isRiskOverridden || isReferredBack)) return false;
 
-      // 8. محرك البحث الشامل الذكي
+      // 12. محرك البحث العام الحر
       if (searchTerm.trim()) {
         const q = normalizeSearchText(searchTerm);
         const matchNum = String(c.caseNumber).includes(q);
@@ -354,8 +421,12 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
   }, [
     cases,
     activeTab,
+    searchCaseNumber,
+    searchProsCaseNumber,
+    searchPartyName,
     searchTerm,
     selectedGov,
+    selectedPros,
     selectedType,
     selectedCommittee,
     selectedStatus,
@@ -365,10 +436,23 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
     thirtyDaysMs,
   ]);
 
-  // إعادة الصفحة إلى 1 عند تغيير أي فلتر
+  // إعادة الصفحة إلى 1 عند تغيير أي معيار
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, activeTab, selectedGov, selectedType, selectedCommittee, selectedStatus, selectedYear, selectedRiskLevel]);
+  }, [
+    searchCaseNumber,
+    searchProsCaseNumber,
+    searchPartyName,
+    searchTerm,
+    activeTab,
+    selectedGov,
+    selectedPros,
+    selectedType,
+    selectedCommittee,
+    selectedStatus,
+    selectedYear,
+    selectedRiskLevel,
+  ]);
 
   // حساب الترقيم (Pagination)
   const totalPages = Math.ceil(filteredCases.length / pageSize) || 1;
@@ -494,26 +578,17 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
 
       {/* ─── 3. لوحة البحث المتقدم والفلاتر الذكية لتصحيح المسار ─── */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
-        {/* شريط البحث المباشر */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="بحث شامل: برقم السجل، سنة القيد، رقم محضر/قضية النيابة، الشاكي، المشكو في حقه، المنشأة، النيابة، أو اللجنة..."
-              className="w-full h-11 pr-10 pl-10 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-rose-500 focus:bg-white transition-all font-medium"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm("")}
-                className="absolute left-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full"
-                title="مسح البحث"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        {/* ترويسة لوحة البحث والفلاتر */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="w-4 h-4 text-teal-700" />
+            <h3 className="text-sm font-bold font-heading text-slate-900">
+              أدوات البحث المباشر والفلاتر التفصيلية لتصحيح المسار
+            </h3>
+            {activeFiltersCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
+                {activeFiltersCount} فلتر نشط
+              </span>
             )}
           </div>
 
@@ -521,24 +596,137 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
             <button
               type="button"
               onClick={handleResetFilters}
-              className="inline-flex items-center justify-center gap-1.5 h-11 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors shrink-0"
-              title="إعادة تعيين كافة الفلاتر"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+              title="إعادة تعيين كافة الفلاتر وحقول البحث"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>إعادة ضبط الفلاتر ({activeFiltersCount})</span>
+              <span>إعادة ضبط الفلاتر</span>
             </button>
           )}
         </div>
 
-        {/* شبكة الفلاتر المحددة */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-1">
+        {/* ─── أ) حقول البحث المباشرة بالاسم ورقم القضية ورقم السجل ─── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* 1. بحث بالاسم (الشاكي / الطبيب / المشكو في حقه) */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-teal-600" />
+              <span>بحث بالاسم (الشاكي / المشكو في حقه)</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchPartyName}
+                onChange={(e) => setSearchPartyName(e.target.value)}
+                placeholder="اسم الشاكي، الطبيب، المشكو في حقه..."
+                className="w-full h-10 pr-3 pl-8 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-rose-500 focus:bg-white font-medium"
+              />
+              {searchPartyName && (
+                <button
+                  type="button"
+                  onClick={() => setSearchPartyName("")}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600"
+                  title="مسح"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 2. بحث برقم القضية أو المحضر */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+              <Scale className="w-3.5 h-3.5 text-indigo-600" />
+              <span>بحث برقم القضية أو المحضر المرتبط</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchProsCaseNumber}
+                onChange={(e) => setSearchProsCaseNumber(e.target.value)}
+                placeholder="مثال: 4521 إداري / 1082 جنح..."
+                className="w-full h-10 pr-3 pl-8 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-rose-500 focus:bg-white font-mono font-medium"
+                dir="auto"
+              />
+              {searchProsCaseNumber && (
+                <button
+                  type="button"
+                  onClick={() => setSearchProsCaseNumber("")}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600"
+                  title="مسح"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 3. بحث برقم السجل (قيد المنظومة) */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+              <Hash className="w-3.5 h-3.5 text-teal-700" />
+              <span>بحث برقم السجل (وارد المنظومة)</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchCaseNumber}
+                onChange={(e) => setSearchCaseNumber(e.target.value)}
+                placeholder="مثال: 12 أو 582..."
+                className="w-full h-10 pr-3 pl-8 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-rose-500 focus:bg-white font-mono font-medium"
+                dir="ltr"
+              />
+              {searchCaseNumber && (
+                <button
+                  type="button"
+                  onClick={() => setSearchCaseNumber("")}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600"
+                  title="مسح"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 4. بحث عام حر (كلمات مفتاحية، المنشأة، سند التصحيح) */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+              <Search className="w-3.5 h-3.5 text-slate-500" />
+              <span>بحث عام إضافي (المنشأة، النيابة، السند)</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="اسم المستشفى، النيابة، أو السند..."
+                className="w-full h-10 pr-3 pl-8 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:border-rose-500 focus:bg-white font-medium"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600"
+                  title="مسح"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ─── ب) شبكة الفلاتر التفصيلية المنسدلة ─── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5 pt-2 border-t border-slate-100">
           {/* 1. نوع السجل */}
           <div className="space-y-1">
             <label className="text-[11px] font-bold text-slate-600 block">نوع السجل</label>
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full h-9 px-2.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-rose-500"
+              className="w-full h-9 px-2 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-rose-500"
             >
               <option value="ALL">جميع الأنواع</option>
               <option value="COMPLAINT">شكوى</option>
@@ -553,7 +741,7 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
             <select
               value={selectedGov}
               onChange={(e) => setSelectedGov(e.target.value)}
-              className="w-full h-9 px-2.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-rose-500"
+              className="w-full h-9 px-2 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-rose-500"
             >
               <option value="ALL">جميع المحافظات</option>
               {(availableGovernorates.length > 0 ? availableGovernorates : EGYPT_GOVERNORATES).map((gov) => (
@@ -564,15 +752,32 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
             </select>
           </div>
 
-          {/* 3. اللجنة الفرعية */}
+          {/* 3. النيابة المختصة */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-600 block">النيابة المختصة</label>
+            <select
+              value={selectedPros}
+              onChange={(e) => setSelectedPros(e.target.value)}
+              className="w-full h-9 px-2 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-rose-500"
+            >
+              <option value="ALL">جميع النيابات</option>
+              {availableProsecutions.map((pros) => (
+                <option key={pros} value={pros}>
+                  {pros}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 4. اللجنة الفرعية */}
           <div className="space-y-1">
             <label className="text-[11px] font-bold text-slate-600 block">اللجنة الفرعية</label>
             <select
               value={selectedCommittee}
               onChange={(e) => setSelectedCommittee(e.target.value)}
-              className="w-full h-9 px-2.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-rose-500"
+              className="w-full h-9 px-2 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-rose-500"
             >
-              <option value="ALL">جميع اللجان الفرعية</option>
+              <option value="ALL">جميع اللجان</option>
               <option value="UNASSIGNED">-- بانتظار التوجيه (بدون لجنة) --</option>
               {availableCommittees.map((comm) => (
                 <option key={comm.id} value={comm.id}>
@@ -582,13 +787,13 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
             </select>
           </div>
 
-          {/* 4. المرحلة الحالية */}
+          {/* 5. المرحلة الحالية */}
           <div className="space-y-1">
             <label className="text-[11px] font-bold text-slate-600 block">المرحلة الحالية</label>
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full h-9 px-2.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-rose-500"
+              className="w-full h-9 px-2 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-rose-500"
             >
               <option value="ALL">جميع المراحل</option>
               <option value="REGISTERED">1. بانتظار التوجيه</option>
@@ -600,13 +805,13 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
             </select>
           </div>
 
-          {/* 5. مؤشر الخطر */}
+          {/* 6. مؤشر الخطر */}
           <div className="space-y-1">
             <label className="text-[11px] font-bold text-slate-600 block">مؤشر الخطر</label>
             <select
               value={selectedRiskLevel}
               onChange={(e) => setSelectedRiskLevel(e.target.value)}
-              className="w-full h-9 px-2.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-rose-500"
+              className="w-full h-9 px-2 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-rose-500"
             >
               <option value="ALL">كافة المؤشرات</option>
               <option value="OVERDUE">🚨 متعثرة (&gt; 30 يوم)</option>
@@ -616,13 +821,13 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
             </select>
           </div>
 
-          {/* 6. سنة السجل */}
+          {/* 7. سنة السجل */}
           <div className="space-y-1">
             <label className="text-[11px] font-bold text-slate-600 block">سنة السجل</label>
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="w-full h-9 px-2.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-rose-500"
+              className="w-full h-9 px-2 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-rose-500"
             >
               <option value="ALL">جميع السنوات</option>
               {availableYears.map((yr) => (
@@ -691,7 +896,7 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
                       className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
-                      <span>إعادة ضبط كافة الفلاتر</span>
+                      <span>إعادة ضبط كافة الفلاتر والبحث</span>
                     </button>
                   </td>
                 </tr>
@@ -833,7 +1038,7 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
                         {c.isRiskOverridden ? (
                           <div className="p-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] space-y-0.5">
                             <span className="font-bold flex items-center gap-1 text-amber-950">
-                              <RotateCcw className="w-3 h-3 text-amber-700" />
+                              <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
                               <span>تم تصحيح المسار:</span>
                             </span>
                             <span className="text-[10px] text-amber-800 block truncate" title={`سند: ${c.riskOverrideDocument || ""}`}>
