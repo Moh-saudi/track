@@ -32,9 +32,13 @@ export const OFFICIAL_PROSECUTIONS_LIST: OfficialProsecution[] = [
   { name: "الهرم الجزئية", type: "DISTRICT", governorate: "الجيزة", parentName: "جنوب الجيزة الكلية" },
   { name: "العمرانية الجزئية", type: "DISTRICT", governorate: "الجيزة", parentName: "جنوب الجيزة الكلية" },
   { name: "بولاق الدكرور الجزئية", type: "DISTRICT", governorate: "الجيزة", parentName: "جنوب الجيزة الكلية" },
+  { name: "أكتوبر الكلية", type: "PLENARY", governorate: "الجيزة" },
+  { name: "أكتوبر أول الجزئية", type: "DISTRICT", governorate: "الجيزة", parentName: "أكتوبر الكلية" },
+  { name: "أكتوبر ثان الجزئية", type: "DISTRICT", governorate: "الجيزة", parentName: "أكتوبر الكلية" },
+  { name: "الشيخ زايد الجزئية", type: "DISTRICT", governorate: "الجيزة", parentName: "أكتوبر الكلية" },
+  { name: "حدائق أكتوبر الجزئية", type: "DISTRICT", governorate: "الجيزة", parentName: "أكتوبر الكلية" },
+  // مسمى بديل متوافق مع السجلات القديمة
   { name: "السادس من أكتوبر الكلية", type: "PLENARY", governorate: "الجيزة" },
-  { name: "أكتوبر أول الجزئية", type: "DISTRICT", governorate: "الجيزة", parentName: "السادس من أكتوبر الكلية" },
-  { name: "الشيخ زايد الجزئية", type: "DISTRICT", governorate: "الجيزة", parentName: "السادس من أكتوبر الكلية" },
 
   // الإسكندرية
   { name: "شرق الإسكندرية الكلية", type: "PLENARY", governorate: "الإسكندرية" },

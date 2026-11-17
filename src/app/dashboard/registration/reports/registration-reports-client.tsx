@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/formatters";
 import { generateStyledProtectedExcel } from "@/lib/excel-export";
 import { UnifiedPrintLayout } from "@/components/reports/UnifiedPrintLayout";
+import { OFFICIAL_PROSECUTIONS_LIST } from "@/lib/constants/prosecutions";
 import {
   ClipboardList,
   Printer,
@@ -212,6 +213,8 @@ export default function RegistrationReportsPage() {
   const [editingCase, setEditingCase] = useState<CaseItem | null>(null);
   const [editForm, setEditForm] = useState({
     governorate: "",
+    prosecution: "",
+    partialProsecution: "",
     hospitalName: "",
     entityType: "",
     complainantName: "",
@@ -222,6 +225,19 @@ export default function RegistrationReportsPage() {
     description: "",
     reason: "",
   });
+
+  // حالة نافذة تعيين وتغيير النيابة السريعة
+  const [quickProsCase, setQuickProsCase] = useState<CaseItem | null>(null);
+  const [quickPlenary, setQuickPlenary] = useState("");
+  const [quickDistrict, setQuickDistrict] = useState("");
+  const [quickGov, setQuickGov] = useState("");
+  const [savingQuickPros, setSavingQuickPros] = useState(false);
+
+  // حالة معالج توحيد نيابة أكتوبر الكلية
+  const [showOctoberModal, setShowOctoberModal] = useState(false);
+  const [octoberLoading, setOctoberLoading] = useState(false);
+  const [octoberData, setOctoberData] = useState<any | null>(null);
+  const [migratingOctober, setMigratingOctober] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -229,6 +245,8 @@ export default function RegistrationReportsPage() {
     setEditingCase(c);
     setEditForm({
       governorate: c.governorate || c.prosecutionRel?.governorate || "",
+      prosecution: c.prosecutionRel?.name || c.prosecution || "",
+      partialProsecution: c.partialProsecutionRel?.name || c.partialProsecution || "",
       hospitalName: c.hospitalName || c.entityName || "",
       entityType: c.entityType || "",
       complainantName: c.complainantName || "",
@@ -257,6 +275,8 @@ export default function RegistrationReportsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           governorate: editForm.governorate.trim() || null,
+          prosecution: editForm.prosecution.trim() || null,
+          partialProsecution: editForm.partialProsecution.trim() || null,
           hospitalName: editForm.hospitalName.trim() || null,
           entityName: editForm.hospitalName.trim() || null,
           entityType: editForm.entityType.trim() || null,
@@ -372,6 +392,106 @@ export default function RegistrationReportsPage() {
         setError(err.message || "تعذر تحميل تقارير التسجيل، يرجى المحاولة لاحقاً");
       })
       .finally(() => setLoading(false));
+  }
+
+  // تعيين وتغيير سريع للنيابة من داخل جدول السجلات
+  async function handleQuickAssignPros(caseId: string, pros: string, partialPros?: string, gov?: string) {
+    if (!pros) return;
+    try {
+      const payload: any = { prosecution: pros };
+      if (partialPros !== undefined) payload.partialProsecution = partialPros || null;
+      if (gov) payload.governorate = gov;
+
+      const res = await fetch(`/api/cases/${caseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "تعذر تحديث النيابة");
+      }
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          cases: prev.cases.map((c) =>
+            c.id === caseId
+              ? {
+                  ...c,
+                  prosecution: pros,
+                  partialProsecution: partialPros !== undefined ? partialPros : c.partialProsecution,
+                  governorate: gov || c.governorate,
+                }
+              : c
+          ),
+        };
+      });
+      fetchReport();
+      showToast(`تم تحديث وتثبيت النيابة (${pros}) للسجل بنجاح.`, "success");
+    } catch (e: any) {
+      showToast(e.message || "حدث خطأ أثناء حفظ النيابة", "error");
+    }
+  }
+
+  function handleOpenQuickPros(c: CaseItem) {
+    setQuickProsCase(c);
+    const curPros = c.prosecutionRel?.name || c.prosecution || "";
+    setQuickPlenary(curPros);
+    setQuickDistrict(c.partialProsecutionRel?.name || c.partialProsecution || "");
+    setQuickGov(c.governorate || c.prosecutionRel?.governorate || "");
+  }
+
+  async function handleSaveQuickProsModal() {
+    if (!quickProsCase || !quickPlenary.trim()) return;
+    setSavingQuickPros(true);
+    try {
+      await handleQuickAssignPros(
+        quickProsCase.id,
+        quickPlenary.trim(),
+        quickDistrict.trim() || undefined,
+        quickGov.trim() || undefined
+      );
+      setQuickProsCase(null);
+    } finally {
+      setSavingQuickPros(false);
+    }
+  }
+
+  // فتح معالج توحيد نيابة أكتوبر الكلية
+  async function openOctoberWizard() {
+    setShowOctoberModal(true);
+    setOctoberLoading(true);
+    try {
+      const res = await fetch("/api/cases/standardize-prosecution");
+      const json = await res.json();
+      setOctoberData(json);
+    } catch (e: any) {
+      showToast("تعذر جلب بيانات حصر نيابة أكتوبر", "error");
+    } finally {
+      setOctoberLoading(false);
+    }
+  }
+
+  // تطبيق توحيد نيابة أكتوبر دفعة واحدة
+  async function applyOctoberStandardization() {
+    setMigratingOctober(true);
+    try {
+      const res = await fetch("/api/cases/standardize-prosecution", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetProsecution: "أكتوبر الكلية", targetGovernorate: "الجيزة" }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "فشل تنفيذ التوحيد");
+      showToast(json.message || "تم توحيد كافة سجلات نيابة أكتوبر بنجاح.", "success", "اكتمل التوحيد المعتمد");
+      setShowOctoberModal(false);
+      fetchReport();
+    } catch (e: any) {
+      showToast(e.message || "حدث خطأ أثناء توحيد النيابة", "error");
+    } finally {
+      setMigratingOctober(false);
+    }
   }
 
   // تعيين سريع للمحافظة من داخل جدول السجلات
@@ -1121,6 +1241,15 @@ export default function RegistrationReportsPage() {
               <Wand2 className="w-4 h-4" />
               <span>المعالج الذكي لاستنتاج المحافظات</span>
             </button>
+            <button
+              type="button"
+              onClick={openOctoberWizard}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-800 to-slate-900 hover:from-teal-900 hover:to-black text-white text-xs font-bold transition-all flex items-center gap-2 shadow-xs border border-teal-700/50"
+              title="فحص وتوحيد السجلات المسجلة تحت السادس من أكتوبر إلى أكتوبر الكلية"
+            >
+              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span>معالج توحيد نيابة أكتوبر الكلية</span>
+            </button>
           </div>
         </div>
       )}
@@ -1627,11 +1756,35 @@ export default function RegistrationReportsPage() {
                                 govName
                               )}
                             </td>
-                            <td className="text-xs text-slate-700">
-                              <div className="flex flex-col gap-0.5">
-                                <span className="font-semibold text-slate-800">
-                                  {c.prosecutionRel?.name || c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة" : "—")}
-                                </span>
+                            <td className="text-xs text-slate-700" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center justify-between gap-1 flex-wrap">
+                                  <span className="font-bold text-slate-800">
+                                    {c.prosecutionRel?.name || c.prosecution || (c.registrationType === "COMPLAINT" ? "شكوى مباشرة" : "غير محدد")}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenQuickPros(c)}
+                                    className="p-1 rounded-lg text-slate-400 hover:text-teal-700 hover:bg-teal-50 transition-colors print:hidden"
+                                    title="تغيير أو تحديد النيابة العامة لهذا السجل"
+                                  >
+                                    <Edit3 className="w-3 h-3" />
+                                  </button>
+                                </div>
+
+                                {/* زر سريع خاص لتحويل السادس من أكتوبر إلى أكتوبر الكلية */}
+                                {(c.prosecution?.includes("السادس من") || c.prosecution?.includes("6 أكتوبر") || c.prosecution?.includes("6 اكتوبر")) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickAssignPros(c.id, "أكتوبر الكلية", c.partialProsecutionRel?.name || c.partialProsecution || undefined, "الجيزة")}
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-1.5 py-0.5 rounded transition-colors shadow-2xs w-fit"
+                                    title="تحويل وتوحيد إلى نيابة أكتوبر الكلية فوراً"
+                                  >
+                                    <RotateCcw className="w-2.5 h-2.5 text-amber-700" />
+                                    <span>تحويل إلى: أكتوبر الكلية</span>
+                                  </button>
+                                )}
+
                                 {(c.partialProsecutionRel?.name || c.partialProsecution) && (
                                   <span className="inline-flex items-center gap-1 text-[10px] text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200/80 w-fit max-w-[180px] truncate">
                                     <span className="font-bold">جزئية:</span>
@@ -1930,6 +2083,264 @@ export default function RegistrationReportsPage() {
           </div>
         )}
       </UnifiedPrintLayout>
+
+      {/* ─── نافذة التغيير والتعيين السريع للنيابة ─── */}
+      {quickProsCase && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs print:hidden animate-in fade-in-50">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col font-body">
+            <div className="p-4 bg-gradient-to-r from-teal-800 to-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Scale className="w-5 h-5 text-teal-300" />
+                <div>
+                  <h3 className="font-bold text-sm">تغيير وتعيين النيابة العامة للسجل</h3>
+                  <p className="text-[11px] text-teal-200 font-mono">سجل رقم: {quickProsCase.caseNumber} لسنة {quickProsCase.caseYear}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuickProsCase(null)}
+                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3.5 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-700 space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">الشاكي:</span>
+                  <span className="font-bold text-slate-900">{quickProsCase.complainantName || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">المستشفى / الجهة:</span>
+                  <span className="font-bold text-slate-900">{quickProsCase.hospitalName || quickProsCase.entityName || "—"}</span>
+                </div>
+              </div>
+
+              {/* النيابة الكلية */}
+              <div className="space-y-1">
+                <label className="font-bold text-slate-800 block">النيابة الكلية المختصة *</label>
+                <select
+                  value={quickPlenary}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setQuickPlenary(val);
+                    const match = OFFICIAL_PROSECUTIONS_LIST.find((p) => p.name === val);
+                    if (match?.governorate) setQuickGov(match.governorate);
+                    // تصفير الجزئية إذا لم تعد تابعة
+                    const curDistrictMatch = OFFICIAL_PROSECUTIONS_LIST.find((p) => p.name === quickDistrict);
+                    if (curDistrictMatch && curDistrictMatch.parentName !== val) {
+                      setQuickDistrict("");
+                    }
+                  }}
+                  className="input w-full font-semibold text-slate-900 text-xs"
+                >
+                  <option value="">-- اختر النيابة الكلية --</option>
+                  <option value="أكتوبر الكلية">⭐ أكتوبر الكلية (معتمدة وموحدة)</option>
+                  {OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "PLENARY" || !p.parentName).map((p) => (
+                    <option key={p.name} value={p.name}>
+                      {p.name} {p.governorate ? `(محافظة ${p.governorate})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* النيابة الجزئية */}
+              <div className="space-y-1">
+                <label className="font-bold text-slate-800 block">النيابة الجزئية التابعة (اختياري)</label>
+                <select
+                  value={quickDistrict}
+                  onChange={(e) => setQuickDistrict(e.target.value)}
+                  className="input w-full text-xs font-medium text-slate-800"
+                >
+                  <option value="">-- بدون نيابة جزئية محددة --</option>
+                  {OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "DISTRICT" || !!p.parentName)
+                    .filter((p) => !quickPlenary || p.parentName === quickPlenary)
+                    .map((p) => (
+                      <option key={p.name} value={p.name}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* المحافظة */}
+              <div className="space-y-1">
+                <label className="font-bold text-slate-800 block">المحافظة المقترنة</label>
+                <select
+                  value={quickGov}
+                  onChange={(e) => setQuickGov(e.target.value)}
+                  className="input w-full text-xs"
+                >
+                  <option value="">-- حدد المحافظة --</option>
+                  {data?.governoratesList.map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setQuickProsCase(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  disabled={savingQuickPros || !quickPlenary}
+                  onClick={handleSaveQuickProsModal}
+                  className="px-5 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 disabled:opacity-50 text-white font-bold inline-flex items-center gap-1.5"
+                >
+                  {savingQuickPros ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>جاري الحفظ...</span>
+                    </>
+                  ) : (
+                    <span>تأكيد وحفظ النيابة</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── نافذة معالج توحيد نيابة أكتوبر الكلية ─── */}
+      {showOctoberModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs print:hidden animate-in fade-in-50">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col font-body max-h-[90vh]">
+            <div className="p-4 bg-gradient-to-r from-teal-900 to-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300">
+                  <Sparkles className="w-5 h-5 text-amber-300" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">معالج توحيد ودمج نيابة أكتوبر الكلية</h3>
+                  <p className="text-[11px] text-teal-200">
+                    توحيد السجلات المسجلة تحت "السادس من أكتوبر" ودمجها تحت المسمى الرسمي المعتمد "أكتوبر الكلية"
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowOctoberModal(false)}
+                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto space-y-4 text-xs">
+              {octoberLoading ? (
+                <div className="py-12 text-center space-y-3">
+                  <div className="w-8 h-8 border-3 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-xs font-bold text-slate-700">جاري فحص السجلات وحصر قضايا نيابة أكتوبر...</p>
+                </div>
+              ) : octoberData ? (
+                <div className="space-y-4">
+                  {/* بطاقات الإحصاء والحصر */}
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-1">
+                      <span className="text-[11px] text-amber-800 font-bold block">السادس من أكتوبر (مراد دمجها)</span>
+                      <span className="text-xl font-mono font-black text-amber-900">{octoberData.sixthOctoberCount} سجل</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-teal-50 border border-teal-200 space-y-1">
+                      <span className="text-[11px] text-teal-800 font-bold block">أكتوبر الكلية (المسمى المعتمد)</span>
+                      <span className="text-xl font-mono font-black text-teal-900">{octoberData.octoberStandardCount} سجل</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-100 border border-slate-200 space-y-1">
+                      <span className="text-[11px] text-slate-700 font-bold block">إجمالي النيابة بعد التوحيد</span>
+                      <span className="text-xl font-mono font-black text-slate-900">{octoberData.totalCombined} سجل</span>
+                    </div>
+                  </div>
+
+                  {octoberData.sixthOctoberCount === 0 ? (
+                    <div className="p-6 text-center space-y-2 bg-emerald-50 rounded-xl border border-emerald-200">
+                      <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
+                      <h4 className="text-sm font-bold text-emerald-900 font-heading">
+                        كافة السجلات موحدة بنجاح!
+                      </h4>
+                      <p className="text-xs text-emerald-700">
+                        جميع قضايا وملفات أكتوبر مسجلة بالفعل تحت مسمى "أكتوبر الكلية" ولا يوجد أي تكرار حالياً.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 space-y-1 text-xs">
+                        <p className="font-bold text-slate-900">ما الذي سيحدث عند الضغط على زر التوحيد؟</p>
+                        <ul className="list-disc list-inside space-y-0.5 text-slate-600 text-[11px]">
+                          <li>سيتم تحويل مسمى النيابة في الـ ({octoberData.sixthOctoberCount}) سجل إلى <strong>"أكتوبر الكلية"</strong>.</li>
+                          <li>سيتم تثبيت المحافظة على <strong>"الجيزة"</strong> لجميع هذه السجلات.</li>
+                          <li>ستتجمع كافة الإحصائيات والأرقام في التقارير تحت سطر واحد موحد (إجمالي {octoberData.totalCombined} سجل).</li>
+                          <li>يتم توثيق هذه الحركة في سجل التدقيق والرقابة الأمني لضمان الحوكمة الكاملة.</li>
+                        </ul>
+                      </div>
+
+                      <div className="table-wrapper border border-slate-200 rounded-xl max-h-56">
+                        <table className="table-custom text-xs w-full">
+                          <thead>
+                            <tr>
+                              <th style={{ width: "8%" }}>م</th>
+                              <th style={{ width: "20%" }}>رقم السجل</th>
+                              <th style={{ width: "36%" }}>الشاكي</th>
+                              <th style={{ width: "36%" }}>المسمى الحالي</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {octoberData.toMigrateCases.map((c: any, i: number) => (
+                              <tr key={c.id}>
+                                <td className="text-center font-mono text-slate-500">{i + 1}</td>
+                                <td className="font-bold text-slate-900 font-mono text-center">
+                                  {c.caseNumber} / {c.caseYear}
+                                </td>
+                                <td className="font-semibold text-slate-800">{c.complainantName || "—"}</td>
+                                <td className="text-amber-800 font-bold bg-amber-50/50">{c.prosecution}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowOctoberModal(false)}
+                          className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold"
+                        >
+                          إلغاء
+                        </button>
+                        <button
+                          type="button"
+                          disabled={migratingOctober}
+                          onClick={applyOctoberStandardization}
+                          className="px-5 py-2.5 rounded-xl bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs inline-flex items-center gap-2 shadow-xs transition-colors"
+                        >
+                          {migratingOctober ? (
+                            <>
+                              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              <span>جاري توحيد السجلات...</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                              <span>اعتماد وتوحيد الـ ({octoberData.sixthOctoberCount}) سجل تحت مسمى (أكتوبر الكلية) فوراً</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── نافذة المعالج الذكي لتحديد واستنتاج المحافظات ─── */}
       {showAutoDetectModal && (
@@ -2287,6 +2698,52 @@ export default function RegistrationReportsPage() {
                     {data?.governoratesList.map((g) => (
                       <option key={g} value={g}>{g}</option>
                     ))}
+                  </select>
+                </div>
+
+                {/* النيابة الكلية */}
+                <div>
+                  <label className="font-bold text-slate-800 block mb-1">النيابة العامة الكلية</label>
+                  <select
+                    value={editForm.prosecution}
+                    onChange={(e) => {
+                      const selectedPros = e.target.value;
+                      const matched = OFFICIAL_PROSECUTIONS_LIST.find((p) => p.name === selectedPros);
+                      setEditForm({
+                        ...editForm,
+                        prosecution: selectedPros,
+                        governorate: matched?.governorate || editForm.governorate,
+                      });
+                    }}
+                    className="input w-full"
+                  >
+                    <option value="">-- بدون نيابة محددة (شكوى مباشرة) --</option>
+                    {OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "PLENARY" || !p.parentName)
+                      .filter((p) => !editForm.governorate || p.governorate === editForm.governorate)
+                      .map((p) => (
+                        <option key={p.name} value={p.name}>
+                          {p.name} {p.governorate ? `(${p.governorate})` : ""}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* النيابة الجزئية */}
+                <div>
+                  <label className="font-bold text-slate-800 block mb-1">النيابة الجزئية التابعة</label>
+                  <select
+                    value={editForm.partialProsecution}
+                    onChange={(e) => setEditForm({ ...editForm, partialProsecution: e.target.value })}
+                    className="input w-full"
+                  >
+                    <option value="">-- بدون نيابة جزئية --</option>
+                    {OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "DISTRICT" || !!p.parentName)
+                      .filter((p) => !editForm.prosecution || p.parentName === editForm.prosecution)
+                      .map((p) => (
+                        <option key={p.name} value={p.name}>
+                          {p.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
 
