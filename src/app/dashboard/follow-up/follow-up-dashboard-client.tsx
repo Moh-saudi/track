@@ -50,6 +50,7 @@ export interface SerializedFollowUpCase {
   caseNumber: string;
   caseYear: number;
   prosecutionCaseNumber?: string | null;
+  incomingDate?: string | null;
   reportYear?: number | null;
   registrationType: string;
   respondentName?: string | null;
@@ -416,8 +417,8 @@ export function FollowUpDashboardClient({
               <TableHeader>
                 <TableRow>
                   <TableHead>موقف التوزيع</TableHead>
-                  <TableHead>رقم القضية / المحضر</TableHead>
-                  <TableHead>رقم السجل الداخلي</TableHead>
+                  <TableHead>رقم وتاريخ الوارد</TableHead>
+                  <TableHead>رقم وقيد القضية / المحضر</TableHead>
                   <TableHead>النوع</TableHead>
                   <TableHead>المشكو في حقه</TableHead>
                   <TableHead>الشاكي / النيابة</TableHead>
@@ -446,35 +447,36 @@ export function FollowUpDashboardClient({
                         )}
                       </TableCell>
 
-                      {/* رقم القضية أو المحضر لسنة كذا */}
+                      {/* رقم وتاريخ سجل الوارد */}
+                      <TableCell className="whitespace-nowrap">
+                        <Link
+                          href={`/dashboard/registration/${c.id}`}
+                          className="hover:text-teal-700 transition-colors inline-block"
+                          title="عرض ملف السجل"
+                        >
+                          <span className="font-mono font-bold text-slate-900 block text-xs">وارد #{c.caseNumber}</span>
+                          <span className="text-[11px] text-teal-800 font-mono block">
+                            {c.incomingDate ? formatDate(c.incomingDate) : "—"}
+                          </span>
+                        </Link>
+                      </TableCell>
+
+                      {/* رقم وقيد القضية أو المحضر لسنة كذا */}
                       <TableCell>
                         {c.prosecutionCaseNumber ? (
                           <div className="space-y-0.5">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-900 font-mono font-bold text-xs border border-slate-200" dir="auto">
                               {c.prosecutionCaseNumber}
                             </span>
-                            {c.reportYear && (
-                              <span className="text-[11px] text-slate-500 block font-mono">
-                                لسنة {c.reportYear}
-                              </span>
-                            )}
+                            <span className="text-[11px] text-slate-600 block font-mono">
+                              لسنة {c.caseYear || c.reportYear}
+                            </span>
                           </div>
                         ) : (
-                          <span className="text-slate-400 text-xs">—</span>
+                          <span className="text-slate-500 text-xs font-mono">
+                            لسنة {c.caseYear || c.reportYear || "—"}
+                          </span>
                         )}
-                      </TableCell>
-
-                      {/* رقم السجل الداخلي الخاص بنا */}
-                      <TableCell className="font-bold text-slate-900 font-mono whitespace-nowrap font-heading text-xs">
-                        <Link
-                          href={`/dashboard/registration/${c.id}`}
-                          className="hover:text-violet-700 transition-colors inline-flex items-center gap-1"
-                          title="عرض ملف السجل"
-                        >
-                          <span>#{c.caseNumber}</span>
-                          <span className="text-slate-400">/</span>
-                          <span>{c.caseYear}</span>
-                        </Link>
                       </TableCell>
 
                       <TableCell>
@@ -632,8 +634,8 @@ export function FollowUpDashboardClient({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>رقم القضية / المحضر</TableHead>
-                  <TableHead>رقم السجل الداخلي</TableHead>
+                  <TableHead>رقم وتاريخ الوارد</TableHead>
+                  <TableHead>رقم وقيد القضية / المحضر</TableHead>
                   <TableHead>اللجنة الفرعية المحال إليها</TableHead>
                   <TableHead>التخصصات</TableHead>
                   <TableHead>تاريخ التوجيه</TableHead>
@@ -669,35 +671,36 @@ export function FollowUpDashboardClient({
 
                   return (
                     <TableRow key={c.id} delayed={isOverdue}>
-                      {/* رقم القضية أو المحضر لسنة كذا */}
+                      {/* رقم وتاريخ سجل الوارد */}
+                      <TableCell className="whitespace-nowrap">
+                        <Link
+                          href={`/dashboard/registration/${c.id}`}
+                          className="hover:text-teal-700 transition-colors inline-block"
+                          title="عرض ملف السجل"
+                        >
+                          <span className="font-mono font-bold text-slate-900 block text-xs">وارد #{c.caseNumber}</span>
+                          <span className="text-[11px] text-teal-800 font-mono block">
+                            {c.incomingDate ? formatDate(c.incomingDate) : "—"}
+                          </span>
+                        </Link>
+                      </TableCell>
+
+                      {/* رقم وقيد القضية أو المحضر لسنة كذا */}
                       <TableCell>
                         {c.prosecutionCaseNumber ? (
                           <div className="space-y-0.5">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-900 font-mono font-bold text-xs border border-slate-200" dir="auto">
                               {c.prosecutionCaseNumber}
                             </span>
-                            {c.reportYear && (
-                              <span className="text-[11px] text-slate-500 block font-mono">
-                                لسنة {c.reportYear}
-                              </span>
-                            )}
+                            <span className="text-[11px] text-slate-600 block font-mono">
+                              لسنة {c.caseYear || c.reportYear}
+                            </span>
                           </div>
                         ) : (
-                          <span className="text-slate-400 text-xs">—</span>
+                          <span className="text-slate-500 text-xs font-mono">
+                            لسنة {c.caseYear || c.reportYear || "—"}
+                          </span>
                         )}
-                      </TableCell>
-
-                      {/* رقم السجل الداخلي الخاص بنا */}
-                      <TableCell className="font-bold text-slate-900 font-mono whitespace-nowrap font-heading text-xs">
-                        <Link
-                          href={`/dashboard/registration/${c.id}`}
-                          className="hover:text-violet-700 transition-colors inline-flex items-center gap-1"
-                          title="عرض ملف السجل"
-                        >
-                          <span>#{c.caseNumber}</span>
-                          <span className="text-slate-400">/</span>
-                          <span>{c.caseYear}</span>
-                        </Link>
                       </TableCell>
 
                       <TableCell className="font-semibold text-slate-800 text-xs">
@@ -942,19 +945,19 @@ export function FollowUpDashboardClient({
 
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">رقم السجل الداخلي:</span>
-                <span className="font-bold font-mono text-slate-900 text-sm">
-                  #{revertingCase.caseNumber} / {revertingCase.caseYear}
+                <span className="text-slate-500">رقم سجل الوارد:</span>
+                <span className="font-bold font-mono text-teal-950 text-sm">
+                  وارد #{revertingCase.caseNumber}
                 </span>
               </div>
-              {revertingCase.prosecutionCaseNumber && (
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">رقم القضية / المحضر:</span>
-                  <span className="font-semibold font-mono text-slate-800 text-xs bg-white px-2 py-0.5 rounded border border-slate-200">
-                    {revertingCase.prosecutionCaseNumber} {revertingCase.reportYear ? `/ ${revertingCase.reportYear}` : ""}
-                  </span>
-                </div>
-              )}
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">رقم وقيد القضية / المحضر:</span>
+                <span className="font-semibold font-mono text-slate-800 text-xs bg-white px-2 py-0.5 rounded border border-slate-200">
+                  {revertingCase.prosecutionCaseNumber
+                    ? `${revertingCase.prosecutionCaseNumber} لسنة ${revertingCase.caseYear || revertingCase.reportYear}`
+                    : `لسنة ${revertingCase.caseYear || revertingCase.reportYear || "—"}`}
+                </span>
+              </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">اللجنة الفرعية الموجه إليها حالياً:</span>
                 <span className="font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">

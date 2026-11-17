@@ -140,6 +140,7 @@ export default async function FollowUpDashboard() {
     caseNumber: c.caseNumber,
     caseYear: c.caseYear,
     prosecutionCaseNumber: c.prosecutionCaseNumber || null,
+    incomingDate: c.incomingDate ? new Date(c.incomingDate).toISOString() : null,
     reportYear: c.reportYear || null,
     registrationType: c.registrationType || "COMPLAINT",
     respondentName: c.respondentName,

@@ -290,7 +290,7 @@ export function GlobalSearchBar({ userRole: initialRole }: { userRole?: string |
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-black text-slate-900 font-mono text-xs font-heading">
-                          #{item.caseNumber} / {item.caseYear}
+                          وارد #{item.caseNumber}
                         </span>
 
                         <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${typeInfo.badge}`}>
@@ -301,9 +301,13 @@ export function GlobalSearchBar({ userRole: initialRole }: { userRole?: string |
                           {statusInfo.label}
                         </span>
 
-                        {item.prosecutionCaseNumber && (
+                        {item.prosecutionCaseNumber ? (
                           <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 font-mono text-[11px] border border-slate-200 font-semibold" dir="auto">
-                            {item.prosecutionCaseNumber} {item.reportYear ? `/ ${item.reportYear}` : ""}
+                            {item.prosecutionCaseNumber} لسنة {item.caseYear}
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 font-mono text-[10px] border border-slate-200">
+                            لسنة {item.caseYear}
                           </span>
                         )}
                       </div>

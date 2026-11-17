@@ -68,13 +68,13 @@ export default async function SubCommitteeReportPage({ params }: { params: Promi
         breadcrumbs={[
           { label: "الرئيسية", href: "/dashboard" },
           { label: "اللجنة الفرعية", href: "/dashboard/subcommittee" },
-          { label: `السجل ${caseRecord.caseNumber} / ${caseRecord.caseYear}`, href: `/dashboard/subcommittee/${caseRecord.id}` },
+          { label: `وارد #${caseRecord.caseNumber}`, href: `/dashboard/subcommittee/${caseRecord.id}` },
           { label: canEdit ? "المرحلة الثانية: التقرير الطبي" : "عرض التقرير المعتمد (للاطلاع فقط)" },
         ]}
         title={
           canEdit
-            ? `المرحلة الثانية: مداولة الجلسة وإعداد التقرير الطبي — سجل ${caseRecord.caseNumber} / ${caseRecord.caseYear}`
-            : `التقرير الطبي الفني المعتمد (للاطلاع فقط) — سجل ${caseRecord.caseNumber} / ${caseRecord.caseYear}`
+            ? `المرحلة الثانية: مداولة الجلسة وإعداد التقرير الطبي — وارد #${caseRecord.caseNumber} ${caseRecord.prosecutionCaseNumber ? `(قضية/محضر ${caseRecord.prosecutionCaseNumber} لسنة ${caseRecord.caseYear})` : `(لسنة ${caseRecord.caseYear})`}`
+            : `التقرير الطبي الفني المعتمد (للاطلاع فقط) — وارد #${caseRecord.caseNumber} ${caseRecord.prosecutionCaseNumber ? `(قضية/محضر ${caseRecord.prosecutionCaseNumber} لسنة ${caseRecord.caseYear})` : `(لسنة ${caseRecord.caseYear})`}`
         }
         description={
           canEdit
@@ -274,7 +274,7 @@ export default async function SubCommitteeReportPage({ params }: { params: Promi
                     </h3>
                   </div>
                   <p className="text-xs text-slate-300">
-                    صادر بخصوص السجل رقم: {caseRecord.caseNumber} / {caseRecord.caseYear} — وضع القراءة والاطلاع فقط
+                    صادر بخصوص السجل: وارد #{caseRecord.caseNumber} {caseRecord.prosecutionCaseNumber ? `— قضية/محضر ${caseRecord.prosecutionCaseNumber} لسنة ${caseRecord.caseYear}` : `— لسنة ${caseRecord.caseYear}`} — وضع القراءة والاطلاع فقط
                   </p>
                 </div>
 

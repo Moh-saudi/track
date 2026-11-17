@@ -3118,7 +3118,7 @@ export default function RegistrationReportsPage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-sm">
-                    تعديل بيانات السجل: {editingCase.caseNumber} / {editingCase.caseYear}
+                    تعديل بيانات السجل: وارد #{editingCase.caseNumber} {editingCase.prosecutionCaseNumber ? `— قضية/محضر ${editingCase.prosecutionCaseNumber} لسنة ${editingCase.caseYear}` : `— لسنة ${editingCase.caseYear}`}
                   </h3>
                   <p className="text-[11px] text-amber-200">
                     سيتم تدوين اسمك وتاريخ التعديل وسبب التعديل تلقائياً في سجل الرقابة والتدقيق

@@ -55,6 +55,8 @@ export default async function SupremeCasesPage() {
     id: c.id,
     caseNumber: c.caseNumber || "—",
     caseYear: c.caseYear || new Date().getFullYear(),
+    incomingDate: safeIsoDate(c.incomingDate),
+    prosecutionCaseNumber: c.prosecutionCaseNumber || null,
     registrationType: c.registrationType || "COMPLAINT",
     respondentName: c.respondentName || null,
     hospitalName: c.hospitalName || null,

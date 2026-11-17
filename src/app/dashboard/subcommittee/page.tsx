@@ -77,6 +77,8 @@ export default async function SubCommitteeDashboard({
     id: c.id,
     caseNumber: c.caseNumber || "—",
     caseYear: c.caseYear || new Date().getFullYear(),
+    prosecutionCaseNumber: c.prosecutionCaseNumber || null,
+    incomingDate: safeIsoDate(c.incomingDate),
     registrationType: c.registrationType || "COMPLAINT",
     complainantName: c.complainantName || null,
     respondentName: c.respondentName || null,

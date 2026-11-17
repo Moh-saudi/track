@@ -15,6 +15,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { formatDate } from "@/lib/formatters";
 import {
   Table,
   TableHeader,
@@ -29,6 +30,8 @@ export interface SupremeCaseItem {
   id: string;
   caseNumber: string;
   caseYear: number;
+  incomingDate?: string | null;
+  prosecutionCaseNumber?: string | null;
   registrationType: string;
   respondentName: string | null;
   hospitalName: string | null;
@@ -74,7 +77,7 @@ export function SupremeCasesTable({ initialCases }: SupremeCasesTableProps) {
       // فلتر البحث
       if (!searchTerm.trim()) return true;
       const term = searchTerm.toLowerCase().trim();
-      const matchNum = `${c.caseNumber}/${c.caseYear}`.includes(term);
+      const matchNum = `${c.caseNumber}/${c.caseYear}`.includes(term) || (c.prosecutionCaseNumber && c.prosecutionCaseNumber.toLowerCase().includes(term));
       const matchComplainant = c.complainantName?.toLowerCase().includes(term);
       const matchRespondent = (c.respondentName || c.hospitalName)?.toLowerCase().includes(term);
       const matchEntity = c.entityName?.toLowerCase().includes(term) || c.entityType?.toLowerCase().includes(term);
@@ -171,7 +174,8 @@ export function SupremeCasesTable({ initialCases }: SupremeCasesTableProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="whitespace-nowrap">رقم السجل / السنة</TableHead>
+                  <TableHead className="whitespace-nowrap">رقم وتاريخ الوارد</TableHead>
+                  <TableHead className="whitespace-nowrap">رقم وقيد القضية / المحضر</TableHead>
                   <TableHead className="whitespace-nowrap">النوع</TableHead>
                   <TableHead className="min-w-[160px]">المشكو في حقه</TableHead>
                   <TableHead className="min-w-[160px]">الشاكي / المريض</TableHead>
@@ -192,8 +196,28 @@ export function SupremeCasesTable({ initialCases }: SupremeCasesTableProps) {
 
                   return (
                     <TableRow key={c.id}>
-                      <TableCell className="font-bold text-slate-900 whitespace-nowrap font-mono">
-                        {c.caseNumber} / {c.caseYear}
+                      <TableCell className="whitespace-nowrap">
+                        <span className="font-bold font-mono text-slate-900 block text-xs">
+                          وارد #{c.caseNumber}
+                        </span>
+                        <span className="text-[11px] text-teal-800 font-mono block">
+                          {c.incomingDate ? formatDate(c.incomingDate) : "—"}
+                        </span>
+                      </TableCell>
+
+                      <TableCell className="font-mono whitespace-nowrap">
+                        <div className="space-y-0.5">
+                          {c.prosecutionCaseNumber ? (
+                            <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-block" dir="auto">
+                              {c.prosecutionCaseNumber}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                          <span className="text-[11px] text-slate-600 block font-mono">
+                            لسنة {c.caseYear || "—"}
+                          </span>
+                        </div>
                       </TableCell>
 
                       <TableCell>

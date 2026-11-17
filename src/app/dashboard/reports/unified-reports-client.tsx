@@ -41,6 +41,7 @@ export interface UnifiedCase {
   id: string;
   caseNumber: string;
   caseYear: number;
+  incomingDate?: string | null;
   prosecutionCaseNumber: string | null;
   reportYear: number | null;
   registrationType: "COMPLAINT" | "CASE" | "REPORT";
@@ -694,8 +695,8 @@ export function UnifiedReportsClient({
             <table className="w-full text-xs text-right">
               <thead className="bg-slate-50 text-slate-600 font-heading font-bold border-b border-slate-200 text-[11px]">
                 <tr>
-                  <th className="p-3.5 whitespace-nowrap">رقم القضية / المحضر</th>
-                  <th className="p-3.5 whitespace-nowrap">رقم السجل الداخلي</th>
+                  <th className="p-3.5 whitespace-nowrap">رقم وتاريخ الوارد</th>
+                  <th className="p-3.5 whitespace-nowrap">رقم وقيد القضية / المحضر</th>
                   <th className="p-3.5 whitespace-nowrap">النوع</th>
                   <th className="p-3.5 whitespace-nowrap">المرحلة الإجرائية</th>
                   <th className="p-3.5 whitespace-nowrap">الشاكي</th>
@@ -713,23 +714,33 @@ export function UnifiedReportsClient({
 
                   return (
                     <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="p-3.5 font-mono">
-                        {c.prosecutionCaseNumber ? (
-                          <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200" dir="auto">
-                            {c.prosecutionCaseNumber} {c.reportYear ? `/ ${c.reportYear}` : ""}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
-
-                      <td className="p-3.5 font-bold font-mono text-slate-900 whitespace-nowrap">
+                      <td className="p-3.5 whitespace-nowrap">
                         <Link
                           href={`/dashboard/registration/${c.id}`}
-                          className="hover:text-teal-700 transition-colors"
+                          className="hover:text-teal-700 transition-colors inline-block"
                         >
-                          #{c.caseNumber} / {c.caseYear}
+                          <span className="font-bold font-mono text-slate-900 block text-xs">
+                            وارد #{c.caseNumber}
+                          </span>
+                          <span className="text-[11px] text-teal-800 font-mono block">
+                            {c.incomingDate ? formatDate(c.incomingDate) : "—"}
+                          </span>
                         </Link>
+                      </td>
+
+                      <td className="p-3.5 font-mono whitespace-nowrap">
+                        <div className="space-y-0.5">
+                          {c.prosecutionCaseNumber ? (
+                            <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-block" dir="auto">
+                              {c.prosecutionCaseNumber}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                          <span className="text-[11px] text-slate-600 block font-mono">
+                            لسنة {c.caseYear || c.reportYear || "—"}
+                          </span>
+                        </div>
                       </td>
 
                       <td className="p-3.5">

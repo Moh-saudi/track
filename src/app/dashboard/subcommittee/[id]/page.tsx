@@ -130,9 +130,9 @@ export default async function SubCommitteeCaseDetail({ params }: { params: Promi
         breadcrumbs={[
           { label: "الرئيسية", href: "/dashboard" },
           { label: "اللجنة الفرعية", href: "/dashboard/subcommittee" },
-          { label: `سجل رقم ${caseRecord.caseNumber} / ${caseRecord.caseYear}` },
+          { label: `وارد #${caseRecord.caseNumber}` },
         ]}
-        title={`المرحلة الأولى: التحضير وجدولة الجلسة وتشكيل الفريق — سجل ${caseRecord.caseNumber} / ${caseRecord.caseYear}`}
+        title={`المرحلة الأولى: التحضير وجدولة الجلسة وتشكيل الفريق — وارد #${caseRecord.caseNumber} ${caseRecord.prosecutionCaseNumber ? `(قضية/محضر ${caseRecord.prosecutionCaseNumber} لسنة ${caseRecord.caseYear})` : `(لسنة ${caseRecord.caseYear})`}`}
         description={`ملف دراسة وبحث باللجنة الفرعية (${caseRecord.subCommittee?.name || "اللجنة الفرعية"}).`}
         actions={
           <div className="flex items-center gap-3">

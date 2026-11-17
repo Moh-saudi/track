@@ -36,6 +36,8 @@ export interface SerializedSubCommitteeCase {
   id: string;
   caseNumber: string;
   caseYear: number;
+  prosecutionCaseNumber?: string | null;
+  incomingDate?: string | null;
   registrationType: string;
   complainantName: string;
   respondentName?: string | null;
@@ -300,7 +302,7 @@ export function SubCommitteeDashboardClient({
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-bold font-mono font-heading text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
-                              سجل #{c.caseNumber} / {c.caseYear}
+                              وارد #{c.caseNumber} {c.prosecutionCaseNumber ? `| قضية ${c.prosecutionCaseNumber} لسنة ${c.caseYear}` : `| لسنة ${c.caseYear}`}
                             </span>
                             <Badge variant="amber" size="sm">
                               جلسة فحص
@@ -421,7 +423,8 @@ export function SubCommitteeDashboardClient({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">رقم السجل / السنة</TableHead>
+                    <TableHead className="whitespace-nowrap">رقم وتاريخ الوارد</TableHead>
+                    <TableHead className="whitespace-nowrap">رقم وقيد القضية / المحضر</TableHead>
                     <TableHead className="whitespace-nowrap">النوع</TableHead>
                     <TableHead className="min-w-[160px]">المشكو في حقه</TableHead>
                     <TableHead className="whitespace-nowrap">تاريخ الإحالة</TableHead>
@@ -436,7 +439,30 @@ export function SubCommitteeDashboardClient({
                     return (
                       <TableRow key={c.id}>
                         <TableCell className="font-bold text-slate-900 font-mono whitespace-nowrap font-heading">
-                          {c.caseNumber} / {c.caseYear}
+                          <div className="space-y-0.5">
+                            <span className="font-black text-slate-900 block">وارد #{c.caseNumber}</span>
+                            {c.incomingDate && (
+                              <span className="text-[10px] text-teal-700 font-normal block">
+                                {formatDate(c.incomingDate)}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {c.prosecutionCaseNumber ? (
+                            <div className="space-y-0.5">
+                              <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-block" dir="auto">
+                                {c.prosecutionCaseNumber}
+                              </span>
+                              <span className="text-[10px] text-teal-800 font-bold block">
+                                لسنة {c.caseYear}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 font-bold text-[11px]">
+                              لسنة {c.caseYear}
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant="slate" size="sm">
@@ -532,7 +558,8 @@ export function SubCommitteeDashboardClient({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">رقم السجل / السنة</TableHead>
+                    <TableHead className="whitespace-nowrap">رقم وتاريخ الوارد</TableHead>
+                    <TableHead className="whitespace-nowrap">رقم وقيد القضية / المحضر</TableHead>
                     <TableHead className="whitespace-nowrap">النوع</TableHead>
                     <TableHead className="min-w-[160px]">المشكو في حقه</TableHead>
                     <TableHead className="min-w-[160px]">التخصصات المعنية</TableHead>
@@ -549,7 +576,32 @@ export function SubCommitteeDashboardClient({
                     const respondent = c.respondentName || c.hospitalName;
                     return (
                       <TableRow key={c.id}>
-                        <TableCell className="font-bold text-slate-900 font-mono whitespace-nowrap font-heading">{c.caseNumber} / {c.caseYear}</TableCell>
+                        <TableCell className="font-bold text-slate-900 font-mono whitespace-nowrap font-heading">
+                          <div className="space-y-0.5">
+                            <span className="font-black text-slate-900 block">وارد #{c.caseNumber}</span>
+                            {c.incomingDate && (
+                              <span className="text-[10px] text-teal-700 font-normal block">
+                                {formatDate(c.incomingDate)}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {c.prosecutionCaseNumber ? (
+                            <div className="space-y-0.5">
+                              <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-block" dir="auto">
+                                {c.prosecutionCaseNumber}
+                              </span>
+                              <span className="text-[10px] text-teal-800 font-bold block">
+                                لسنة {c.caseYear}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 font-bold text-[11px]">
+                              لسنة {c.caseYear}
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge variant="slate" size="sm">{c.registrationType === "COMPLAINT" ? "شكوى" : c.registrationType === "CASE" ? "قضية" : "محضر"}</Badge>
                         </TableCell>

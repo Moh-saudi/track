@@ -128,7 +128,7 @@ export function ProsecutionNotificationCell({
                     توثيق مخاطبة النيابة العامة
                   </h3>
                   <p className="text-xs text-slate-500 font-body">
-                    السجل: {caseNumber} / {caseYear} {prosecutionName ? `— (${prosecutionName})` : ""}
+                    وارد #{caseNumber} {prosecutionName ? `— (${prosecutionName})` : ""}
                   </p>
                 </div>
               </div>

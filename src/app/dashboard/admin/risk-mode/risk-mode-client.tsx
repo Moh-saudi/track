@@ -874,7 +874,8 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
           <table className="w-full text-right text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-700 font-heading">
-                <th className="p-3.5">السجل ونوعه</th>
+                <th className="p-3.5">رقم وتاريخ الوارد</th>
+                <th className="p-3.5">رقم وقيد القضية / المحضر</th>
                 <th className="p-3.5">الشاكي والمشكو في حقه</th>
                 <th className="p-3.5">الجهة والنيابة المختصة</th>
                 <th className="p-3.5">اللجنة الفرعية</th>
@@ -886,7 +887,7 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
             <tbody className="divide-y divide-slate-100 font-body">
               {paginatedCases.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center text-slate-400 space-y-2">
+                  <td colSpan={8} className="p-12 text-center text-slate-400 space-y-2">
                     <AlertTriangle className="w-8 h-8 mx-auto text-slate-300" />
                     <p className="font-bold text-slate-600">لا توجد سجلات تطابق معايير الفلترة أو البحث المحددة</p>
                     <p className="text-xs text-slate-400">جرب تعديل كلمة البحث أو إعادة تعيين الفلاتر لعرض السجلات.</p>
@@ -919,30 +920,36 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
 
                   return (
                     <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
-                      {/* 1. السجل ونوعه */}
-                      <td className="p-3.5">
-                        <div className="space-y-1">
+                      {/* 1. رقم وتاريخ سجل الوارد */}
+                      <td className="p-3.5 whitespace-nowrap">
+                        <div className="space-y-0.5">
                           <div className="flex items-center gap-1.5">
                             <span className="font-mono font-bold text-slate-900 text-sm">
-                              {c.caseNumber} / {c.caseYear}
+                              وارد #{c.caseNumber}
                             </span>
-                            <span className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-bold border ${typeInfo.badge}`}>
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${typeInfo.badge}`}>
                               {typeInfo.label}
                             </span>
                           </div>
+                          <span className="text-[11px] text-teal-800 block font-mono">
+                            {c.incomingDate ? formatDate(c.incomingDate) : "—"}
+                          </span>
+                        </div>
+                      </td>
 
-                          {c.prosecutionCaseNumber && (
-                            <div className="font-mono text-[11px] text-slate-600 flex items-center gap-1">
-                              <span className="text-slate-400">مرتبط:</span>
-                              <span className="font-semibold text-slate-800">{c.prosecutionCaseNumber}</span>
-                            </div>
-                          )}
-
-                          {c.incomingDate && (
-                            <span className="text-[10px] text-slate-400 block font-mono">
-                              وارد: {formatDate(c.incomingDate)}
+                      {/* 2. رقم وقيد القضية أو المحضر */}
+                      <td className="p-3.5 whitespace-nowrap">
+                        <div className="space-y-0.5">
+                          {c.prosecutionCaseNumber ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-900 font-mono font-bold text-xs border border-slate-200" dir="auto">
+                              {c.prosecutionCaseNumber}
                             </span>
+                          ) : (
+                            <span className="text-slate-400 text-xs">—</span>
                           )}
+                          <span className="text-[11px] text-slate-600 block font-mono">
+                            لسنة {c.caseYear || "—"}
+                          </span>
                         </div>
                       </td>
 
@@ -1146,8 +1153,8 @@ export function RiskModeClient({ cases, subCommittees = [] }: Props) {
                   <h3 className="text-base font-bold font-heading text-slate-900">
                     استدراك وتصحيح مسار السجل
                   </h3>
-                  <p className="text-xs text-slate-500 font-mono">
-                    سجل رقم: {selectedCase.caseNumber} لسنة {selectedCase.caseYear}
+                  <p className="text-xs text-slate-600 font-mono">
+                    وارد #{selectedCase.caseNumber} {selectedCase.prosecutionCaseNumber ? `— قضية/محضر ${selectedCase.prosecutionCaseNumber} لسنة ${selectedCase.caseYear}` : `— لسنة ${selectedCase.caseYear}`}
                   </p>
                 </div>
               </div>

@@ -185,6 +185,7 @@ export default async function UnifiedReportsPage() {
       id: c.id,
       caseNumber: c.caseNumber,
       caseYear: c.caseYear,
+      incomingDate: c.incomingDate ? new Date(c.incomingDate).toISOString() : null,
       prosecutionCaseNumber: c.prosecutionCaseNumber || null,
       reportYear: c.reportYear || null,
       registrationType: c.registrationType || "COMPLAINT",

@@ -29,6 +29,7 @@ interface CaseDetails {
   id: string;
   caseNumber: string;
   caseYear: number;
+  prosecutionCaseNumber?: string;
   registrationType: string;
   respondentName?: string;
   respondentPhone?: string;
@@ -161,7 +162,7 @@ export default function FollowUpAssignPage({ params }: { params: Promise<{ id: s
       <div className="flex items-center justify-between border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-xl font-black text-slate-900">
-            توجيه وإحالة السجل: {caseData.caseNumber} / {caseData.caseYear}
+            توجيه وإحالة السجل: وارد #{caseData.caseNumber} {caseData.prosecutionCaseNumber ? `— قضية/محضر ${caseData.prosecutionCaseNumber} لسنة ${caseData.caseYear}` : `— لسنة ${caseData.caseYear}`}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             إحالة السجل لإحدى الجهات الـ 16 المعتمدة وتحديد التخصصات والمدة الزمنية
