@@ -36,6 +36,7 @@ import {
   Clock,
   Calendar,
   Info,
+  Check,
 } from "lucide-react";
 
 interface UserWorkload {
@@ -124,7 +125,14 @@ interface ReportData {
   };
   governorateBreakdown: GovernorateStat[];
   prosecutionNumerical: ProsecutionStatItem[];
-  prosecutions: { id: string; name: string; governorate?: string | null }[];
+  prosecutions: {
+    id: string;
+    name: string;
+    governorate?: string | null;
+    type?: string;
+    parentId?: string | null;
+    parentName?: string | null;
+  }[];
   subCommitteesList: { id: string; name: string }[];
   governoratesList: string[];
   cases: CaseItem[];
@@ -162,6 +170,21 @@ const ENTITY_TYPES = [
   "أخرى",
 ];
 
+const ARABIC_MONTHS = [
+  { index: 0, name: "يناير (شهر 1)" },
+  { index: 1, name: "فبراير (شهر 2)" },
+  { index: 2, name: "مارس (شهر 3)" },
+  { index: 3, name: "أبريل (شهر 4)" },
+  { index: 4, name: "مايو (شهر 5)" },
+  { index: 5, name: "يونيو (شهر 6)" },
+  { index: 6, name: "يوليو (شهر 7)" },
+  { index: 7, name: "أغسطس (شهر 8)" },
+  { index: 8, name: "سبتمبر (شهر 9)" },
+  { index: 9, name: "أكتوبر (شهر 10)" },
+  { index: 10, name: "نوفمبر (شهر 11)" },
+  { index: 11, name: "ديسمبر (شهر 12)" },
+];
+
 export default function RegistrationReportsPage() {
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -173,6 +196,7 @@ export default function RegistrationReportsPage() {
   const [governorate, setGovernorate] = useState("ALL");
   const [caseYear, setCaseYear] = useState("ALL");
   const [prosecutionId, setProsecutionId] = useState("ALL");
+  const [partialProsecutionId, setPartialProsecutionId] = useState("ALL");
   const [entityType, setEntityType] = useState("ALL");
   const [branchOrHospital, setBranchOrHospital] = useState("");
   const [subCommitteeId, setSubCommitteeId] = useState("ALL");
@@ -183,7 +207,12 @@ export default function RegistrationReportsPage() {
   const [respondentName, setRespondentName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [dateShortcut, setDateShortcut] = useState<"ALL" | "TODAY" | "YESTERDAY" | "THIS_MONTH" | "THIS_YEAR">("ALL");
+  const [dateBasis, setDateBasis] = useState<"incomingDate" | "createdAt" | "caseYear">("incomingDate");
+  const [dateShortcut, setDateShortcut] = useState<
+    "ALL" | "TODAY" | "YESTERDAY" | "THIS_MONTH" | "LAST_MONTH" | "THIS_YEAR" | "LAST_YEAR" | "CUSTOM_MONTH" | "CUSTOM"
+  >("ALL");
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   // التبويب النشط (الافتراضي: التقرير العددي الإحصائي بالأرقام فقط)
   const [activeTab, setActiveTab] = useState<"numerical" | "cases" | "governorates" | "prosecutions" | "stages" | "workload">("numerical");
@@ -323,12 +352,31 @@ export default function RegistrationReportsPage() {
     }
   }
 
-  // النيابات المتاحة مفلترة بحسب المحافظة المحددة لتسهيل الاختيار
-  const filteredProsecutions = useMemo(() => {
+  // النيابات الكلية المتاحة مفلترة بحسب المحافظة المحددة
+  const plenaryProsecutions = useMemo(() => {
     if (!data?.prosecutions) return [];
-    if (governorate === "ALL" || governorate === "UNSPECIFIED") return data.prosecutions;
-    return data.prosecutions.filter((p) => !p.governorate || p.governorate === governorate);
+    const list = data.prosecutions.filter((p) => !p.type || p.type === "PLENARY" || p.type === "ADMINISTRATIVE");
+    if (governorate === "ALL" || governorate === "UNSPECIFIED") return list;
+    return list.filter((p) => !p.governorate || p.governorate === governorate);
   }, [data?.prosecutions, governorate]);
+
+  // النيابات الجزئية المتاحة مفلترة بحسب النيابة الكلية والمحافظة
+  const districtProsecutions = useMemo(() => {
+    if (!data?.prosecutions) return [];
+    const list = data.prosecutions.filter((p) => p.type === "DISTRICT");
+    if (prosecutionId !== "ALL") {
+      const selectedPlenary = data.prosecutions.find((p) => p.id === prosecutionId);
+      return list.filter((p) => {
+        if (p.parentId && p.parentId === prosecutionId) return true;
+        if (selectedPlenary && p.parentName && p.parentName === selectedPlenary.name) return true;
+        return false;
+      });
+    }
+    if (governorate !== "ALL" && governorate !== "UNSPECIFIED") {
+      return list.filter((p) => !p.governorate || p.governorate === governorate);
+    }
+    return list;
+  }, [data?.prosecutions, prosecutionId, governorate]);
 
   // استخراج قائمة أعوام القيد المتاحة
   const availableCaseYears = useMemo(() => {
@@ -373,7 +421,11 @@ export default function RegistrationReportsPage() {
     }
     if (prosecutionId !== "ALL") {
       const p = data?.prosecutions.find((x) => x.id === prosecutionId);
-      parts.push(`النيابة: ${p?.name || prosecutionId}`);
+      parts.push(`النيابة الكلية: ${p?.name || prosecutionId}`);
+    }
+    if (partialProsecutionId !== "ALL") {
+      const p = data?.prosecutions.find((x) => x.id === partialProsecutionId);
+      parts.push(`النيابة الجزئية: ${p?.name || partialProsecutionId}`);
     }
     if (entityType !== "ALL") parts.push(`فئة الجهة: ${entityType}`);
     if (branchOrHospital.trim()) parts.push(`الفرع/المنشأة: ${branchOrHospital.trim()}`);
@@ -392,30 +444,70 @@ export default function RegistrationReportsPage() {
       parts.push(`الموظف: ${u?.fullName || createdById}`);
     }
     if (startDate || endDate) {
-      parts.push(`الفترة: ${startDate || "البداية"} إلى ${endDate || "الآن"}`);
+      const basisLabel = dateBasis === "incomingDate" ? "تاريخ الوارد" : "تاريخ التسجيل بالمنظومة";
+      parts.push(`الفترة (${basisLabel}): ${startDate || "البداية"} إلى ${endDate || "الآن"}`);
     }
     return parts.length > 0 ? parts.join(" | ") : "جميع السجلات (إجمالي عام بدون فلترة وبدون مراحل)";
   }
 
-  function fetchReport(overrideGov?: string, overrideYear?: string) {
+  interface FilterOverrides {
+    governorate?: string;
+    caseYear?: string;
+    prosecutionId?: string;
+    partialProsecutionId?: string;
+    entityType?: string;
+    branchOrHospital?: string;
+    subCommitteeId?: string;
+    status?: string;
+    registrationType?: string;
+    complainantName?: string;
+    respondentName?: string;
+    startDate?: string;
+    endDate?: string;
+    dateBasis?: "incomingDate" | "createdAt" | "caseYear";
+    createdById?: string;
+  }
+
+  function fetchReport(overrides?: FilterOverrides | string, overrideYear?: string) {
     setLoading(true);
     setError(null);
-    const activeGov = overrideGov !== undefined ? overrideGov : governorate;
-    const activeYear = overrideYear !== undefined ? overrideYear : caseYear;
+    const overridesObj: FilterOverrides =
+      typeof overrides === "string"
+        ? { governorate: overrides, caseYear: overrideYear }
+        : overrides || {};
+
+    const activeGov = overridesObj.governorate !== undefined ? overridesObj.governorate : governorate;
+    const activeYear = overridesObj.caseYear !== undefined ? overridesObj.caseYear : caseYear;
+    const activeDateBasis = overridesObj.dateBasis !== undefined ? overridesObj.dateBasis : dateBasis;
+    const activePros = overridesObj.prosecutionId !== undefined ? overridesObj.prosecutionId : prosecutionId;
+    const activePartPros = overridesObj.partialProsecutionId !== undefined ? overridesObj.partialProsecutionId : partialProsecutionId;
+    const activeEntityType = overridesObj.entityType !== undefined ? overridesObj.entityType : entityType;
+    const activeBranch = overridesObj.branchOrHospital !== undefined ? overridesObj.branchOrHospital : branchOrHospital;
+    const activeSubCom = overridesObj.subCommitteeId !== undefined ? overridesObj.subCommitteeId : subCommitteeId;
+    const activeStatus = overridesObj.status !== undefined ? overridesObj.status : status;
+    const activeType = overridesObj.registrationType !== undefined ? overridesObj.registrationType : registrationType;
+    const activeComp = overridesObj.complainantName !== undefined ? overridesObj.complainantName : complainantName;
+    const activeResp = overridesObj.respondentName !== undefined ? overridesObj.respondentName : respondentName;
+    const activeStart = overridesObj.startDate !== undefined ? overridesObj.startDate : startDate;
+    const activeEnd = overridesObj.endDate !== undefined ? overridesObj.endDate : endDate;
+    const activeUser = overridesObj.createdById !== undefined ? overridesObj.createdById : createdById;
+
     const params = new URLSearchParams();
     if (activeGov !== "ALL") params.set("governorate", activeGov);
     if (activeYear !== "ALL") params.set("caseYear", activeYear);
-    if (prosecutionId !== "ALL") params.set("prosecutionId", prosecutionId);
-    if (entityType !== "ALL") params.set("entityType", entityType);
-    if (branchOrHospital.trim()) params.set("branchOrHospital", branchOrHospital.trim());
-    if (subCommitteeId !== "ALL") params.set("subCommitteeId", subCommitteeId);
-    if (status !== "ALL") params.set("status", status);
-    if (registrationType !== "ALL") params.set("registrationType", registrationType);
-    if (complainantName.trim()) params.set("complainantName", complainantName.trim());
-    if (respondentName.trim()) params.set("respondentName", respondentName.trim());
-    if (startDate) params.set("startDate", startDate);
-    if (endDate) params.set("endDate", endDate);
-    if (createdById !== "ALL") params.set("createdById", createdById);
+    if (activeDateBasis) params.set("dateBasis", activeDateBasis);
+    if (activePros !== "ALL") params.set("prosecutionId", activePros);
+    if (activePartPros !== "ALL") params.set("partialProsecutionId", activePartPros);
+    if (activeEntityType !== "ALL") params.set("entityType", activeEntityType);
+    if (activeBranch.trim()) params.set("branchOrHospital", activeBranch.trim());
+    if (activeSubCom !== "ALL") params.set("subCommitteeId", activeSubCom);
+    if (activeStatus !== "ALL") params.set("status", activeStatus);
+    if (activeType !== "ALL") params.set("registrationType", activeType);
+    if (activeComp.trim()) params.set("complainantName", activeComp.trim());
+    if (activeResp.trim()) params.set("respondentName", activeResp.trim());
+    if (activeStart) params.set("startDate", activeStart);
+    if (activeEnd) params.set("endDate", activeEnd);
+    if (activeUser !== "ALL") params.set("createdById", activeUser);
 
     fetch(`/api/registration/reports?${params.toString()}`)
       .then(async (res) => {
@@ -621,34 +713,87 @@ export default function RegistrationReportsPage() {
   }
 
   // تطبيق الاختصارات السريعة للفترات الزمنية
-  function applyDateShortcut(shortcut: "ALL" | "TODAY" | "YESTERDAY" | "THIS_MONTH" | "THIS_YEAR") {
+  function applyDateShortcut(
+    shortcut: "ALL" | "TODAY" | "YESTERDAY" | "THIS_MONTH" | "LAST_MONTH" | "THIS_YEAR" | "LAST_YEAR"
+  ) {
     setDateShortcut(shortcut);
     const today = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
     const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
+    let newStart = "";
+    let newEnd = "";
+
     if (shortcut === "ALL") {
-      setStartDate("");
-      setEndDate("");
+      newStart = "";
+      newEnd = "";
     } else if (shortcut === "TODAY") {
-      const s = fmt(today);
-      setStartDate(s);
-      setEndDate(s);
+      newStart = fmt(today);
+      newEnd = fmt(today);
     } else if (shortcut === "YESTERDAY") {
       const y = new Date(today);
       y.setDate(y.getDate() - 1);
-      const s = fmt(y);
-      setStartDate(s);
-      setEndDate(s);
+      newStart = fmt(y);
+      newEnd = fmt(y);
     } else if (shortcut === "THIS_MONTH") {
       const first = new Date(today.getFullYear(), today.getMonth(), 1);
-      setStartDate(fmt(first));
-      setEndDate(fmt(today));
+      const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      newStart = fmt(first);
+      newEnd = fmt(last);
+      setSelectedMonth(today.getMonth());
+      setSelectedYear(today.getFullYear());
+    } else if (shortcut === "LAST_MONTH") {
+      const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const last = new Date(today.getFullYear(), today.getMonth(), 0);
+      newStart = fmt(first);
+      newEnd = fmt(last);
+      setSelectedMonth(first.getMonth());
+      setSelectedYear(first.getFullYear());
     } else if (shortcut === "THIS_YEAR") {
-      const first = new Date(today.getFullYear(), 0, 1);
-      setStartDate(fmt(first));
-      setEndDate(fmt(today));
+      newStart = `${today.getFullYear()}-01-01`;
+      newEnd = `${today.getFullYear()}-12-31`;
+      setSelectedYear(today.getFullYear());
+    } else if (shortcut === "LAST_YEAR") {
+      const prevYr = today.getFullYear() - 1;
+      newStart = `${prevYr}-01-01`;
+      newEnd = `${prevYr}-12-31`;
+      setSelectedYear(prevYr);
     }
+
+    setStartDate(newStart);
+    setEndDate(newEnd);
+    if (shortcut !== "ALL") {
+      setActiveTab("cases"); // إظهار السجلات التفصيلية فوراً للتقرير المطلوب
+    }
+    fetchReport({ startDate: newStart, endDate: newEnd });
+  }
+
+  // تقرير شهري مخصص لشهر وسنة معينة
+  function selectCustomMonth(mIdx: number, yr: number) {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const first = fmt(new Date(yr, mIdx, 1));
+    const last = fmt(new Date(yr, mIdx + 1, 0));
+    setSelectedMonth(mIdx);
+    setSelectedYear(yr);
+    setStartDate(first);
+    setEndDate(last);
+    setDateShortcut("CUSTOM_MONTH");
+    setActiveTab("cases");
+    fetchReport({ startDate: first, endDate: last });
+  }
+
+  // اختيار عام قيد القضية / المحضر
+  function selectCaseYear(yr: string) {
+    setCaseYear(yr);
+    setActiveTab("cases");
+    fetchReport({ caseYear: yr });
+  }
+
+  // تغيير أساس وتصنيف التاريخ
+  function changeDateBasis(newBasis: "incomingDate" | "createdAt" | "caseYear") {
+    setDateBasis(newBasis);
+    fetchReport({ dateBasis: newBasis });
   }
 
   // إعادة ضبط كاملة لكافة الفلاتر (عرض الإجمالي بدون فلتر وبدون مراحل)
@@ -658,6 +803,7 @@ export default function RegistrationReportsPage() {
     setCasesTableSearch("");
     setCasesTableYear("ALL");
     setProsecutionId("ALL");
+    setPartialProsecutionId("ALL");
     setEntityType("ALL");
     setBranchOrHospital("");
     setSubCommitteeId("ALL");
@@ -668,26 +814,27 @@ export default function RegistrationReportsPage() {
     setStartDate("");
     setEndDate("");
     setDateShortcut("ALL");
+    setDateBasis("incomingDate");
     setCreatedById("ALL");
     setError(null);
-    setLoading(true);
 
-    fetch("/api/registration/reports")
-      .then(async (res) => {
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || `خطأ في الخادم (${res.status})`);
-        }
-        return res.json();
-      })
-      .then((json) => {
-        setData(json);
-      })
-      .catch((err: any) => {
-        console.error("handleResetFilters error:", err);
-        setError("تعذر إعادة ضبط الفلاتر");
-      })
-      .finally(() => setLoading(false));
+    fetchReport({
+      governorate: "ALL",
+      caseYear: "ALL",
+      prosecutionId: "ALL",
+      partialProsecutionId: "ALL",
+      entityType: "ALL",
+      branchOrHospital: "",
+      subCommitteeId: "ALL",
+      status: "ALL",
+      registrationType: "ALL",
+      createdById: "ALL",
+      complainantName: "",
+      respondentName: "",
+      startDate: "",
+      endDate: "",
+      dateBasis: "incomingDate",
+    });
   }
 
   // تصدير إكسيل محمي ومنسق وفق التبويب الحالي
@@ -999,34 +1146,142 @@ export default function RegistrationReportsPage() {
           </div>
         </div>
 
-        {/* أزرار سريعة للفترات الزمنية */}
-        <div className="mb-3 pb-3 border-b border-dashed border-slate-200 flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] font-bold text-slate-600 ml-1">الفترة الزمنية السريعة:</span>
-          {(
-            [
-              { id: "ALL", label: "كامل المدة (الكل)" },
-              { id: "TODAY", label: "سجلات اليوم" },
-              { id: "YESTERDAY", label: "سجلات أمس" },
-              { id: "THIS_MONTH", label: "هذا الشهر" },
-              { id: "THIS_YEAR", label: "هذا العام" },
-            ] as const
-          ).map((btn) => (
+        {/* ─── 1. شريط اختيار أساس البحث والتصفية الزمنية (تاريخ الوارد vs تاريخ التسجيل vs عام القيد) ─── */}
+        <div className="bg-gradient-to-r from-teal-900 to-slate-900 text-white p-3 rounded-xl mb-3 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-300" />
+            <span className="text-xs font-black">أساس ونوع التصفية الزمنية للتقرير:</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              key={btn.id}
               type="button"
-              onClick={() => applyDateShortcut(btn.id)}
-              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${
-                dateShortcut === btn.id
-                  ? "bg-teal-700 text-white shadow-xs"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+              onClick={() => changeDateBasis("incomingDate")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                dateBasis === "incomingDate"
+                  ? "bg-amber-400 text-slate-950 font-black shadow-md ring-2 ring-amber-300"
+                  : "bg-white/10 hover:bg-white/20 text-teal-100 border border-teal-500/30"
               }`}
+              title="تصفية التقرير وفق تاريخ ورود السجل أو كتاب النيابة الرسمي"
             >
-              {btn.label}
+              <Calendar className="w-3.5 h-3.5" />
+              <span>تاريخ قيد الوارد (تاريخ استلام الشكوى / ورود كتاب النيابة)</span>
+              {dateBasis === "incomingDate" && <Check className="w-3.5 h-3.5" />}
             </button>
-          ))}
+
+            <button
+              type="button"
+              onClick={() => changeDateBasis("createdAt")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                dateBasis === "createdAt"
+                  ? "bg-amber-400 text-slate-950 font-black shadow-md ring-2 ring-amber-300"
+                  : "bg-white/10 hover:bg-white/20 text-teal-100 border border-teal-500/30"
+              }`}
+              title="تصفية التقرير وفق تاريخ إدخال وتسجيل السجل على المنظومة الإلكترونية"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>تاريخ القيد والتسجيل الفعلي بالمنظومة</span>
+              {dateBasis === "createdAt" && <Check className="w-3.5 h-3.5" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => changeDateBasis("caseYear")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                dateBasis === "caseYear"
+                  ? "bg-amber-400 text-slate-950 font-black shadow-md ring-2 ring-amber-300"
+                  : "bg-white/10 hover:bg-white/20 text-teal-100 border border-teal-500/30"
+              }`}
+              title="تصفية التقرير وفق عام قيد القضية أو المحضر أو الشكوى"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>عام قيد القضية / المحضر / الشكوى (السنة)</span>
+              {dateBasis === "caseYear" && <Check className="w-3.5 h-3.5" />}
+            </button>
+          </div>
         </div>
 
-        {/* أزرار سريعة ومباشرة لاختيار عام قيد القضية / السجل */}
+        {/* ─── 2. أزرار سريعة للتقارير الدورية (يوم / شهر / عام) ومحدد الشهر المخصص ─── */}
+        <div className="mb-3 pb-3 border-b border-dashed border-slate-200 space-y-2.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-bold text-slate-700 ml-1">التقارير الدورية السريعة:</span>
+            {(
+              [
+                { id: "ALL", label: "كامل المدة (كافة السجلات)" },
+                { id: "TODAY", label: "تقرير اليوم" },
+                { id: "YESTERDAY", label: "تقرير أمس" },
+                { id: "THIS_MONTH", label: "تقرير هذا الشهر" },
+                { id: "LAST_MONTH", label: "تقرير الشهر السابق" },
+                { id: "THIS_YEAR", label: "تقرير هذا العام" },
+                { id: "LAST_YEAR", label: "تقرير العام السابق" },
+              ] as const
+            ).map((btn) => (
+              <button
+                key={btn.id}
+                type="button"
+                onClick={() => applyDateShortcut(btn.id)}
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${
+                  dateShortcut === btn.id
+                    ? "bg-teal-700 text-white shadow-xs ring-2 ring-teal-400"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+                }`}
+              >
+                {btn.label}
+              </button>
+            ))}
+          </div>
+
+          {/* محدد الشهر المخصص بالاسم والسنة (استخراج تقرير تفصيلي عن شهر محدد) */}
+          <div className="flex flex-wrap items-center gap-2 pt-1 bg-teal-50/50 p-2 rounded-xl border border-teal-200/60">
+            <span className="text-[11px] font-bold text-teal-950 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-teal-700" />
+              <span>استخراج تقرير تفصيلي لشهر محدد:</span>
+            </span>
+            <select
+              value={selectedMonth}
+              onChange={(e) => {
+                const m = Number(e.target.value);
+                setSelectedMonth(m);
+                selectCustomMonth(m, selectedYear);
+              }}
+              className="text-xs py-1 px-2.5 rounded-lg border border-teal-300 bg-white font-bold text-teal-950 focus:ring-2 focus:ring-teal-500 cursor-pointer"
+            >
+              {ARABIC_MONTHS.map((m) => (
+                <option key={m.index} value={m.index}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedYear}
+              onChange={(e) => {
+                const y = Number(e.target.value);
+                setSelectedYear(y);
+                selectCustomMonth(selectedMonth, y);
+              }}
+              className="text-xs py-1 px-2.5 rounded-lg border border-teal-300 bg-white font-bold text-teal-950 focus:ring-2 focus:ring-teal-500 font-mono cursor-pointer"
+            >
+              {availableCaseYears.map((yr) => (
+                <option key={yr} value={yr}>
+                  لسنة {yr}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => selectCustomMonth(selectedMonth, selectedYear)}
+              className="px-3 py-1 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-bold transition-colors shadow-xs flex items-center gap-1"
+            >
+              <span>تطبيق تقرير الشهر</span>
+            </button>
+            {startDate && endDate && dateShortcut === "CUSTOM_MONTH" && (
+              <span className="text-[11px] font-mono text-teal-800 bg-white px-2 py-0.5 rounded border border-teal-300">
+                من {startDate} إلى {endDate}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ─── 3. أزرار سريعة ومباشرة لاختيار عام قيد القضية / السجل ─── */}
         <div className="mb-4 pb-3 border-b border-dashed border-slate-200 flex flex-wrap items-center gap-1.5">
           <span className="text-[11px] font-bold text-teal-900 flex items-center gap-1 ml-1">
             <Calendar className="w-3.5 h-3.5 text-teal-600" />
@@ -1034,10 +1289,7 @@ export default function RegistrationReportsPage() {
           </span>
           <button
             type="button"
-            onClick={() => {
-              setCaseYear("ALL");
-              fetchReport(undefined, "ALL");
-            }}
+            onClick={() => selectCaseYear("ALL")}
             className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${
               caseYear === "ALL"
                 ? "bg-teal-800 text-white shadow-xs ring-2 ring-teal-400"
@@ -1050,11 +1302,7 @@ export default function RegistrationReportsPage() {
             <button
               key={yr}
               type="button"
-              onClick={() => {
-                setCaseYear(String(yr));
-                setActiveTab("cases"); // تظهر السجلات التفصيلية فوراً
-                fetchReport(undefined, String(yr));
-              }}
+              onClick={() => selectCaseYear(String(yr))}
               className={`px-3 py-1 rounded-md text-xs font-mono font-bold transition-colors ${
                 caseYear === String(yr)
                   ? "bg-teal-700 text-white shadow-xs ring-2 ring-teal-400"
@@ -1099,6 +1347,7 @@ export default function RegistrationReportsPage() {
                 onChange={(e) => {
                   setGovernorate(e.target.value);
                   setProsecutionId("ALL");
+                  setPartialProsecutionId("ALL");
                 }}
                 className="input"
               >
@@ -1114,18 +1363,21 @@ export default function RegistrationReportsPage() {
               </select>
             </div>
 
-            {/* 3. فلتر النيابة المختصة */}
+            {/* 3. فلتر النيابة الكلية */}
             <div>
-              <label className="label">النيابة المختصة</label>
+              <label className="label">النيابة الكلية</label>
               <select
                 value={prosecutionId}
-                onChange={(e) => setProsecutionId(e.target.value)}
+                onChange={(e) => {
+                  setProsecutionId(e.target.value);
+                  setPartialProsecutionId("ALL");
+                }}
                 className="input"
               >
                 <option value="ALL">
-                  {governorate === "ALL" ? "جميع النيابات" : `نيابات ${governorate}`}
+                  {governorate === "ALL" ? "جميع النيابات الكلية" : `نيابات ${governorate} الكلية`}
                 </option>
-                {filteredProsecutions.map((p) => (
+                {plenaryProsecutions.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
@@ -1133,7 +1385,24 @@ export default function RegistrationReportsPage() {
               </select>
             </div>
 
-            {/* 3. فلتر الفرع / نوع الجهة المشكو في حقها */}
+            {/* 4. فلتر النيابة الجزئية */}
+            <div>
+              <label className="label">النيابة الجزئية (اختياري)</label>
+              <select
+                value={partialProsecutionId}
+                onChange={(e) => setPartialProsecutionId(e.target.value)}
+                className="input"
+              >
+                <option value="ALL">جميع النيابات الجزئية</option>
+                {districtProsecutions.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 5. فلتر الفرع / نوع الجهة المشكو في حقها */}
             <div>
               <label className="label flex items-center gap-1">
                 <Building2 className="w-3 h-3 text-teal-600" />
@@ -1153,7 +1422,7 @@ export default function RegistrationReportsPage() {
               </select>
             </div>
 
-            {/* 4. اسم الفرع أو المستشفى */}
+            {/* 6. اسم الفرع أو المستشفى */}
             <div>
               <label className="label">اسم المستشفى / الفرع المشكو فيه</label>
               <input
@@ -1165,7 +1434,7 @@ export default function RegistrationReportsPage() {
               />
             </div>
 
-            {/* 5. فلتر اللجنة الفرعية */}
+            {/* 7. فلتر اللجنة الفرعية */}
             <div>
               <label className="label">اللجنة الفرعية المختصة</label>
               <select
@@ -1182,7 +1451,7 @@ export default function RegistrationReportsPage() {
               </select>
             </div>
 
-            {/* 6. المرحلة بناءً على مراحل العمل */}
+            {/* 8. المرحلة بناءً على مراحل العمل */}
             <div>
               <label className="label flex items-center gap-1">
                 <Layers className="w-3 h-3 text-purple-600" />
@@ -1203,7 +1472,7 @@ export default function RegistrationReportsPage() {
               </select>
             </div>
 
-            {/* 7. نوع السجل */}
+            {/* 9. نوع السجل */}
             <div>
               <label className="label">نوع السجل</label>
               <select
@@ -1218,7 +1487,7 @@ export default function RegistrationReportsPage() {
               </select>
             </div>
 
-            {/* 8. الموظف القائم بالقيد (خاضع للصلاحيات) */}
+            {/* 10. الموظف القائم بالقيد (خاضع للصلاحيات) */}
             <div>
               <label className="label flex items-center gap-1">
                 <User className="w-3 h-3 text-blue-600" />
@@ -1247,35 +1516,39 @@ export default function RegistrationReportsPage() {
               )}
             </div>
 
-            {/* 9. من تاريخ */}
+            {/* 11. من تاريخ */}
             <div>
-              <label className="label">من تاريخ قيد</label>
+              <label className="label">
+                {dateBasis === "incomingDate" ? "من تاريخ ورود السجل" : "من تاريخ التسجيل الإلكتروني"}
+              </label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => {
                   setStartDate(e.target.value);
-                  setDateShortcut("ALL");
+                  setDateShortcut("CUSTOM");
                 }}
                 className="input font-mono text-xs"
               />
             </div>
 
-            {/* 10. إلى تاريخ */}
+            {/* 12. إلى تاريخ */}
             <div>
-              <label className="label">إلى تاريخ قيد</label>
+              <label className="label">
+                {dateBasis === "incomingDate" ? "إلى تاريخ ورود السجل" : "إلى تاريخ التسجيل الإلكتروني"}
+              </label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => {
                   setEndDate(e.target.value);
-                  setDateShortcut("ALL");
+                  setDateShortcut("CUSTOM");
                 }}
                 className="input font-mono text-xs"
               />
             </div>
 
-            {/* 11. اسم الشاكي */}
+            {/* 13. اسم الشاكي */}
             <div>
               <label className="label">اسم الشاكي</label>
               <input
@@ -1287,7 +1560,7 @@ export default function RegistrationReportsPage() {
               />
             </div>
 
-            {/* 12. المشكو في حقه */}
+            {/* 14. المشكو في حقه */}
             <div>
               <label className="label">المشكو في حقه</label>
               <input

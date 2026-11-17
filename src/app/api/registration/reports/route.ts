@@ -22,7 +22,9 @@ export async function GET(req: NextRequest) {
     await ensureSchemaMigrated();
     const startDateStr = searchParams.get("startDate");
     const endDateStr = searchParams.get("endDate");
+    const dateBasis = (searchParams.get("dateBasis") || "incomingDate") as "incomingDate" | "createdAt" | "caseYear";
     const prosecutionId = searchParams.get("prosecutionId");
+    const partialProsecutionId = searchParams.get("partialProsecutionId");
     const registrationType = searchParams.get("registrationType");
     const complainantName = searchParams.get("complainantName");
     const respondentName = searchParams.get("respondentName");
@@ -84,25 +86,81 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // فلتر النيابة المختصة
+    // فلتر النيابة الكلية المختصة
     if (prosecutionId && prosecutionId !== "ALL") {
-      const pMatch = await prisma.prosecution.findUnique({
-        where: { id: prosecutionId },
-        select: { name: true },
-      }).catch(() => null);
+      let matchedName = "";
+      if (prosecutionId.startsWith("official_")) {
+        const idx = parseInt(prosecutionId.replace("official_", ""), 10) - 1;
+        const officialItem = OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "PLENARY")[idx];
+        if (officialItem) matchedName = officialItem.name;
+      }
 
-      if (pMatch) {
+      if (!matchedName) {
+        const pMatch = await prisma.prosecution.findUnique({
+          where: { id: prosecutionId },
+          select: { name: true },
+        }).catch(() => null);
+        if (pMatch) matchedName = pMatch.name;
+      }
+
+      if (!matchedName && isNaN(Number(prosecutionId))) {
+        matchedName = prosecutionId.trim();
+      }
+
+      const orConditions: any[] = [];
+      if (prosecutionId && !prosecutionId.startsWith("official_")) {
+        orConditions.push({ prosecutionId: prosecutionId });
+      }
+      if (matchedName) {
+        orConditions.push({ prosecution: matchedName });
+        orConditions.push({ prosecution: { contains: matchedName, mode: "insensitive" } });
+        orConditions.push({ prosecutionRel: { name: { contains: matchedName, mode: "insensitive" } } });
+      }
+
+      if (orConditions.length > 0) {
         where.AND = [
           ...(where.AND || []),
-          {
-            OR: [
-              { prosecutionId: prosecutionId },
-              { prosecution: pMatch.name },
-            ],
-          },
+          { OR: orConditions },
         ];
-      } else {
-        where.prosecutionId = prosecutionId;
+      }
+    }
+
+    // فلتر النيابة الجزئية المختصة
+    if (partialProsecutionId && partialProsecutionId !== "ALL") {
+      let matchedPartialName = "";
+      if (partialProsecutionId.startsWith("official_part_")) {
+        const idx = parseInt(partialProsecutionId.replace("official_part_", ""), 10) - 1;
+        const officialItem = OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "DISTRICT")[idx];
+        if (officialItem) matchedPartialName = officialItem.name;
+      }
+
+      if (!matchedPartialName) {
+        const pMatch = await prisma.prosecution.findUnique({
+          where: { id: partialProsecutionId },
+          select: { name: true },
+        }).catch(() => null);
+        if (pMatch) matchedPartialName = pMatch.name;
+      }
+
+      if (!matchedPartialName && isNaN(Number(partialProsecutionId))) {
+        matchedPartialName = partialProsecutionId.trim();
+      }
+
+      const orPartialConds: any[] = [];
+      if (partialProsecutionId && !partialProsecutionId.startsWith("official_part_")) {
+        orPartialConds.push({ partialProsecutionId: partialProsecutionId });
+      }
+      if (matchedPartialName) {
+        orPartialConds.push({ partialProsecution: matchedPartialName });
+        orPartialConds.push({ partialProsecution: { contains: matchedPartialName, mode: "insensitive" } });
+        orPartialConds.push({ partialProsecutionRel: { name: { contains: matchedPartialName, mode: "insensitive" } } });
+      }
+
+      if (orPartialConds.length > 0) {
+        where.AND = [
+          ...(where.AND || []),
+          { OR: orPartialConds },
+        ];
       }
     }
 
@@ -151,22 +209,36 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // فلترة التاريخ والفترة الزمنية
+    // فلترة التاريخ والفترة الزمنية بناءً على أساس التاريخ المختار (تاريخ الوارد أو تاريخ التسجيل الإلكتروني)
     if (startDateStr || endDateStr) {
-      where.createdAt = {};
+      const dateCond: any = {};
       if (startDateStr) {
         const start = new Date(startDateStr);
         if (!isNaN(start.getTime())) {
           start.setHours(0, 0, 0, 0);
-          where.createdAt.gte = start;
+          dateCond.gte = start;
         }
       }
       if (endDateStr) {
         const end = new Date(endDateStr);
         if (!isNaN(end.getTime())) {
           end.setHours(23, 59, 59, 999);
-          where.createdAt.lte = end;
+          dateCond.lte = end;
         }
+      }
+
+      if (dateBasis === "incomingDate") {
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { incomingDate: dateCond },
+              { AND: [{ incomingDate: null }, { createdAt: dateCond }] },
+            ],
+          },
+        ];
+      } else {
+        where.createdAt = dateCond;
       }
     }
 
@@ -270,12 +342,23 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // قائمة النيابات الرسمية الفورية من الثوابت بدون استعلامات DDL ثقيلة
-    const prosecutions = OFFICIAL_PROSECUTIONS_LIST.filter((p) => p.type === "PLENARY").map((p, idx) => ({
-      id: `official_${idx + 1}`,
-      name: p.name,
-      governorate: p.governorate,
-    }));
+    // قائمة النيابات من قاعدة البيانات مع دمج الثوابت الرسمية للمطابقة الكاملة
+    const dbProsecutions = await prisma.prosecution.findMany({
+      where: { active: true },
+      select: { id: true, name: true, governorate: true, type: true, parentId: true },
+      orderBy: [{ governorate: "asc" }, { name: "asc" }],
+      take: 1000,
+    }).catch(() => []);
+
+    const prosecutions = dbProsecutions.length > 0
+      ? dbProsecutions
+      : OFFICIAL_PROSECUTIONS_LIST.map((p, idx) => ({
+          id: p.type === "PLENARY" ? `official_${idx + 1}` : `official_part_${idx + 1}`,
+          name: p.name,
+          governorate: p.governorate,
+          type: p.type,
+          parentName: p.parentName,
+        }));
 
     // تفريغ أنواع القيد
     const typeBreakdown = {
