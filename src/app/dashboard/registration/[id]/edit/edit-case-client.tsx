@@ -715,10 +715,10 @@ export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
         breadcrumbs={[
           { label: "الرئيسية", href: "/dashboard" },
           { label: "قيد السجلات", href: "/dashboard/registration" },
-          { label: `ملف السجل #${initialCase.caseNumber}`, href: `/dashboard/registration/${initialCase.id}` },
+          { label: `وارد #${initialCase.caseNumber}`, href: `/dashboard/registration/${initialCase.id}` },
           { label: "تعديل وتصحيح بيانات السجل" },
         ]}
-        title={`تعديل السجل: ${initialCase.caseNumber} / ${initialCase.caseYear}`}
+        title={`تعديل السجل: وارد #${initialCase.caseNumber} • ${initialCase.prosecutionCaseNumber ? `قيد رقم (${initialCase.prosecutionCaseNumber})` : ""} لسنة ${initialCase.caseYear}`}
         description="تعديل وتصحيح بيانات السجل والنيابة المختصة والأطراف المسجلين بدقة وتوثيق ذلك في سجل التدقيق الرقابي."
         actions={
           <Link

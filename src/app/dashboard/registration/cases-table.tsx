@@ -220,7 +220,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>رقم سجل الوارد والنوع</TableHead>
-                <TableHead>رقم القضية / محضر النيابة</TableHead>
+                <TableHead>رقم وقيد القضية / المحضر</TableHead>
                 <TableHead>الشاكي والجهة / النيابة</TableHead>
                 <TableHead>المشكو في حقه</TableHead>
                 <TableHead>الجهة / المنشأة</TableHead>
@@ -237,7 +237,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
 
                 return (
                   <TableRow key={c.id}>
-                    {/* رقم السجل + النوع */}
+                    {/* رقم سجل الوارد + النوع */}
                     <TableCell>
                       <div className="space-y-1">
                         <Link
@@ -245,7 +245,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                           className="font-bold text-slate-900 hover:text-teal-700 font-mono text-sm block font-heading transition-colors"
                           title="عرض ملف السجل"
                         >
-                          {c.caseNumber} / {c.caseYear}
+                          وارد #{c.caseNumber}
                         </Link>
                         <Badge variant={typeInfo.variant} size="sm">
                           {typeInfo.label}
@@ -253,15 +253,20 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                       </div>
                     </TableCell>
 
-                    {/* رقم القضية / محضر النيابة */}
+                    {/* رقم وقيد القضية / محضر النيابة مع عام القيد */}
                     <TableCell>
-                      {c.prosecutionCaseNumber ? (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-900 font-mono font-bold text-xs border border-slate-200" dir="auto">
-                          {c.prosecutionCaseNumber}
+                      <div className="space-y-0.5">
+                        {c.prosecutionCaseNumber ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-900 font-mono font-bold text-xs border border-slate-200" dir="auto">
+                            {c.prosecutionCaseNumber}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-xs">بدون رقم</span>
+                        )}
+                        <span className="text-[11px] text-teal-800 font-mono font-bold block">
+                          لسنة {c.caseYear}
                         </span>
-                      ) : (
-                        <span className="text-slate-400 text-xs">—</span>
-                      )}
+                      </div>
                     </TableCell>
 
                     {/* الشاكي والنيابة */}
@@ -412,14 +417,14 @@ export function CasesTable({ initialCases }: CasesTableProps) {
                 key={c.id}
                 className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3"
               >
-                {/* الرأس: رقم السجل والنوع وتاريخ القيد */}
+                {/* الرأس: رقم سجل الوارد والنوع وتاريخ الوارد */}
                 <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
                   <div>
-                    <span className="text-base font-bold font-heading text-slate-900 block">
-                      {c.caseNumber} / {c.caseYear}
+                    <span className="text-base font-bold font-heading text-slate-900 block font-mono">
+                      وارد #{c.caseNumber}
                     </span>
-                    <span className="text-xs text-slate-500 font-mono mt-0.5 block" suppressHydrationWarning>
-                      قيد: {formatDate(c.createdAt)}
+                    <span className="text-xs text-teal-800 font-mono mt-0.5 block" suppressHydrationWarning>
+                      {c.incomingDate ? `وارد: ${formatDate(c.incomingDate)}` : `قيد: ${formatDate(c.createdAt)}`}
                     </span>
                   </div>
 
@@ -430,18 +435,23 @@ export function CasesTable({ initialCases }: CasesTableProps) {
 
                 {/* البيانات الأساسية */}
                 <div className="space-y-1.5 text-xs">
-                  {c.prosecutionCaseNumber && (
+                  {c.prosecutionCaseNumber ? (
                     <div className="flex items-center justify-between">
                       <span className="text-slate-500">
                         {c.registrationType === "COMPLAINT"
-                          ? "رقم الشكوى:"
+                          ? "رقم الشكوى وقيدها:"
                           : c.registrationType === "CASE"
-                          ? "رقم القضية:"
-                          : "رقم المحضر:"}
+                          ? "رقم القضية وقيدها:"
+                          : "رقم المحضر وقيده:"}
                       </span>
                       <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200" dir="auto">
-                        {c.prosecutionCaseNumber}
+                        {c.prosecutionCaseNumber} لسنة {c.caseYear}
                       </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">عام القيد:</span>
+                      <span className="font-mono font-bold text-slate-700">لسنة {c.caseYear}</span>
                     </div>
                   )}
 

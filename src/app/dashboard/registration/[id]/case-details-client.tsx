@@ -110,9 +110,9 @@ export function CaseDetailsClient({
         breadcrumbs={[
           { label: "الرئيسية", href: "/dashboard" },
           { label: "السجلات", href: backHref },
-          { label: `ملف السجل #${caseRecord.caseNumber}/${caseRecord.caseYear}` },
+          { label: `وارد #${caseRecord.caseNumber}` },
         ]}
-        title={`ملف وتفاصيل السجل: ${caseRecord.caseNumber} / ${caseRecord.caseYear}`}
+        title={`ملف السجل: وارد #${caseRecord.caseNumber} • ${typeInfo.label} ${caseRecord.prosecutionCaseNumber ? `(${caseRecord.prosecutionCaseNumber})` : ""} لسنة ${caseRecord.caseYear}`}
         description={`عرض شامل لبيانات الشاكي، الواقعة، جهة النيابة، ومسجّل السجل وحالة الوثائق المرفقة.`}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
@@ -182,22 +182,20 @@ export function CaseDetailsClient({
             <span className="text-[11px] font-semibold text-slate-500 block">رقم سجل الوارد والنوع</span>
             <div className="flex items-center gap-2">
               <span className="text-base font-bold font-mono text-slate-900 font-heading">
-                {caseRecord.caseNumber} / {caseRecord.caseYear}
+                وارد #{caseRecord.caseNumber}
               </span>
               <Badge variant={typeInfo.variant} size="sm">
                 {typeInfo.label}
               </Badge>
             </div>
-            {caseRecord.prosecutionCaseNumber && (
-              <span className="text-[11px] font-mono text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200 font-bold block mt-1">
-                {caseRecord.registrationType === "COMPLAINT"
-                  ? "رقم الشكوى: "
-                  : caseRecord.registrationType === "CASE"
-                  ? "رقم القضية: "
-                  : "رقم محضر النيابة: "}
-                {caseRecord.prosecutionCaseNumber}
-              </span>
-            )}
+            <span className="text-[11px] font-mono text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200 font-bold block mt-1">
+              {caseRecord.registrationType === "COMPLAINT"
+                ? "رقم الشكوى: "
+                : caseRecord.registrationType === "CASE"
+                ? "رقم القضية: "
+                : "رقم محضر النيابة: "}
+              {caseRecord.prosecutionCaseNumber ? `${caseRecord.prosecutionCaseNumber} لسنة ${caseRecord.caseYear}` : `لسنة ${caseRecord.caseYear}`}
+            </span>
           </div>
 
           {/* مسجّل السجل (القائم بالقيد) */}
@@ -217,13 +215,13 @@ export function CaseDetailsClient({
               )}
             </div>
             <span className="text-[10px] text-slate-400 font-mono block">
-              تاريخ القيد: {formatDateTime(caseRecord.createdAt)}
+              تاريخ القيد الإلكتروني: {formatDateTime(caseRecord.createdAt)}
             </span>
           </div>
 
           {/* تاريخ الوارد */}
           <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1">
-            <span className="text-[11px] font-semibold text-slate-500 block">تاريخ استلام الوارد</span>
+            <span className="text-[11px] font-semibold text-slate-500 block">تاريخ سجل الوارد</span>
             <div className="text-xs font-bold font-mono text-teal-800 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-teal-600" />
               <span>
@@ -233,7 +231,7 @@ export function CaseDetailsClient({
               </span>
             </div>
             <span className="text-[10px] text-slate-400 block">
-              تاريخ كتاب النيابة / استلام الشكوى
+              تاريخ استلام الوارد / كتاب النيابة
             </span>
           </div>
 

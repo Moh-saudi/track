@@ -770,10 +770,11 @@ export default function RegistrationReportsPage() {
       totalRecords: data.cases.length,
       columns: [
         { header: "م", key: "index", width: 40, align: "center", type: "Number" },
-        { header: "رقم السجل", key: "caseNumber", width: 90, align: "center" },
-        { header: "سنة السجل", key: "caseYear", width: 70, align: "center", type: "Number" },
+        { header: "رقم سجل الوارد", key: "caseNumber", width: 90, align: "center" },
+        { header: "تاريخ سجل الوارد", key: "incomingDateFormatted", width: 95, align: "center" },
         { header: "نوع السجل", key: "typeLabel", width: 80, align: "center" },
-        { header: "رقم المحضر / القضية / الشكوى", key: "prosecutionCaseNumber", width: 160, align: "center" },
+        { header: "رقم القضية / المحضر / الشكوى", key: "prosecutionCaseNumber", width: 140, align: "center" },
+        { header: "عام قيد القضية", key: "caseYear", width: 80, align: "center", type: "Number" },
         { header: "المحافظة", key: "governorate", width: 100, align: "center" },
         { header: "النيابة المختصة", key: "prosecution", width: 140, align: "right" },
         { header: "الفرع / المنشأة المشكو في حقها", key: "hospitalName", width: 160, align: "right" },
@@ -782,7 +783,7 @@ export default function RegistrationReportsPage() {
         { header: "اللجنة الفرعية", key: "subCommittee", width: 120, align: "center" },
         { header: "المرحلة الحالية", key: "statusLabel", width: 140, align: "center" },
         { header: "الموظف المسجل", key: "createdByName", width: 120, align: "center" },
-        { header: "تاريخ القيد", key: "createdAtFormatted", width: 90, align: "center" },
+        { header: "تاريخ التسجيل بالمنظومة", key: "createdAtFormatted", width: 110, align: "center" },
       ],
       rows: data.cases.map((c, i) => {
         let prosNo = "—";
@@ -797,6 +798,7 @@ export default function RegistrationReportsPage() {
         return {
           index: i + 1,
           caseNumber: c.caseNumber,
+          incomingDateFormatted: c.incomingDate ? formatDate(c.incomingDate) : "—",
           caseYear: c.caseYear,
           typeLabel: TYPE_CONFIG[c.registrationType]?.label || c.registrationType,
           prosecutionCaseNumber: prosNo,
@@ -809,7 +811,7 @@ export default function RegistrationReportsPage() {
           subCommittee: c.subCommittee?.name || "لم تحدد بعد",
           statusLabel: STATUS_LABELS[c.status]?.label || c.status,
           createdByName: c.createdBy?.fullName || "—",
-          createdAtFormatted: formatDate(c.createdAt),
+          createdAtFormatted: formatDateTime(c.createdAt),
         };
       }),
       isProtected: true,
@@ -1785,9 +1787,9 @@ export default function RegistrationReportsPage() {
                     <thead>
                       <tr>
                         <th style={{ width: "3.5%" }}>م</th>
-                        <th style={{ width: "9.5%" }}>رقم السجل / السنة</th>
+                        <th style={{ width: "10%" }}>رقم وتاريخ الوارد</th>
                         <th style={{ width: "6%" }}>النوع</th>
-                        <th style={{ width: "13%" }}>رقم المحضر / القضية / الشكوى</th>
+                        <th style={{ width: "14%" }}>رقم وقيد القضية / المحضر</th>
                         <th style={{ width: "7.5%" }}>المحافظة</th>
                         <th style={{ width: "11.5%" }}>النيابة المختصة</th>
                         <th style={{ width: "12%" }}>الفرع / المنشأة المشكو فيها</th>
@@ -1810,7 +1812,7 @@ export default function RegistrationReportsPage() {
                         };
                         const govName = c.governorate || c.prosecutionRel?.governorate || "—";
 
-                        // تحديد رقم المحضر أو الشكوى أو القضية حسب نوع السجل
+                        // تحديد تفاصيل ورقم القضية أو المحضر مع عام القيد
                         let recordDetails = "—";
                         if (c.registrationType === "REPORT") {
                           recordDetails = c.prosecutionCaseNumber ? `محضر: ${c.prosecutionCaseNumber}` : "محضر بدون رقم";
@@ -1830,23 +1832,26 @@ export default function RegistrationReportsPage() {
                             <td className="text-center font-mono text-[10px] text-slate-500">
                               {idx + 1}
                             </td>
-                            <td className="text-center font-bold text-slate-900 font-mono text-xs">
+                            <td className="text-center font-mono text-xs">
                               {/* ─── معاينة سريعة عند المرور بالماوس (Hover Tooltip) ─── */}
-                              <div className="relative group/tip inline-flex items-center justify-center gap-1">
+                              <div className="relative group/tip inline-flex flex-col items-center justify-center">
                                 <span className="font-bold text-slate-900 font-mono text-xs underline decoration-teal-400 decoration-dotted underline-offset-4 group-hover:text-teal-700">
-                                  {c.caseNumber} / {c.caseYear}
+                                  وارد #{c.caseNumber}
+                                </span>
+                                <span className="text-[10px] text-teal-800 font-mono font-medium mt-0.5">
+                                  {c.incomingDate ? formatDate(c.incomingDate) : formatDate(c.createdAt)}
                                 </span>
                                 <div
                                   onClick={(e) => e.stopPropagation()}
                                   className="hidden group-hover/tip:block absolute z-50 right-0 top-full mt-2 w-80 p-3.5 bg-slate-900 text-white rounded-2xl shadow-2xl text-xs space-y-2 pointer-events-none border border-slate-700 print:hidden text-right animate-in fade-in-50 zoom-in-95"
                                 >
                                   <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
-                                    <span className="font-bold text-teal-400">سجل: {c.caseNumber} لسنة {c.caseYear}</span>
+                                    <span className="font-bold text-teal-400">سجل وارد: #{c.caseNumber} • {c.incomingDate ? formatDate(c.incomingDate) : formatDate(c.createdAt)}</span>
                                     <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-bold">{typeInfo.label}</span>
                                   </div>
                                   <div className="space-y-1.5 text-[11px] leading-relaxed">
                                     <div className="p-2 bg-slate-800/80 rounded-lg text-slate-200">
-                                      <p className="text-[10px] text-teal-400 font-bold mb-0.5">موضوع الشكوى / الواقعة:</p>
+                                      <p className="text-[10px] text-teal-400 font-bold mb-0.5">القيد: {recordDetails} لسنة {c.caseYear}</p>
                                       <p className="line-clamp-3 text-slate-300">{c.description || "لم يسجل ملخص"}</p>
                                     </div>
                                     {c.complainantPhone && (
@@ -1884,8 +1889,13 @@ export default function RegistrationReportsPage() {
                                 {typeInfo.label}
                               </span>
                             </td>
-                            <td className="text-center font-bold text-teal-900 font-mono text-xs">
-                              {recordDetails}
+                            <td className="text-center font-mono text-xs">
+                              <span className="font-bold text-teal-950 font-mono text-xs block">
+                                {recordDetails}
+                              </span>
+                              <span className="text-[10px] text-slate-600 font-mono font-bold">
+                                لسنة {c.caseYear}
+                              </span>
                             </td>
                             <td className="font-semibold text-slate-800 text-xs" onClick={(e) => e.stopPropagation()}>
                               {govName === "—" || govName === "غير محدد" ? (
@@ -2649,7 +2659,10 @@ export default function RegistrationReportsPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-black text-sm">
-                      تفاصيل وبيانات السجل: ({selectedCaseModal.caseNumber}) لسنة ({selectedCaseModal.caseYear})
+                      تفاصيل وبيانات السجل: وارد رقم ({selectedCaseModal.caseNumber})
+                      {selectedCaseModal.prosecutionCaseNumber
+                        ? ` — ${TYPE_CONFIG[selectedCaseModal.registrationType]?.label || "قيد"} رقم (${selectedCaseModal.prosecutionCaseNumber}) لسنة (${selectedCaseModal.caseYear})`
+                        : ` — لسنة (${selectedCaseModal.caseYear})`}
                     </h3>
                     <span className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-bold">
                       {TYPE_CONFIG[selectedCaseModal.registrationType]?.label || selectedCaseModal.registrationType}
@@ -2680,12 +2693,26 @@ export default function RegistrationReportsPage() {
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                   <div>
-                    <span className="text-slate-500 block text-[11px]">رقم وسنة السجل:</span>
-                    <strong className="text-slate-900 font-mono">{selectedCaseModal.caseNumber} / {selectedCaseModal.caseYear}</strong>
+                    <span className="text-slate-500 block text-[11px]">رقم سجل الوارد:</span>
+                    <strong className="text-teal-950 font-mono text-sm">وارد #{selectedCaseModal.caseNumber}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">تاريخ سجل الوارد:</span>
+                    <strong className="text-teal-900 font-mono">
+                      {selectedCaseModal.incomingDate ? formatDate(selectedCaseModal.incomingDate) : "—"}
+                    </strong>
                   </div>
                   <div>
                     <span className="text-slate-500 block text-[11px]">نوع القيد:</span>
                     <strong className="text-slate-900">{TYPE_CONFIG[selectedCaseModal.registrationType]?.label}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">رقم وقيد القضية / المحضر:</span>
+                    <strong className="text-teal-950 font-mono">
+                      {selectedCaseModal.prosecutionCaseNumber
+                        ? `${selectedCaseModal.prosecutionCaseNumber} لسنة ${selectedCaseModal.caseYear}`
+                        : `سنة ${selectedCaseModal.caseYear}`}
+                    </strong>
                   </div>
                   <div>
                     <span className="text-slate-500 block text-[11px]">المحافظة:</span>
@@ -2700,16 +2727,12 @@ export default function RegistrationReportsPage() {
                     <strong className="text-slate-800">{selectedCaseModal.partialProsecutionRel?.name || selectedCaseModal.partialProsecution || "—"}</strong>
                   </div>
                   <div>
-                    <span className="text-slate-500 block text-[11px]">رقم القضية / المحضر:</span>
-                    <strong className="text-teal-900 font-mono">{selectedCaseModal.prosecutionCaseNumber || "—"}</strong>
-                  </div>
-                  <div>
                     <span className="text-slate-500 block text-[11px]">عدد المرفقات:</span>
                     <strong className="text-slate-800 font-mono">{selectedCaseModal.attachmentsCount} ملف</strong>
                   </div>
-                  <div>
-                    <span className="text-slate-500 block text-[11px]">تاريخ التسجيل:</span>
-                    <strong className="text-slate-800 font-mono">{formatDate(selectedCaseModal.createdAt)}</strong>
+                  <div className="col-span-2">
+                    <span className="text-slate-500 block text-[11px]">تاريخ ووقت القيد الإلكتروني بالمنظومة:</span>
+                    <strong className="text-slate-800 font-mono">{formatDateTime(selectedCaseModal.createdAt)}</strong>
                   </div>
                 </div>
               </div>
