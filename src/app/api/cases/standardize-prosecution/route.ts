@@ -30,6 +30,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
 
+  const role = (session.user as any).role;
+  if (role !== "ADMIN") {
+    return NextResponse.json({ error: "غير مصرح - هذه الميزة مخصصة لمدير النظام (Admin) فقط" }, { status: 403 });
+  }
+
   try {
     // 1. جلب السجلات المسجلة تحت أي من مسميات "السادس من أكتوبر"
     const sixthOctoberCases = await prisma.case.findMany({
@@ -102,9 +107,8 @@ export async function POST(req: NextRequest) {
   }
 
   const role = (session.user as any).role;
-  const allowedRoles = ["ADMIN", "REGISTRATION_CLERK", "FOLLOW_UP_OFFICER", "SUPREME_SUPERVISOR"];
-  if (!allowedRoles.includes(role)) {
-    return NextResponse.json({ error: "غير مصرح لك بتوحيد وتحديث النيابات" }, { status: 403 });
+  if (role !== "ADMIN") {
+    return NextResponse.json({ error: "غير مصرح - هذه الميزة مخصصة لمدير النظام (Admin) فقط" }, { status: 403 });
   }
 
   try {

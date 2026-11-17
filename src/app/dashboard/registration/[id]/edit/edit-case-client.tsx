@@ -425,10 +425,11 @@ export default function EditCaseClient({ initialCase }: EditCaseClientProps) {
 
     // استنتاج النيابة الكلية من الجزئية إن لم تتطابق مباشرة
     if (!matchedPlenary && matchedDistrict) {
-      if (matchedDistrict.parentId) {
-        matchedPlenary = mergedProsecutions.find((p) => p.id === matchedDistrict.parentId);
-      } else if (matchedDistrict.parent?.name) {
-        matchedPlenary = findProsecutionMatch(mergedProsecutions, null, matchedDistrict.parent.name, "PLENARY");
+      const currentDist = matchedDistrict;
+      if (currentDist.parentId) {
+        matchedPlenary = mergedProsecutions.find((p) => p.id === currentDist.parentId);
+      } else if (currentDist.parent?.name) {
+        matchedPlenary = findProsecutionMatch(mergedProsecutions, null, currentDist.parent.name, "PLENARY");
       }
     }
 

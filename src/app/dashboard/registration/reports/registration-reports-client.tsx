@@ -167,6 +167,8 @@ export default function RegistrationReportsPage() {
   const [loading, setLoading] = useState(true);
   const [, startTransition] = useTransition();
 
+  const isAdmin = data?.currentUser?.role === "ADMIN";
+
   // الفلاتر الشاملة
   const [governorate, setGovernorate] = useState("ALL");
   const [caseYear, setCaseYear] = useState("ALL");
@@ -500,6 +502,10 @@ export default function RegistrationReportsPage() {
 
   // فتح معالج توحيد نيابة أكتوبر الكلية
   async function openOctoberWizard() {
+    if (!isAdmin) {
+      showToast("هذه الأداة مخصصة لمدير النظام (Admin) فقط", "error");
+      return;
+    }
     setShowOctoberModal(true);
     setOctoberLoading(true);
     try {
@@ -563,6 +569,10 @@ export default function RegistrationReportsPage() {
 
   // فتح نافذة الاستنتاج والمعالجة الذكية
   async function openAutoDetect() {
+    if (!isAdmin) {
+      showToast("هذه الأداة مخصصة لمدير النظام (Admin) فقط", "error");
+      return;
+    }
     setShowAutoDetectModal(true);
     setDetecting(true);
     try {
@@ -1311,8 +1321,8 @@ export default function RegistrationReportsPage() {
         </form>
       </div>
 
-      {/* ─── تنبيه ومعالج السجلات غير المحددة المحافظات ─── */}
-      {data?.governorateBreakdown.some((g) => g.governorate === "غير محدد" && g.total > 0) && (
+      {/* ─── تنبيه ومعالج السجلات غير المحددة المحافظات (مخصص حصرياً لمدير النظام Admin) ─── */}
+      {isAdmin && data?.governorateBreakdown.some((g) => g.governorate === "غير محدد" && g.total > 0) && (
         <div className="bg-amber-50/80 border-2 border-amber-300 p-4 rounded-2xl flex items-center justify-between gap-4 flex-wrap print:hidden shadow-xs animate-in fade-in-50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800 shrink-0">
@@ -1910,7 +1920,7 @@ export default function RegistrationReportsPage() {
                                     title="تحديد المحافظة فورياً لهذا السجل"
                                   >
                                     <option value="" disabled>+ تعيين</option>
-                                    {data.governoratesList.map((g) => (
+                                    {data?.governoratesList?.map((g) => (
                                       <option key={g} value={g}>{g}</option>
                                     ))}
                                   </select>
@@ -2371,8 +2381,8 @@ export default function RegistrationReportsPage() {
         </div>
       )}
 
-      {/* ─── نافذة معالج توحيد نيابة أكتوبر الكلية ─── */}
-      {showOctoberModal && (
+      {/* ─── نافذة معالج توحيد نيابة أكتوبر الكلية (خاص بالمدير فقط) ─── */}
+      {isAdmin && showOctoberModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs print:hidden animate-in fade-in-50">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col font-body max-h-[90vh]">
             <div className="p-4 bg-gradient-to-r from-teal-900 to-slate-900 text-white flex items-center justify-between">
@@ -2505,8 +2515,8 @@ export default function RegistrationReportsPage() {
         </div>
       )}
 
-      {/* ─── نافذة المعالج الذكي لتحديد واستنتاج المحافظات ─── */}
-      {showAutoDetectModal && (
+      {/* ─── نافذة المعالج الذكي لتحديد واستنتاج المحافظات (خاص بالمدير فقط) ─── */}
+      {isAdmin && showAutoDetectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs print:hidden animate-in fade-in-50">
           <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
             {/* Header */}

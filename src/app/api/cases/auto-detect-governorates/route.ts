@@ -52,6 +52,11 @@ export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
+  const role = (session.user as any).role;
+  if (role !== "ADMIN") {
+    return NextResponse.json({ error: "غير مصرح - هذه الميزة مخصصة لمدير النظام (Admin) فقط" }, { status: 403 });
+  }
+
   const unspecifiedCases = await prisma.case.findMany({
     where: {
       AND: [
@@ -111,9 +116,8 @@ export async function POST(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   const role = (session.user as any).role;
-  const allowed = ["ADMIN", "REGISTRATION_CLERK", "SUPREME_SUPERVISOR", "FOLLOW_UP_OFFICER"];
-  if (!allowed.includes(role)) {
-    return NextResponse.json({ error: "غير مصرح بتعديل بيانات السجلات" }, { status: 403 });
+  if (role !== "ADMIN") {
+    return NextResponse.json({ error: "غير مصرح - هذه الميزة مخصصة لمدير النظام (Admin) فقط" }, { status: 403 });
   }
 
   const body = await req.json();
