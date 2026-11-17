@@ -83,23 +83,35 @@ export interface CasesTableProps {
 export function CasesTable({ initialCases }: CasesTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
+  const [yearFilter, setYearFilter] = useState("ALL");
+
+  const availableYears = useMemo(() => {
+    const currentYr = new Date().getFullYear();
+    const set = new Set<number>([currentYr, currentYr - 1, currentYr - 2, currentYr - 3]);
+    initialCases.forEach((c) => {
+      if (c.caseYear && !isNaN(c.caseYear)) set.add(c.caseYear);
+    });
+    return Array.from(set).sort((a, b) => b - a);
+  }, [initialCases]);
 
   const filteredCases = useMemo(() => {
     return initialCases.filter((c) => {
       if (typeFilter !== "ALL" && c.registrationType !== typeFilter) return false;
+      if (yearFilter !== "ALL" && String(c.caseYear) !== yearFilter) return false;
 
       if (!searchTerm.trim()) return true;
       const term = searchTerm.toLowerCase().trim();
       const matchNum = `${c.caseNumber}/${c.caseYear}`.includes(term);
+      const matchYear = String(c.caseYear) === term;
       const matchProsCaseNum = c.prosecutionCaseNumber?.toLowerCase().includes(term);
       const matchComplainant = c.complainantName?.toLowerCase().includes(term);
       const matchProsecution = c.prosecution?.toLowerCase().includes(term);
       const matchPartialPros = c.partialProsecution?.toLowerCase().includes(term);
       const matchRespondent = (c.respondentName || c.entityName || c.hospitalName || c.entityType)?.toLowerCase().includes(term);
 
-      return Boolean(matchNum || matchProsCaseNum || matchComplainant || matchProsecution || matchRespondent);
+      return Boolean(matchNum || matchYear || matchProsCaseNum || matchComplainant || matchProsecution || matchRespondent);
     });
-  }, [initialCases, searchTerm, typeFilter]);
+  }, [initialCases, searchTerm, typeFilter, yearFilter]);
 
   return (
     <div className="space-y-4 font-body">
@@ -110,7 +122,7 @@ export function CasesTable({ initialCases }: CasesTableProps) {
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="بحث برقم سجل الوارد، رقم القضية أو المحضر، اسم الشاكي، النيابة، المشكو في حقه، الجهة..."
+            placeholder="بحث برقم سجل الوارد، رقم القضية أو المحضر، عام القيد، اسم الشاكي، النيابة، المشكو في حقه..."
             icon={<Search className="w-4 h-4 text-slate-400" />}
             className="h-10 text-xs"
           />
@@ -118,6 +130,22 @@ export function CasesTable({ initialCases }: CasesTableProps) {
 
         {/* فلاتر التصفية */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* فلتر عام القيد (سنة قيد القضية) */}
+          <div className="min-w-[130px]">
+            <Select
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              className="h-10 text-xs font-mono font-bold"
+            >
+              <option value="ALL">جميع أعوام القيد</option>
+              {availableYears.map((yr) => (
+                <option key={yr} value={String(yr)}>
+                  سنة {yr}
+                </option>
+              ))}
+            </Select>
+          </div>
+
           {/* فلتر النوع */}
           <div className="min-w-[130px]">
             <Select
@@ -133,13 +161,14 @@ export function CasesTable({ initialCases }: CasesTableProps) {
           </div>
 
           {/* زر إعادة التعيين */}
-          {(searchTerm || typeFilter !== "ALL") && (
+          {(searchTerm || typeFilter !== "ALL" || yearFilter !== "ALL") && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
                 setSearchTerm("");
                 setTypeFilter("ALL");
+                setYearFilter("ALL");
               }}
               className="h-10 text-xs text-slate-500 hover:text-slate-800"
             >

@@ -169,6 +169,7 @@ export default function RegistrationReportsPage() {
 
   // الفلاتر الشاملة
   const [governorate, setGovernorate] = useState("ALL");
+  const [caseYear, setCaseYear] = useState("ALL");
   const [prosecutionId, setProsecutionId] = useState("ALL");
   const [entityType, setEntityType] = useState("ALL");
   const [branchOrHospital, setBranchOrHospital] = useState("");
@@ -184,6 +185,8 @@ export default function RegistrationReportsPage() {
 
   // التبويب النشط (الافتراضي: التقرير العددي الإحصائي بالأرقام فقط)
   const [activeTab, setActiveTab] = useState<"numerical" | "cases" | "governorates" | "prosecutions" | "stages" | "workload">("numerical");
+  const [casesTableSearch, setCasesTableSearch] = useState("");
+  const [casesTableYear, setCasesTableYear] = useState("ALL");
   const [error, setError] = useState<string | null>(null);
 
   // نظام الإشعارات والتنبيهات المودرن التفاعلي (In-App Toast System)
@@ -325,11 +328,46 @@ export default function RegistrationReportsPage() {
     return data.prosecutions.filter((p) => !p.governorate || p.governorate === governorate);
   }, [data?.prosecutions, governorate]);
 
+  // استخراج قائمة أعوام القيد المتاحة
+  const availableCaseYears = useMemo(() => {
+    const currentYr = new Date().getFullYear();
+    const defaults = [currentYr, currentYr - 1, currentYr - 2, currentYr - 3, currentYr - 4];
+    const set = new Set<number>(defaults);
+    if (data?.cases) {
+      data.cases.forEach((c) => {
+        if (c.caseYear && !isNaN(c.caseYear)) set.add(c.caseYear);
+      });
+    }
+    return Array.from(set).sort((a, b) => b - a);
+  }, [data?.cases]);
+
+  // السجلات المفلترة تفصيلياً داخل تبويب جدول السجلات التفصيلي
+  const displayedCases = useMemo(() => {
+    if (!data?.cases) return [];
+    return data.cases.filter((c) => {
+      if (casesTableYear !== "ALL" && String(c.caseYear) !== casesTableYear) return false;
+      if (casesTableSearch.trim()) {
+        const q = casesTableSearch.toLowerCase().trim();
+        const mNum = `${c.caseNumber}/${c.caseYear}`.includes(q);
+        const mProsNum = c.prosecutionCaseNumber?.toLowerCase().includes(q);
+        const mComp = c.complainantName?.toLowerCase().includes(q);
+        const mResp = (c.respondentName || c.entityName || c.hospitalName)?.toLowerCase().includes(q);
+        const mPros = (c.prosecution || c.partialProsecution)?.toLowerCase().includes(q);
+        const mGov = (c.governorate || c.prosecutionRel?.governorate)?.toLowerCase().includes(q);
+        if (!mNum && !mProsNum && !mComp && !mResp && !mPros && !mGov) return false;
+      }
+      return true;
+    });
+  }, [data?.cases, casesTableYear, casesTableSearch]);
+
   // بناء نص ملخص الفلاتر المطبقة للترويسة والطباعة
   function getFilterSummaryText(): string {
     const parts: string[] = [];
     if (governorate !== "ALL") {
       parts.push(governorate === "UNSPECIFIED" ? "المحافظة: غير محددة (شكاوى بدون نيابة)" : `المحافظة: ${governorate}`);
+    }
+    if (caseYear !== "ALL") {
+      parts.push(`عام قيد القضية: لسنة ${caseYear}`);
     }
     if (prosecutionId !== "ALL") {
       const p = data?.prosecutions.find((x) => x.id === prosecutionId);
@@ -357,12 +395,14 @@ export default function RegistrationReportsPage() {
     return parts.length > 0 ? parts.join(" | ") : "جميع السجلات (إجمالي عام بدون فلترة وبدون مراحل)";
   }
 
-  function fetchReport(overrideGov?: string) {
+  function fetchReport(overrideGov?: string, overrideYear?: string) {
     setLoading(true);
     setError(null);
     const activeGov = overrideGov !== undefined ? overrideGov : governorate;
+    const activeYear = overrideYear !== undefined ? overrideYear : caseYear;
     const params = new URLSearchParams();
     if (activeGov !== "ALL") params.set("governorate", activeGov);
+    if (activeYear !== "ALL") params.set("caseYear", activeYear);
     if (prosecutionId !== "ALL") params.set("prosecutionId", prosecutionId);
     if (entityType !== "ALL") params.set("entityType", entityType);
     if (branchOrHospital.trim()) params.set("branchOrHospital", branchOrHospital.trim());
@@ -564,6 +604,9 @@ export default function RegistrationReportsPage() {
 
   function handleFilterSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (caseYear !== "ALL") {
+      setActiveTab("cases"); // إظهار السجلات التفصيلية فوراً كما هو مطلوب
+    }
     fetchReport();
   }
 
@@ -601,6 +644,9 @@ export default function RegistrationReportsPage() {
   // إعادة ضبط كاملة لكافة الفلاتر (عرض الإجمالي بدون فلتر وبدون مراحل)
   function handleResetFilters() {
     setGovernorate("ALL");
+    setCaseYear("ALL");
+    setCasesTableSearch("");
+    setCasesTableYear("ALL");
     setProsecutionId("ALL");
     setEntityType("ALL");
     setBranchOrHospital("");
@@ -942,7 +988,7 @@ export default function RegistrationReportsPage() {
         </div>
 
         {/* أزرار سريعة للفترات الزمنية */}
-        <div className="mb-4 pb-3 border-b border-dashed border-slate-200 flex flex-wrap items-center gap-1.5">
+        <div className="mb-3 pb-3 border-b border-dashed border-slate-200 flex flex-wrap items-center gap-1.5">
           <span className="text-[11px] font-bold text-slate-600 ml-1">الفترة الزمنية السريعة:</span>
           {(
             [
@@ -968,9 +1014,69 @@ export default function RegistrationReportsPage() {
           ))}
         </div>
 
+        {/* أزرار سريعة ومباشرة لاختيار عام قيد القضية / السجل */}
+        <div className="mb-4 pb-3 border-b border-dashed border-slate-200 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-bold text-teal-900 flex items-center gap-1 ml-1">
+            <Calendar className="w-3.5 h-3.5 text-teal-600" />
+            <span>عام قيد القضية (السنة):</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setCaseYear("ALL");
+              fetchReport(undefined, "ALL");
+            }}
+            className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${
+              caseYear === "ALL"
+                ? "bg-teal-800 text-white shadow-xs ring-2 ring-teal-400"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+            }`}
+          >
+            كافة الأعوام
+          </button>
+          {availableCaseYears.map((yr) => (
+            <button
+              key={yr}
+              type="button"
+              onClick={() => {
+                setCaseYear(String(yr));
+                setActiveTab("cases"); // تظهر السجلات التفصيلية فوراً
+                fetchReport(undefined, String(yr));
+              }}
+              className={`px-3 py-1 rounded-md text-xs font-mono font-bold transition-colors ${
+                caseYear === String(yr)
+                  ? "bg-teal-700 text-white shadow-xs ring-2 ring-teal-400"
+                  : "bg-teal-50 text-teal-900 hover:bg-teal-100 border border-teal-200"
+              }`}
+            >
+              سنة {yr}
+            </button>
+          ))}
+        </div>
+
         <form onSubmit={handleFilterSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-            {/* 1. فلتر المحافظة */}
+            {/* 1. فلتر عام القيد (سنة قيد القضية / السجل) */}
+            <div>
+              <label className="label flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-teal-600" />
+                <span className="font-bold text-teal-950">عام القيد (سنة قيد القضية)</span>
+              </label>
+              <select
+                value={caseYear}
+                onChange={(e) => setCaseYear(e.target.value)}
+                className="input font-mono font-bold text-teal-900 border-teal-300 bg-teal-50/40 focus:border-teal-600"
+              >
+                <option value="ALL">جميع أعوام القيد</option>
+                {availableCaseYears.map((yr) => (
+                  <option key={yr} value={String(yr)}>
+                    سنة {yr}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 2. فلتر المحافظة */}
             <div>
               <label className="label flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-rose-600" />
@@ -996,7 +1102,7 @@ export default function RegistrationReportsPage() {
               </select>
             </div>
 
-            {/* 2. فلتر النيابة المختصة */}
+            {/* 3. فلتر النيابة المختصة */}
             <div>
               <label className="label">النيابة المختصة</label>
               <select
@@ -1609,20 +1715,67 @@ export default function RegistrationReportsPage() {
         {activeTab === "cases" && (
           <div className="space-y-4">
             <div className="card p-0 overflow-hidden border border-slate-200">
-              <div className="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between print:hidden">
-                <span className="text-xs font-bold text-slate-800">
-                  قائمة السجلات المشمولة بالتقرير ({formatNumber(data?.cases.length)} سجل)
-                </span>
-                <span className="text-[11px] text-slate-500 font-medium">
-                  جدول تفصيلي يتضمن رقم السجل ورقم المحضر والقضية والشاكي والمشكو في حقه
-                </span>
+              <div className="p-3 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-3 print:hidden">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-slate-800">
+                    قائمة السجلات التفصيلية ({formatNumber(displayedCases.length)} من أصل {formatNumber(data?.cases.length)} سجل)
+                  </span>
+                  {caseYear !== "ALL" && (
+                    <span className="text-[11px] bg-teal-100 text-teal-900 border border-teal-300 px-2.5 py-0.5 rounded-full font-bold font-mono">
+                      عام قيد القضية: لسنة {caseYear}
+                    </span>
+                  )}
+                </div>
+
+                {/* شريط بحث وفلتر سريع بعام القيد داخل جدول السجلات التفصيلي */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-600">سنة القيد:</span>
+                    <select
+                      value={casesTableYear}
+                      onChange={(e) => setCasesTableYear(e.target.value)}
+                      className="h-8 px-2 text-xs font-mono font-bold rounded-lg border border-slate-300 bg-white text-slate-800 focus:border-teal-600"
+                    >
+                      <option value="ALL">جميع السنوات</option>
+                      {availableCaseYears.map((yr) => (
+                        <option key={yr} value={String(yr)}>
+                          سنة {yr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="relative min-w-[210px]">
+                    <Search className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={casesTableSearch}
+                      onChange={(e) => setCasesTableSearch(e.target.value)}
+                      placeholder="بحث فوري: رقم، شاكي، نيابة..."
+                      className="w-full h-8 pr-8 pl-2 text-xs rounded-lg border border-slate-300 bg-white placeholder:text-slate-400 focus:border-teal-600"
+                    />
+                  </div>
+
+                  {(casesTableSearch || casesTableYear !== "ALL") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCasesTableSearch("");
+                        setCasesTableYear("ALL");
+                      }}
+                      className="h-8 px-2.5 text-[11px] font-bold rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors"
+                    >
+                      تصفية
+                    </button>
+                  )}
+                </div>
               </div>
 
               {loading ? (
                 <div className="p-12 text-center text-slate-500 text-xs font-bold">
                   جاري استخراج السجلات وفرزها...
                 </div>
-              ) : !data?.cases.length ? (
+              ) : !displayedCases.length ? (
                 <div className="p-12 text-center text-slate-400 text-xs font-bold">
                   لا توجد سجلات مطابقة لشروط الفلترة المحددة
                 </div>
@@ -1646,7 +1799,7 @@ export default function RegistrationReportsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {data.cases.map((c, idx) => {
+                      {displayedCases.map((c, idx) => {
                         const typeInfo = TYPE_CONFIG[c.registrationType] ?? {
                           label: c.registrationType,
                           badge: "bg-slate-100",

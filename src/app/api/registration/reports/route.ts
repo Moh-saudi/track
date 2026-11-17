@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status");
     const entityType = searchParams.get("entityType");
     const branchOrHospital = searchParams.get("branchOrHospital");
+    const caseYearStr = searchParams.get("caseYear");
 
     const where: any = {};
 
@@ -45,6 +46,14 @@ export async function GET(req: NextRequest) {
     // فلتر نوع القيد (شكوى / قضية / محضر)
     if (registrationType && registrationType !== "ALL") {
       where.registrationType = registrationType as any;
+    }
+
+    // فلتر عام القيد (سنة قيد القضية / المحضر / السجل)
+    if (caseYearStr && caseYearStr !== "ALL") {
+      const yr = Number(caseYearStr);
+      if (!isNaN(yr)) {
+        where.caseYear = yr;
+      }
     }
 
     // فلتر مرحلة العمل / الحالة
