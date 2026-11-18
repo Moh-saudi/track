@@ -195,12 +195,8 @@ export async function GET(req: NextRequest) {
 
     const duplicateCases = Array.from(caseMap.entries())
       .filter(([_, list]) => list.length > 1)
-      .map(([_, list]) => ({
-        prosecutionCaseNumber: list[0].prosecutionCaseNumber,
-        caseYear: list[0].caseYear,
-        prosecution: list[0].prosecution,
-        count: list.length,
-        records: list.map((c) => ({
+      .map(([_, list]) => {
+        const mappedCases = list.map((c) => ({
           id: c.id,
           caseNumber: c.caseNumber,
           caseYear: c.caseYear,
@@ -208,8 +204,16 @@ export async function GET(req: NextRequest) {
           complainantName: c.complainantName || "—",
           hospitalName: c.hospitalName || "—",
           createdAt: c.createdAt,
-        })),
-      }))
+        }));
+        return {
+          prosecutionCaseNumber: list[0].prosecutionCaseNumber,
+          caseYear: list[0].caseYear,
+          prosecution: list[0].prosecution,
+          count: list.length,
+          cases: mappedCases,
+          records: mappedCases,
+        };
+      })
       .sort((a, b) => b.count - a.count);
 
     const totalPendingDuplicates =

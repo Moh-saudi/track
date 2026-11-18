@@ -675,9 +675,10 @@ export default function RegistrationReportsPage() {
     try {
       const res = await fetch("/api/cases/standardize-prosecution");
       const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "تعذر فحص التكرارات");
       setOctoberData(json);
     } catch (e: any) {
-      showToast("تعذر جلب بيانات حصر نيابة أكتوبر", "error");
+      showToast(e.message || "تعذر جلب بيانات حصر التكرارات والنيابات", "error");
     } finally {
       setOctoberLoading(false);
     }
@@ -2964,7 +2965,7 @@ export default function RegistrationReportsPage() {
                         <span>ازدواجيات ومسميات النيابات المكتشفة بقاعدة البيانات</span>
                       </h4>
 
-                      {octoberData.prosecutionDuplicates && octoberData.prosecutionDuplicates.length > 0 ? (
+                      {octoberData.prosecutionDuplicates && Array.isArray(octoberData.prosecutionDuplicates) && octoberData.prosecutionDuplicates.length > 0 ? (
                         <div className="space-y-3">
                           {octoberData.prosecutionDuplicates.map((group: any, idx: number) => (
                             <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-white shadow-xs space-y-3">
@@ -2991,7 +2992,7 @@ export default function RegistrationReportsPage() {
                                     disabled={migratingOctober}
                                     onClick={() =>
                                       handleUnifyVariants(
-                                        group.variants.filter((v: any) => !v.isTarget).map((v: any) => v.name),
+                                        (group.variants || []).filter((v: any) => !v.isTarget).map((v: any) => v.name),
                                         group.suggestedTarget,
                                         group.suggestedGovernorate
                                       )
@@ -3006,7 +3007,7 @@ export default function RegistrationReportsPage() {
 
                               {/* المسميات المتفرعة المسجلة */}
                               <div className="bg-slate-50 rounded-lg p-2.5 flex flex-wrap gap-2 text-[11px]">
-                                {group.variants.map((v: any, vIdx: number) => (
+                                {(group.variants || []).map((v: any, vIdx: number) => (
                                   <div
                                     key={vIdx}
                                     className={`px-2.5 py-1 rounded-md border flex items-center gap-1.5 ${
@@ -3040,7 +3041,7 @@ export default function RegistrationReportsPage() {
                 ) : (
                   /* ─── تبويب القضايا المكررة بنفس الرقم والسنة ─── */
                   <div className="space-y-4">
-                    {octoberData.duplicateCases && octoberData.duplicateCases.length > 0 ? (
+                    {octoberData.duplicateCases && Array.isArray(octoberData.duplicateCases) && octoberData.duplicateCases.length > 0 ? (
                       <div className="space-y-3">
                         <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-center gap-2">
                           <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0" />
@@ -3075,7 +3076,7 @@ export default function RegistrationReportsPage() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {dup.cases.map((c: any) => (
+                                  {(dup.cases || dup.records || []).map((c: any) => (
                                     <tr key={c.id}>
                                       <td className="font-mono font-bold text-center text-slate-900">
                                         {c.caseNumber} / {c.caseYear}
