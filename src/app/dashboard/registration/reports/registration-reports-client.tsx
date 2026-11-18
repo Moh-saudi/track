@@ -277,11 +277,12 @@ export default function RegistrationReportsPage() {
   const [quickGov, setQuickGov] = useState("");
   const [savingQuickPros, setSavingQuickPros] = useState(false);
 
-  // حالة معالج توحيد نيابة أكتوبر الكلية
+  // حالة معالج كشف التكرارات والازدواج
   const [showOctoberModal, setShowOctoberModal] = useState(false);
   const [octoberLoading, setOctoberLoading] = useState(false);
   const [octoberData, setOctoberData] = useState<any | null>(null);
   const [migratingOctober, setMigratingOctober] = useState(false);
+  const [duplicatesTab, setDuplicatesTab] = useState<"prosecutions" | "cases">("prosecutions");
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -694,7 +695,38 @@ export default function RegistrationReportsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "فشل تنفيذ التوحيد");
       showToast(json.message || "تم توحيد كافة سجلات نيابة أكتوبر بنجاح.", "success", "اكتمل التوحيد المعتمد");
-      setShowOctoberModal(false);
+      // تحديث البيانات
+      const refreshRes = await fetch("/api/cases/standardize-prosecution");
+      const refreshJson = await refreshRes.json();
+      setOctoberData(refreshJson);
+      fetchReport();
+    } catch (e: any) {
+      showToast(e.message || "حدث خطأ أثناء توحيد النيابة", "error");
+    } finally {
+      setMigratingOctober(false);
+    }
+  }
+
+  // تطبيق توحيد عام لأي مجموعة مسميات نيابات مكررة
+  async function handleUnifyVariants(variants: string[], targetName: string, targetGov?: string) {
+    setMigratingOctober(true);
+    try {
+      const res = await fetch("/api/cases/standardize-prosecution", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceVariants: variants,
+          targetProsecution: targetName,
+          targetGovernorate: targetGov,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "فشل تنفيذ التوحيد");
+      showToast(json.message || `تم توحيد السجلات بنجاح تحت مسمى "${targetName}".`, "success", "اكتمل التوحيد المعتمد");
+      // تحديث فحص التكرارات
+      const refreshRes = await fetch("/api/cases/standardize-prosecution");
+      const refreshJson = await refreshRes.json();
+      setOctoberData(refreshJson);
       fetchReport();
     } catch (e: any) {
       showToast(e.message || "حدث خطأ أثناء توحيد النيابة", "error");
@@ -1756,10 +1788,10 @@ export default function RegistrationReportsPage() {
               type="button"
               onClick={openOctoberWizard}
               className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-800 to-slate-900 hover:from-teal-900 hover:to-black text-white text-xs font-bold transition-all flex items-center gap-2 shadow-xs border border-teal-700/50"
-              title="فحص وتوحيد السجلات المسجلة تحت السادس من أكتوبر إلى أكتوبر الكلية"
+              title="كشف التكرارات والازدواج في مسميات النيابات والسجلات واقتراح حلها"
             >
               <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>معالج توحيد نيابة أكتوبر الكلية</span>
+              <span>كاشف ومعالج التكرارات والازدواج</span>
             </button>
           </div>
         </div>
@@ -2774,135 +2806,329 @@ export default function RegistrationReportsPage() {
         </div>
       )}
 
-      {/* ─── نافذة معالج توحيد نيابة أكتوبر الكلية (خاص بالمدير فقط) ─── */}
+      {/* ─── نافذة كاشف ومعالج التكرارات والازدواج (خاص بالمدير فقط) ─── */}
       {isAdmin && showOctoberModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs print:hidden animate-in fade-in-50">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col font-body max-h-[90vh]">
-            <div className="p-4 bg-gradient-to-r from-teal-900 to-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300">
+          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col font-body max-h-[92vh]">
+            {/* Modal Header */}
+            <div className="p-4 bg-gradient-to-r from-teal-900 via-slate-900 to-teal-950 text-white flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300">
                   <Sparkles className="w-5 h-5 text-amber-300" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm">معالج توحيد ودمج نيابة أكتوبر الكلية</h3>
+                  <h3 className="font-bold text-sm">كاشف ومعالج التكرارات والازدواج في النيابات والسجلات</h3>
                   <p className="text-[11px] text-teal-200">
-                    توحيد السجلات المسجلة تحت "السادس من أكتوبر" ودمجها تحت المسمى الرسمي المعتمد "أكتوبر الكلية"
+                    أداة فحص واكتشاف مسميات النيابات المزدوجة والقضايا المكررة مع توفير حلول التوحيد الفوري بنقرة واحدة
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowOctoberModal(false)}
-                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xs"
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-5 overflow-y-auto space-y-4 text-xs">
+            {/* Sub-tabs header */}
+            <div className="flex items-center gap-2 p-2.5 bg-slate-100 border-b border-slate-200 shrink-0">
+              <button
+                type="button"
+                onClick={() => setDuplicatesTab("prosecutions")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  duplicatesTab === "prosecutions"
+                    ? "bg-teal-800 text-white shadow-xs"
+                    : "bg-white text-slate-700 hover:bg-slate-200 border border-slate-200"
+                }`}
+              >
+                <Scale className="w-3.5 h-3.5" />
+                <span>ازدواج وتعدد مسميات النيابات</span>
+                {octoberData && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                      duplicatesTab === "prosecutions"
+                        ? "bg-white/20 text-white"
+                        : "bg-slate-200 text-slate-800"
+                    }`}
+                  >
+                    {(octoberData.prosecutionDuplicates?.length || 0) + (octoberData.sixthOctoberCount > 0 ? 1 : 0)}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDuplicatesTab("cases")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  duplicatesTab === "cases"
+                    ? "bg-teal-800 text-white shadow-xs"
+                    : "bg-white text-slate-700 hover:bg-slate-200 border border-slate-200"
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>القضايا المسجلة برقم وسنة مكررة</span>
+                {octoberData && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                      duplicatesTab === "cases"
+                        ? "bg-white/20 text-white"
+                        : "bg-slate-200 text-slate-800"
+                    }`}
+                  >
+                    {octoberData.duplicateCases?.length || 0}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-4 text-xs flex-1">
               {octoberLoading ? (
-                <div className="py-12 text-center space-y-3">
-                  <div className="w-8 h-8 border-3 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="text-xs font-bold text-slate-700">جاري فحص السجلات وحصر قضايا نيابة أكتوبر...</p>
+                <div className="py-16 text-center space-y-3">
+                  <div className="w-9 h-9 border-3 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-xs font-bold text-slate-700">جاري فحص وتدقيق قاعدة البيانات للكشف عن أي تكرارات أو ازدواجيات...</p>
                 </div>
               ) : octoberData ? (
-                <div className="space-y-4">
-                  {/* بطاقات الإحصاء والحصر */}
-                  <div className="grid grid-cols-3 gap-3 text-center">
-                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-1">
-                      <span className="text-[11px] text-amber-800 font-bold block">السادس من أكتوبر (مراد دمجها)</span>
-                      <span className="text-xl font-mono font-black text-amber-900">{octoberData.sixthOctoberCount} سجل</span>
+                duplicatesTab === "prosecutions" ? (
+                  /* ─── تبويب ازدواج مسميات النيابات ─── */
+                  <div className="space-y-4">
+                    {/* بطاقة نيابة أكتوبر الكلية */}
+                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+                      <div className="bg-slate-50 p-3.5 flex items-center justify-between border-b border-slate-200">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-teal-600"></span>
+                          <span className="font-bold text-slate-900 text-xs">نيابة أكتوبر الكلية (محافظة الجيزة)</span>
+                        </div>
+                        {octoberData.sixthOctoberCount === 0 ? (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px] inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>موحدة بالكامل 100%</span>
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-[11px] inline-flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                            <span>يوجد ({octoberData.sixthOctoberCount}) سجل غير موحد</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="p-4 space-y-3 bg-white">
+                        <div className="grid grid-cols-3 gap-2.5 text-center">
+                          <div className="p-2.5 rounded-lg bg-teal-50 border border-teal-200">
+                            <span className="text-[10px] text-teal-800 font-bold block">المسمى المعتمد (أكتوبر الكلية)</span>
+                            <span className="text-base font-mono font-black text-teal-900">{octoberData.octoberStandardCount} سجل</span>
+                          </div>
+                          <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+                            <span className="text-[10px] text-amber-800 font-bold block">مسميات قديمة (السادس من أكتوبر)</span>
+                            <span className="text-base font-mono font-black text-amber-900">{octoberData.sixthOctoberCount} سجل</span>
+                          </div>
+                          <div className="p-2.5 rounded-lg bg-slate-100 border border-slate-200">
+                            <span className="text-[10px] text-slate-700 font-bold block">إجمالي ملفات النيابة</span>
+                            <span className="text-base font-mono font-black text-slate-900">{octoberData.totalCombined} سجل</span>
+                          </div>
+                        </div>
+
+                        {octoberData.sixthOctoberCount > 0 ? (
+                          <div className="pt-2 flex items-center justify-between gap-3 bg-amber-50/70 p-3 rounded-xl border border-amber-200">
+                            <p className="text-[11px] text-amber-900">
+                              توجد <strong>{octoberData.sixthOctoberCount}</strong> سجلات مقيدة بمسمى قديم "السادس من أكتوبر"، يمكنك توحيدها فوراً لتصبح تحت "أكتوبر الكلية".
+                            </p>
+                            <button
+                              type="button"
+                              disabled={migratingOctober}
+                              onClick={applyOctoberStandardization}
+                              className="px-4 py-2 rounded-lg bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs inline-flex items-center gap-1.5 shrink-0 shadow-xs"
+                            >
+                              {migratingOctober ? (
+                                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Check className="w-4 h-4 text-emerald-300" />
+                              )}
+                              <span>توحيد الـ ({octoberData.sixthOctoberCount}) سجل فوراً</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-emerald-700 font-medium">
+                            ✓ تم توحيد كافة ملفات وسجلات أكتوبر تحت المسمى الرسمي المعتمد "أكتوبر الكلية" وتثبيت المحافظة على الجيزة.
+                          </p>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-teal-50 border border-teal-200 space-y-1">
-                      <span className="text-[11px] text-teal-800 font-bold block">أكتوبر الكلية (المسمى المعتمد)</span>
-                      <span className="text-xl font-mono font-black text-teal-900">{octoberData.octoberStandardCount} سجل</span>
-                    </div>
+                    {/* باقي النيابات المكتشف فيها تكرار أو مسميات متعددة */}
+                    <div className="space-y-3">
+                      <h4 className="font-bold text-slate-900 text-xs flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-teal-700" />
+                        <span>ازدواجيات ومسميات النيابات المكتشفة بقاعدة البيانات</span>
+                      </h4>
 
-                    <div className="p-3 rounded-xl bg-slate-100 border border-slate-200 space-y-1">
-                      <span className="text-[11px] text-slate-700 font-bold block">إجمالي النيابة بعد التوحيد</span>
-                      <span className="text-xl font-mono font-black text-slate-900">{octoberData.totalCombined} سجل</span>
+                      {octoberData.prosecutionDuplicates && octoberData.prosecutionDuplicates.length > 0 ? (
+                        <div className="space-y-3">
+                          {octoberData.prosecutionDuplicates.map((group: any, idx: number) => (
+                            <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-white shadow-xs space-y-3">
+                              <div className="flex items-center justify-between gap-3 flex-wrap">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-slate-900 text-xs">
+                                      المسمى المعتمد المقترح: <span className="text-teal-800 underline decoration-teal-500 font-black">{group.suggestedTarget}</span>
+                                    </span>
+                                    {group.suggestedGovernorate && (
+                                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-bold">
+                                        محافظة {group.suggestedGovernorate}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-slate-500 mt-0.5">
+                                    إجمالي القضايا: <strong className="text-slate-800 font-mono">{group.totalCases}</strong> سجل | معلقة للتوحيد: <strong className="text-amber-800 font-mono">{group.pendingMigrationCount}</strong> سجل
+                                  </p>
+                                </div>
+
+                                {group.pendingMigrationCount > 0 && (
+                                  <button
+                                    type="button"
+                                    disabled={migratingOctober}
+                                    onClick={() =>
+                                      handleUnifyVariants(
+                                        group.variants.filter((v: any) => !v.isTarget).map((v: any) => v.name),
+                                        group.suggestedTarget,
+                                        group.suggestedGovernorate
+                                      )
+                                    }
+                                    className="px-3.5 py-1.5 rounded-lg bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-xs transition-colors"
+                                  >
+                                    <Check className="w-3.5 h-3.5 text-emerald-300" />
+                                    <span>توحيد الـ ({group.pendingMigrationCount}) سجل تحت ({group.suggestedTarget})</span>
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* المسميات المتفرعة المسجلة */}
+                              <div className="bg-slate-50 rounded-lg p-2.5 flex flex-wrap gap-2 text-[11px]">
+                                {group.variants.map((v: any, vIdx: number) => (
+                                  <div
+                                    key={vIdx}
+                                    className={`px-2.5 py-1 rounded-md border flex items-center gap-1.5 ${
+                                      v.isTarget
+                                        ? "bg-emerald-50 border-emerald-300 text-emerald-900 font-bold"
+                                        : "bg-white border-amber-300 text-amber-900"
+                                    }`}
+                                  >
+                                    <span>{v.name}</span>
+                                    <span className="px-1.5 py-0.2 rounded bg-slate-200/80 text-slate-800 font-mono text-[10px] font-bold">
+                                      {v.count} سجل
+                                    </span>
+                                    {v.isTarget && <span className="text-emerald-700 font-bold text-[10px]">(المعتمد)</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-6 text-center space-y-2 bg-emerald-50/70 rounded-xl border border-emerald-200">
+                          <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+                          <h5 className="font-bold text-emerald-900">كافة مسميات النيابات منضبطة تماماً!</h5>
+                          <p className="text-[11px] text-emerald-700">
+                            لا توجد أي نيابات مكررة أو مسجلة بمسميات متعددة خارج الدليل المعتمد.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
+                ) : (
+                  /* ─── تبويب القضايا المكررة بنفس الرقم والسنة ─── */
+                  <div className="space-y-4">
+                    {octoberData.duplicateCases && octoberData.duplicateCases.length > 0 ? (
+                      <div className="space-y-3">
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-center gap-2">
+                          <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0" />
+                          <span>
+                            تم رصد <strong>({octoberData.duplicateCases.length})</strong> رقم قضية/محضر مكرر أكثر من مرة بنفس الرقم والسنة والنيابة. يمكنك مراجعتها وتعديلها:
+                          </span>
+                        </div>
 
-                  {octoberData.sixthOctoberCount === 0 ? (
-                    <div className="p-6 text-center space-y-2 bg-emerald-50 rounded-xl border border-emerald-200">
-                      <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-                      <h4 className="text-sm font-bold text-emerald-900 font-heading">
-                        كافة السجلات موحدة بنجاح!
-                      </h4>
-                      <p className="text-xs text-emerald-700">
-                        جميع قضايا وملفات أكتوبر مسجلة بالفعل تحت مسمى "أكتوبر الكلية" ولا يوجد أي تكرار حالياً.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 space-y-1 text-xs">
-                        <p className="font-bold text-slate-900">ما الذي سيحدث عند الضغط على زر التوحيد؟</p>
-                        <ul className="list-disc list-inside space-y-0.5 text-slate-600 text-[11px]">
-                          <li>سيتم تحويل مسمى النيابة في الـ ({octoberData.sixthOctoberCount}) سجل إلى <strong>"أكتوبر الكلية"</strong>.</li>
-                          <li>سيتم تثبيت المحافظة على <strong>"الجيزة"</strong> لجميع هذه السجلات.</li>
-                          <li>ستتجمع كافة الإحصائيات والأرقام في التقارير تحت سطر واحد موحد (إجمالي {octoberData.totalCombined} سجل).</li>
-                          <li>يتم توثيق هذه الحركة في سجل التدقيق والرقابة الأمني لضمان الحوكمة الكاملة.</li>
-                        </ul>
-                      </div>
+                        {octoberData.duplicateCases.map((dup: any, dIdx: number) => (
+                          <div key={dIdx} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs">
+                            <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-900 text-xs">
+                                  قضية/محضر رقم <span className="font-mono text-teal-800">{dup.prosecutionCaseNumber}</span> لسنة <span className="font-mono text-teal-800">{dup.caseYear}</span>
+                                </span>
+                                <span className="text-slate-500 text-xs">({dup.prosecution})</span>
+                              </div>
+                              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold">
+                                مكرر {dup.count} مرات
+                              </span>
+                            </div>
 
-                      <div className="table-wrapper border border-slate-200 rounded-xl max-h-56">
-                        <table className="table-custom text-xs w-full">
-                          <thead>
-                            <tr>
-                              <th style={{ width: "8%" }}>م</th>
-                              <th style={{ width: "20%" }}>رقم السجل</th>
-                              <th style={{ width: "36%" }}>الشاكي</th>
-                              <th style={{ width: "36%" }}>المسمى الحالي</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {octoberData.toMigrateCases.map((c: any, i: number) => (
-                              <tr key={c.id}>
-                                <td className="text-center font-mono text-slate-500">{i + 1}</td>
-                                <td className="font-bold text-slate-900 font-mono text-center">
-                                  {c.caseNumber} / {c.caseYear}
-                                </td>
-                                <td className="font-semibold text-slate-800">{c.complainantName || "—"}</td>
-                                <td className="text-amber-800 font-bold bg-amber-50/50">{c.prosecution}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            <div className="table-wrapper">
+                              <table className="table-custom text-xs w-full">
+                                <thead>
+                                  <tr>
+                                    <th style={{ width: "16%" }}>رقم السجل</th>
+                                    <th style={{ width: "16%" }}>النوع</th>
+                                    <th style={{ width: "28%" }}>الشاكي</th>
+                                    <th style={{ width: "28%" }}>المستشفى / الجهة</th>
+                                    <th style={{ width: "12%" }}>إجراء</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {dup.cases.map((c: any) => (
+                                    <tr key={c.id}>
+                                      <td className="font-mono font-bold text-center text-slate-900">
+                                        {c.caseNumber} / {c.caseYear}
+                                      </td>
+                                      <td>{TYPE_CONFIG[c.registrationType]?.label || c.registrationType}</td>
+                                      <td className="font-medium text-slate-800">{c.complainantName}</td>
+                                      <td className="text-slate-600">{c.hospitalName}</td>
+                                      <td className="text-center">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const fullCase = data?.cases.find((x) => x.id === c.id);
+                                            if (fullCase) handleOpenEdit(fullCase);
+                                          }}
+                                          className="px-2 py-1 rounded bg-slate-100 hover:bg-teal-50 text-teal-800 text-[11px] font-bold border border-slate-200"
+                                        >
+                                          تعديل السجل
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-
-                      <div className="flex items-center justify-end gap-2 pt-2">
-                        <button
-                          type="button"
-                          onClick={() => setShowOctoberModal(false)}
-                          className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold"
-                        >
-                          إلغاء
-                        </button>
-                        <button
-                          type="button"
-                          disabled={migratingOctober}
-                          onClick={applyOctoberStandardization}
-                          className="px-5 py-2.5 rounded-xl bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs inline-flex items-center gap-2 shadow-xs transition-colors"
-                        >
-                          {migratingOctober ? (
-                            <>
-                              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              <span>جاري توحيد السجلات...</span>
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-                              <span>اعتماد وتوحيد الـ ({octoberData.sixthOctoberCount}) سجل تحت مسمى (أكتوبر الكلية) فوراً</span>
-                            </>
-                          )}
-                        </button>
+                    ) : (
+                      <div className="p-8 text-center space-y-2 bg-emerald-50/70 rounded-xl border border-emerald-200">
+                        <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
+                        <h5 className="font-bold text-emerald-900 text-sm">لا توجد قضايا مكررة!</h5>
+                        <p className="text-xs text-emerald-700">
+                          كافة أرقام القضايا والمحاضر والشكاوى فريدة ولا يوجد أي تكرار لنفس القضية والسنة والنيابة.
+                        </p>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )
               ) : null}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs shrink-0">
+              <span className="text-slate-500 text-[11px]">
+                {octoberData ? `إجمالي الفحوصات: ${octoberData.totalCombined || 0} سجل نيابات` : ""}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowOctoberModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold transition-colors"
+              >
+                إغلاق النافذة
+              </button>
             </div>
           </div>
         </div>
