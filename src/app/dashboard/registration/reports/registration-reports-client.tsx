@@ -679,7 +679,7 @@ export default function RegistrationReportsPage() {
     setShowOctoberModal(true);
     setOctoberLoading(true);
     try {
-      const res = await fetch("/api/cases/standardize-prosecution");
+      const res = await fetch(`/api/cases/standardize-prosecution?_t=${Date.now()}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "تعذر فحص التكرارات");
       setOctoberData(json);
@@ -703,7 +703,7 @@ export default function RegistrationReportsPage() {
       if (!res.ok) throw new Error(json.error || "فشل تنفيذ التوحيد");
       showToast(json.message || "تم توحيد كافة سجلات نيابة أكتوبر بنجاح.", "success", "اكتمل التوحيد المعتمد");
       // تحديث البيانات
-      const refreshRes = await fetch("/api/cases/standardize-prosecution");
+      const refreshRes = await fetch(`/api/cases/standardize-prosecution?_t=${Date.now()}`, { cache: "no-store" });
       const refreshJson = await refreshRes.json();
       setOctoberData(refreshJson);
       fetchReport();
@@ -731,7 +731,7 @@ export default function RegistrationReportsPage() {
       if (!res.ok) throw new Error(json.error || "فشل تنفيذ التوحيد");
       showToast(json.message || `تم توحيد السجلات بنجاح تحت مسمى "${targetName}".`, "success", "اكتمل التوحيد المعتمد");
       // تحديث فحص التكرارات
-      const refreshRes = await fetch("/api/cases/standardize-prosecution");
+      const refreshRes = await fetch(`/api/cases/standardize-prosecution?_t=${Date.now()}`, { cache: "no-store" });
       const refreshJson = await refreshRes.json();
       setOctoberData(refreshJson);
       fetchReport();
@@ -762,7 +762,7 @@ export default function RegistrationReportsPage() {
       setDeletingDuplicateCase(null);
       setDeleteDuplicateReason("");
       // تحديث فحص التكرارات وإحصائيات التقرير
-      const refreshRes = await fetch("/api/cases/standardize-prosecution");
+      const refreshRes = await fetch(`/api/cases/standardize-prosecution?_t=${Date.now()}`, { cache: "no-store" });
       const refreshJson = await refreshRes.json();
       setOctoberData(refreshJson);
       fetchReport();
@@ -788,12 +788,38 @@ export default function RegistrationReportsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "فشل أرشفة السجل");
       showToast(`تمت أرشفة السجل (${caseLabel}) وإغلاقه بنجاح.`, "success", "تمت الأرشفة");
-      const refreshRes = await fetch("/api/cases/standardize-prosecution");
+      const refreshRes = await fetch(`/api/cases/standardize-prosecution?_t=${Date.now()}`, { cache: "no-store" });
       const refreshJson = await refreshRes.json();
       setOctoberData(refreshJson);
       fetchReport();
     } catch (err: any) {
       showToast(err.message || "تعذر أرشفة السجل", "error");
+    } finally {
+      setArchivingCaseId(null);
+    }
+  }
+
+  // استرجاع السجل المؤرشف وإلغاء الأرشفة
+  async function handleRestoreDuplicateCase(caseId: string, caseLabel: string) {
+    setArchivingCaseId(caseId);
+    try {
+      const res = await fetch(`/api/cases/${caseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "REGISTERED",
+          reason: "استرجاع السجل المؤرشف وإلغاء الأرشفة",
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "فشل استرجاع السجل");
+      showToast(`تم استرجاع السجل (${caseLabel}) وإلغاء أرشفته بنجاح.`, "success", "تم الاسترجاع");
+      const refreshRes = await fetch(`/api/cases/standardize-prosecution?_t=${Date.now()}`, { cache: "no-store" });
+      const refreshJson = await refreshRes.json();
+      setOctoberData(refreshJson);
+      fetchReport();
+    } catch (err: any) {
+      showToast(err.message || "تعذر استرجاع السجل", "error");
     } finally {
       setArchivingCaseId(null);
     }
@@ -3127,9 +3153,25 @@ export default function RegistrationReportsPage() {
                                     {dup.prosecution || "شكوى مباشرة (بدون نيابة)"}
                                   </span>
                                 </div>
-                                <span className="px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-bold">
-                                  مكرر {dup.count} مرات
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowOctoberModal(false);
+                                      setActiveTab("cases");
+                                      setCasesTableYear("ALL");
+                                      setCasesTableSearch(dup.prosecutionCaseNumber || "");
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-900 text-[11px] font-bold border border-teal-300 inline-flex items-center gap-1.5 transition-colors shadow-2xs"
+                                    title="الانتقال فوراً لجدول السجلات التفصيلي وحصر هذه السجلات المكررة بالجدول الرئيسي"
+                                  >
+                                    <Search className="w-3.5 h-3.5 text-teal-700" />
+                                    <span>عرض الـ ({dup.count}) بالجدول الرئيسي</span>
+                                  </button>
+                                  <span className="px-2.5 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-950 text-[11px] font-bold font-mono">
+                                    مكرر {dup.count} مرات {dup.closedCount ? `(${dup.activeCount || 0} نشط | ${dup.closedCount} مؤرشف)` : ""}
+                                  </span>
+                                </div>
                               </div>
 
                               {/* شريط الإيضاح التشخيصي لسبب التكرار */}
@@ -3228,7 +3270,7 @@ export default function RegistrationReportsPage() {
                                         <span>تعديل</span>
                                       </button>
 
-                                      {c.status !== "CLOSED" && (
+                                      {c.status !== "CLOSED" ? (
                                         <button
                                           type="button"
                                           disabled={archivingCaseId === c.id}
@@ -3242,6 +3284,21 @@ export default function RegistrationReportsPage() {
                                             <Archive className="w-3.5 h-3.5 text-amber-700" />
                                           )}
                                           <span>أرشفة</span>
+                                        </button>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          disabled={archivingCaseId === c.id}
+                                          onClick={() => handleRestoreDuplicateCase(c.id, `${c.caseNumber}/${c.caseYear}`)}
+                                          className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-[11px] font-bold border border-emerald-300 inline-flex items-center gap-1 transition-colors"
+                                          title="استرجاع هذا السجل المؤرشف وإعادته كقيد نشط"
+                                        >
+                                          {archivingCaseId === c.id ? (
+                                            <div className="w-3 h-3 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin" />
+                                          ) : (
+                                            <RotateCcw className="w-3.5 h-3.5 text-emerald-700" />
+                                          )}
+                                          <span>استرجاع (إلغاء الأرشفة)</span>
                                         </button>
                                       )}
 

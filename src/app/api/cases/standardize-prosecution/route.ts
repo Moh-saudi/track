@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit";
 import { OFFICIAL_PROSECUTIONS_LIST } from "@/lib/constants/prosecutions";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // أنماط مسميات نيابة السادس من أكتوبر المختلفة
 const SIXTH_OCTOBER_VARIANTS = [
   "السادس من أكتوبر",
@@ -214,6 +217,8 @@ export async function GET(req: NextRequest) {
         const differentCreators = creators.length > 1;
         const partials = Array.from(new Set(list.map((c) => c.partialProsecution).filter(Boolean)));
         const hospitals = Array.from(new Set(list.map((c) => c.hospitalName || c.entityName).filter(Boolean)));
+        const activeCount = list.filter((c) => c.status !== "CLOSED").length;
+        const closedCount = list.filter((c) => c.status === "CLOSED").length;
 
         const mappedCases = list.map((c) => ({
           id: c.id,
@@ -241,6 +246,8 @@ export async function GET(req: NextRequest) {
           caseYear: list[0].caseYear,
           prosecution: list[0].prosecution,
           count: list.length,
+          activeCount,
+          closedCount,
           differentCreators,
           creators,
           hasDifferentPartials: partials.length > 1,
@@ -256,18 +263,27 @@ export async function GET(req: NextRequest) {
       prosecutionDuplicates.reduce((sum, p) => sum + p.pendingMigrationCount, 0) +
       duplicateCases.length;
 
-    return NextResponse.json({
-      targetStandardName: "أكتوبر الكلية",
-      sixthOctoberCount: sixthOctoberCases.length,
-      octoberStandardCount: octoberStandardCases.length,
-      totalCombined: sixthOctoberCases.length + octoberStandardCases.length,
-      toMigrateCases: sixthOctoberCases,
-      existingStandardCases: octoberStandardCases,
-      isOctoberDone: sixthOctoberCases.length === 0,
-      prosecutionDuplicates,
-      duplicateCases,
-      totalPendingDuplicates,
-    });
+    return NextResponse.json(
+      {
+        targetStandardName: "أكتوبر الكلية",
+        sixthOctoberCount: sixthOctoberCases.length,
+        octoberStandardCount: octoberStandardCases.length,
+        totalCombined: sixthOctoberCases.length + octoberStandardCases.length,
+        toMigrateCases: sixthOctoberCases,
+        existingStandardCases: octoberStandardCases,
+        isOctoberDone: sixthOctoberCases.length === 0,
+        prosecutionDuplicates,
+        duplicateCases,
+        totalPendingDuplicates,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
+    );
   } catch (err: any) {
     console.error("Error checking duplicates & prosecutions:", err);
     return NextResponse.json({ error: err.message || "فشل فحص التكرارات والنيابات" }, { status: 500 });
