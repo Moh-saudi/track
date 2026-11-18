@@ -37,6 +37,8 @@ import {
   Calendar,
   Info,
   Check,
+  Trash2,
+  Archive,
 } from "lucide-react";
 
 interface UserWorkload {
@@ -283,6 +285,10 @@ export default function RegistrationReportsPage() {
   const [octoberData, setOctoberData] = useState<any | null>(null);
   const [migratingOctober, setMigratingOctober] = useState(false);
   const [duplicatesTab, setDuplicatesTab] = useState<"prosecutions" | "cases">("prosecutions");
+  const [deletingDuplicateCase, setDeletingDuplicateCase] = useState<any | null>(null);
+  const [deleteDuplicateReason, setDeleteDuplicateReason] = useState("");
+  const [isDeletingDuplicate, setIsDeletingDuplicate] = useState(false);
+  const [archivingCaseId, setArchivingCaseId] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -733,6 +739,63 @@ export default function RegistrationReportsPage() {
       showToast(e.message || "حدث خطأ أثناء توحيد النيابة", "error");
     } finally {
       setMigratingOctober(false);
+    }
+  }
+
+  // حذف السجل المكرر مع التحقق والرقابة الأمنية
+  async function handleDeleteDuplicateCase() {
+    if (!deletingDuplicateCase) return;
+    if (!deleteDuplicateReason.trim()) {
+      showToast("يرجى تدوين سبب وسند الحذف (إلزامي للرقابة والتدقيق الأمني)", "error");
+      return;
+    }
+    setIsDeletingDuplicate(true);
+    try {
+      const res = await fetch(`/api/cases/${deletingDuplicateCase.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: deleteDuplicateReason.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "فشل حذف السجل");
+      showToast(json.message || "تم حذف السجل المكرر بنجاح.", "success", "تم الحذف والتدقيق");
+      setDeletingDuplicateCase(null);
+      setDeleteDuplicateReason("");
+      // تحديث فحص التكرارات وإحصائيات التقرير
+      const refreshRes = await fetch("/api/cases/standardize-prosecution");
+      const refreshJson = await refreshRes.json();
+      setOctoberData(refreshJson);
+      fetchReport();
+    } catch (err: any) {
+      showToast(err.message || "تعذر حذف السجل", "error");
+    } finally {
+      setIsDeletingDuplicate(false);
+    }
+  }
+
+  // أرشفة / إغلاق السجل المكرر
+  async function handleArchiveDuplicateCase(caseId: string, caseLabel: string) {
+    setArchivingCaseId(caseId);
+    try {
+      const res = await fetch(`/api/cases/${caseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "CLOSED",
+          reason: "أرشفة السجل المكرر لعدم احتسابه في السجلات النشطة",
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "فشل أرشفة السجل");
+      showToast(`تمت أرشفة السجل (${caseLabel}) وإغلاقه بنجاح.`, "success", "تمت الأرشفة");
+      const refreshRes = await fetch("/api/cases/standardize-prosecution");
+      const refreshJson = await refreshRes.json();
+      setOctoberData(refreshJson);
+      fetchReport();
+    } catch (err: any) {
+      showToast(err.message || "تعذر أرشفة السجل", "error");
+    } finally {
+      setArchivingCaseId(null);
     }
   }
 
@@ -3052,54 +3115,149 @@ export default function RegistrationReportsPage() {
 
                         {octoberData.duplicateCases.map((dup: any, dIdx: number) => (
                           <div key={dIdx} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs">
-                            <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-slate-900 text-xs">
-                                  قضية/محضر رقم <span className="font-mono text-teal-800">{dup.prosecutionCaseNumber}</span> لسنة <span className="font-mono text-teal-800">{dup.caseYear}</span>
+                            {/* رأس بطاقة التكرار مع التشخيص */}
+                            <div className="p-3.5 bg-slate-50 border-b border-slate-200 space-y-2">
+                              <div className="flex items-center justify-between gap-3 flex-wrap">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                  <span className="font-bold text-slate-900 text-xs">
+                                    قضية / محضر رقم <span className="font-mono text-teal-800 text-sm font-black">{dup.prosecutionCaseNumber}</span> لسنة <span className="font-mono text-teal-800 text-sm font-black">{dup.caseYear}</span>
+                                  </span>
+                                  <span className="px-2.5 py-0.5 rounded-md bg-teal-50 border border-teal-200 text-teal-900 text-[11px] font-bold">
+                                    {dup.prosecution || "شكوى مباشرة (بدون نيابة)"}
+                                  </span>
+                                </div>
+                                <span className="px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-bold">
+                                  مكرر {dup.count} مرات
                                 </span>
-                                <span className="text-slate-500 text-xs">({dup.prosecution})</span>
                               </div>
-                              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold">
-                                مكرر {dup.count} مرات
-                              </span>
+
+                              {/* شريط الإيضاح التشخيصي لسبب التكرار */}
+                              <div className="flex items-center gap-2 flex-wrap pt-1 text-[11px]">
+                                {dup.differentCreators ? (
+                                  <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-950 font-bold inline-flex items-center gap-1 border border-amber-300">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
+                                    <span>سُجلت بواسطة موظفين مختلفين: ({dup.creators?.join(" و ")})</span>
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-950 font-bold inline-flex items-center gap-1 border border-purple-200">
+                                    <User className="w-3.5 h-3.5 text-purple-700" />
+                                    <span>سُجلت مكررة بواسطة نفس الموظف: ({dup.creators?.[0] || "موظف واحد"})</span>
+                                  </span>
+                                )}
+
+                                {dup.hasDifferentHospitals && (
+                                  <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 font-bold inline-flex items-center gap-1 border border-blue-200">
+                                    <Building2 className="w-3.5 h-3.5 text-blue-700" />
+                                    <span>يوجد تباين في مسمى المنشأة الطبية بين السجلات</span>
+                                  </span>
+                                )}
+
+                                {dup.hasDifferentPartials && (
+                                  <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-800 font-bold inline-flex items-center gap-1 border border-slate-300">
+                                    <Scale className="w-3.5 h-3.5 text-slate-700" />
+                                    <span>اختلاف في النيابة الجزئية</span>
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
-                            <div className="table-wrapper">
-                              <table className="table-custom text-xs w-full">
-                                <thead>
-                                  <tr>
-                                    <th style={{ width: "16%" }}>رقم السجل</th>
-                                    <th style={{ width: "16%" }}>النوع</th>
-                                    <th style={{ width: "28%" }}>الشاكي</th>
-                                    <th style={{ width: "28%" }}>المستشفى / الجهة</th>
-                                    <th style={{ width: "12%" }}>إجراء</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {(dup.cases || dup.records || []).map((c: any) => (
-                                    <tr key={c.id}>
-                                      <td className="font-mono font-bold text-center text-slate-900">
-                                        {c.caseNumber} / {c.caseYear}
-                                      </td>
-                                      <td>{TYPE_CONFIG[c.registrationType]?.label || c.registrationType}</td>
-                                      <td className="font-medium text-slate-800">{c.complainantName}</td>
-                                      <td className="text-slate-600">{c.hospitalName}</td>
-                                      <td className="text-center">
+                            {/* تفاصيل السجلات المكررة */}
+                            <div className="divide-y divide-slate-100">
+                              {(dup.cases || dup.records || []).map((c: any) => {
+                                const fullCase = data?.cases.find((x) => x.id === c.id);
+                                return (
+                                  <div key={c.id} className="p-3.5 hover:bg-slate-50/80 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                                    {/* معلومات القيد والوارد والتاريخ */}
+                                    <div className="space-y-1.5 flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-mono font-bold text-teal-950 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200 text-xs">
+                                          وارد #{c.caseNumber} لسنة {c.caseYear}
+                                        </span>
+                                        <span className="text-[11px] text-slate-500 font-mono">
+                                          تاريخ الوارد: {c.incomingDate ? formatDate(c.incomingDate) : "—"}
+                                        </span>
+                                        <span className="text-[11px] text-slate-400">•</span>
+                                        <span className="text-[11px] text-slate-600 font-mono flex items-center gap-1">
+                                          <Clock className="w-3 h-3 text-slate-400" />
+                                          <span>سُجل إلكترونياً: {formatDateTime(c.createdAt)}</span>
+                                        </span>
+                                        <span className="px-2 py-0.2 rounded bg-purple-50 text-purple-900 text-[10px] font-bold border border-purple-200">
+                                          مسجل الحالة: {c.registeredBy}
+                                        </span>
+                                        {c.status === "CLOSED" && (
+                                          <span className="px-2 py-0.2 rounded-full bg-slate-200 text-slate-700 text-[10px] font-bold">
+                                            مؤرشف / مغلق
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {/* أطراف الشكوى والمنشأة */}
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-[11px] pt-1">
+                                        <div className="bg-white p-2 rounded-lg border border-slate-200">
+                                          <span className="text-slate-400 block text-[10px]">الشاكي:</span>
+                                          <strong className="text-slate-900 block truncate">{c.complainantName}</strong>
+                                          {c.complainantPhone && <span className="text-teal-700 font-mono text-[10px]">{c.complainantPhone}</span>}
+                                        </div>
+                                        <div className="bg-white p-2 rounded-lg border border-slate-200">
+                                          <span className="text-slate-400 block text-[10px]">المشكو في حقه:</span>
+                                          <strong className="text-slate-900 block truncate">{c.respondentName}</strong>
+                                          {c.respondentPhone && <span className="text-teal-700 font-mono text-[10px]">{c.respondentPhone}</span>}
+                                        </div>
+                                        <div className="bg-white p-2 rounded-lg border border-slate-200 sm:col-span-2 md:col-span-1">
+                                          <span className="text-slate-400 block text-[10px]">المنشأة والجهة:</span>
+                                          <strong className="text-slate-900 block truncate">{c.hospitalName}</strong>
+                                          <span className="text-slate-500 text-[10px] block">
+                                            {c.partialProsecution !== "—" ? `نيابة: ${c.partialProsecution}` : ""} {c.governorate ? `(${c.governorate})` : ""}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* أزرار الإجراءات */}
+                                    <div className="flex items-center gap-1.5 shrink-0 self-end md:self-center pt-2 md:pt-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (fullCase) handleOpenEdit(fullCase);
+                                        }}
+                                        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-teal-50 hover:text-teal-900 text-slate-700 text-[11px] font-bold border border-slate-300 inline-flex items-center gap-1 transition-colors"
+                                        title="تعديل بيانات ورقم قيد هذا السجل"
+                                      >
+                                        <Edit3 className="w-3.5 h-3.5 text-teal-700" />
+                                        <span>تعديل</span>
+                                      </button>
+
+                                      {c.status !== "CLOSED" && (
                                         <button
                                           type="button"
-                                          onClick={() => {
-                                            const fullCase = data?.cases.find((x) => x.id === c.id);
-                                            if (fullCase) handleOpenEdit(fullCase);
-                                          }}
-                                          className="px-2 py-1 rounded bg-slate-100 hover:bg-teal-50 text-teal-800 text-[11px] font-bold border border-slate-200"
+                                          disabled={archivingCaseId === c.id}
+                                          onClick={() => handleArchiveDuplicateCase(c.id, `${c.caseNumber}/${c.caseYear}`)}
+                                          className="px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] font-bold border border-amber-300 inline-flex items-center gap-1 transition-colors"
+                                          title="أرشفة السجل وإغلاقه لعدم احتسابه في السجلات النشطة"
                                         >
-                                          تعديل السجل
+                                          {archivingCaseId === c.id ? (
+                                            <div className="w-3 h-3 border-2 border-amber-700 border-t-transparent rounded-full animate-spin" />
+                                          ) : (
+                                            <Archive className="w-3.5 h-3.5 text-amber-700" />
+                                          )}
+                                          <span>أرشفة</span>
                                         </button>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                                      )}
+
+                                      <button
+                                        type="button"
+                                        onClick={() => setDeletingDuplicateCase(c)}
+                                        className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 text-[11px] font-bold border border-rose-300 inline-flex items-center gap-1 transition-colors"
+                                        title="حذف هذا القيد المكرر نهائياً بعد التحقق"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                                        <span>حذف القيد</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         ))}
@@ -3130,6 +3288,110 @@ export default function RegistrationReportsPage() {
               >
                 إغلاق النافذة
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── نافذة تأكيد حذف السجل المكرر (خاص بالمدير Admin) ─── */}
+      {isAdmin && deletingDuplicateCase && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs print:hidden animate-in fade-in-50">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-rose-200 overflow-hidden font-body animate-in zoom-in-95">
+            <div className="p-4 bg-gradient-to-r from-rose-900 to-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-400/30 flex items-center justify-center text-rose-300">
+                  <Trash2 className="w-5 h-5 text-rose-300" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">تأكيد حذف القيد المكرر نهائياً</h3>
+                  <p className="text-[11px] text-rose-200">إلغاء وحذف السجل المكرر بالكامل من قاعدة البيانات والتقارير</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeletingDuplicateCase(null)}
+                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-1.5 text-rose-950">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span className="font-bold text-xs">تنبيه رقابي هام:</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  سيتم حذف هذا السجل بشكل نهائي ولن يظهر في أي إحصائيات أو كشوفات قادمة. سيتم توثيق اسمك وسند الحذف في سجل التدقيق الأمني للرقابة.
+                </p>
+              </div>
+
+              {/* بطاقة السجل المراد حذفه */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1 text-slate-800">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 text-[11px]">رقم وسنة السجل:</span>
+                  <strong className="font-mono text-slate-900">وارد #{deletingDuplicateCase.caseNumber} لسنة {deletingDuplicateCase.caseYear}</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 text-[11px]">رقم القضية / المحضر:</span>
+                  <strong className="font-mono text-teal-800">{deletingDuplicateCase.prosecutionCaseNumber} لسنة {deletingDuplicateCase.caseYear}</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 text-[11px]">الشاكي:</span>
+                  <strong>{deletingDuplicateCase.complainantName}</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 text-[11px]">المنشأة الطبية:</span>
+                  <strong>{deletingDuplicateCase.hospitalName}</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 text-[11px]">موظف القيد الأصلي:</span>
+                  <strong className="text-purple-900">{deletingDuplicateCase.registeredBy}</strong>
+                </div>
+              </div>
+
+              {/* سبب الحذف */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-800 block text-xs">
+                  سبب وسند الحذف <span className="text-rose-600 font-bold">*</span> (إلزامي للرقابة)
+                </label>
+                <input
+                  type="text"
+                  value={deleteDuplicateReason}
+                  onChange={(e) => setDeleteDuplicateReason(e.target.value)}
+                  placeholder="مثال: قيد مكرر بالخطأ للقضية ذاتها من موظف آخر..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeletingDuplicateCase(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingDuplicate}
+                  onClick={handleDeleteDuplicateCase}
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-xs transition-colors"
+                >
+                  {isDeletingDuplicate ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>جاري الحذف والتوثيق...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>تأكيد الحذف النهائي للسجل</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

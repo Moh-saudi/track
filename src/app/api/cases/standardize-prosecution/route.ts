@@ -54,9 +54,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 1. جلب كافة القضايا التي تحوي نيابة لفحص التكرارات والمسميات المتعددة
+    // 1. جلب كافة القضايا لفحص التكرارات والمسميات المتعددة
     const allCases = await prisma.case.findMany({
-      where: { prosecution: { not: null } },
       select: {
         id: true,
         caseNumber: true,
@@ -67,8 +66,21 @@ export async function GET(req: NextRequest) {
         prosecutionCaseNumber: true,
         governorate: true,
         complainantName: true,
+        complainantPhone: true,
+        respondentName: true,
+        respondentPhone: true,
         hospitalName: true,
+        entityName: true,
+        incomingDate: true,
         createdAt: true,
+        status: true,
+        createdBy: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -196,20 +208,43 @@ export async function GET(req: NextRequest) {
     const duplicateCases = Array.from(caseMap.entries())
       .filter(([_, list]) => list.length > 1)
       .map(([_, list]) => {
+        const creators = Array.from(
+          new Set(list.map((c) => c.createdBy?.fullName || c.createdBy?.email || "غير محدد"))
+        );
+        const differentCreators = creators.length > 1;
+        const partials = Array.from(new Set(list.map((c) => c.partialProsecution).filter(Boolean)));
+        const hospitals = Array.from(new Set(list.map((c) => c.hospitalName || c.entityName).filter(Boolean)));
+
         const mappedCases = list.map((c) => ({
           id: c.id,
           caseNumber: c.caseNumber,
           caseYear: c.caseYear,
           registrationType: c.registrationType,
+          prosecutionCaseNumber: c.prosecutionCaseNumber,
+          prosecution: c.prosecution,
+          partialProsecution: c.partialProsecution || "—",
+          governorate: c.governorate || "غير محدد",
           complainantName: c.complainantName || "—",
-          hospitalName: c.hospitalName || "—",
+          complainantPhone: c.complainantPhone || null,
+          respondentName: c.respondentName || "—",
+          respondentPhone: c.respondentPhone || null,
+          hospitalName: c.hospitalName || c.entityName || "—",
+          incomingDate: c.incomingDate,
           createdAt: c.createdAt,
+          status: c.status,
+          registeredBy: c.createdBy?.fullName || c.createdBy?.email || "غير محدد",
+          registeredById: c.createdBy?.id,
         }));
+
         return {
           prosecutionCaseNumber: list[0].prosecutionCaseNumber,
           caseYear: list[0].caseYear,
           prosecution: list[0].prosecution,
           count: list.length,
+          differentCreators,
+          creators,
+          hasDifferentPartials: partials.length > 1,
+          hasDifferentHospitals: hospitals.length > 1,
           cases: mappedCases,
           records: mappedCases,
         };

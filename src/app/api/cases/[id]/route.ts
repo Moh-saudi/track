@@ -33,6 +33,7 @@ const patchCaseSchema = z.object({
 
   // Case registration updates
   registrationType: z.enum(["COMPLAINT", "CASE", "REPORT"]).optional(),
+  status: z.enum(["REGISTERED", "UNDER_SUBCOMMITTEE_REVIEW", "PENDING_SUPREME_REVIEW", "REFERRED_FOR_REVIEW", "APPROVED", "CLOSED"]).optional(),
   caseNumber: z.string().min(1, "رقم السجل مطلوب").optional(),
   caseYear: z.number().int().gte(1990).lte(2100, "سنة السجل غير صالحة").optional(),
   prosecutionCaseNumber: z.string().optional().nullable(),
@@ -228,6 +229,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const updateData: any = {};
 
   if (data.registrationType) updateData.registrationType = data.registrationType;
+  if (data.status) updateData.status = data.status;
   if (data.caseNumber) updateData.caseNumber = data.caseNumber.trim();
   if (data.caseYear) updateData.caseYear = data.caseYear;
   if (data.prosecutionCaseNumber !== undefined) updateData.prosecutionCaseNumber = data.prosecutionCaseNumber?.trim() || null;
@@ -307,4 +309,91 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   });
 
   return NextResponse.json(updatedCase);
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
+
+  const role = (session.user as any).role;
+  const userId = (session.user as any).id;
+
+  // حذف السجلات محصور حصرياً بمدير النظام (Admin)
+  if (role !== "ADMIN") {
+    return NextResponse.json(
+      { error: "حذف السجلات مقتصر حصرياً على مدير النظام (Admin) لدواعي الحوكمة والأمان" },
+      { status: 403 }
+    );
+  }
+
+  const caseRecord = await prisma.case.findUnique({
+    where: { id },
+    include: {
+      subCommittee: true,
+      prosecutionRel: true,
+      createdBy: {
+        select: { fullName: true, email: true },
+      },
+    },
+  });
+
+  if (!caseRecord) {
+    return NextResponse.json({ error: "السجل غير موجود أو تم حذفه مسبقاً" }, { status: 404 });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const reason = (body?.reason || "").trim() || "حذف سجل مكرر من شاشة معالجة الازدواج والتكرارات";
+
+  try {
+    // حذف العلاقات المرتبطة في معاملة واحدة آمنة
+    await prisma.$transaction(async (tx) => {
+      await tx.caseSpecialty.deleteMany({ where: { caseId: id } });
+      await tx.caseReviewer.deleteMany({ where: { caseId: id } });
+      await tx.meetingReschedule.deleteMany({ where: { caseId: id } });
+      await tx.caseAction.deleteMany({ where: { caseId: id } });
+      await tx.attachment.deleteMany({ where: { caseId: id } });
+      await tx.supremeDecision.deleteMany({ where: { caseId: id } });
+      await tx.case.delete({ where: { id } });
+    });
+
+    // تسجيل حركة تدقيق رقابية إلزامية
+    await writeAuditLog({
+      entityType: "Case",
+      entityId: id,
+      action: "DELETE",
+      userId,
+      beforeData: {
+        caseNumber: caseRecord.caseNumber,
+        caseYear: caseRecord.caseYear,
+        prosecutionCaseNumber: caseRecord.prosecutionCaseNumber,
+        prosecution: caseRecord.prosecution,
+        complainantName: caseRecord.complainantName,
+        hospitalName: caseRecord.hospitalName,
+        registeredBy: caseRecord.createdBy?.fullName || caseRecord.createdBy?.email,
+        createdAt: caseRecord.createdAt,
+      },
+      afterData: {
+        reason,
+        deletedBy: (session.user as any).fullName || (session.user as any).email,
+        deletedAt: new Date().toISOString(),
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `تم حذف السجل رقم (${caseRecord.caseNumber}/${caseRecord.caseYear}) بنجاح وتوثيق ذلك في سجل الرقابة الأمني.`,
+    });
+  } catch (err: any) {
+    console.error("Error deleting case:", err);
+    return NextResponse.json(
+      { error: err.message || "تعذر حذف السجل لوجود ارتباطات بنظام اللجان" },
+      { status: 500 }
+    );
+  }
 }
