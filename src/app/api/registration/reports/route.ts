@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
     const entityType = searchParams.get("entityType");
     const branchOrHospital = searchParams.get("branchOrHospital");
     const caseYearStr = searchParams.get("caseYear");
+    const reportYearStr = searchParams.get("reportYear");
+    const reportMonthStr = searchParams.get("reportMonth");
 
     const where: any = {};
 
@@ -209,8 +211,40 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // فلترة التاريخ والفترة الزمنية بناءً على أساس التاريخ المختار (تاريخ الوارد أو تاريخ التسجيل الإلكتروني)
-    if (startDateStr || endDateStr) {
+    // فلترة التاريخ والفترة الزمنية بناءً على أساس التاريخ المختار (عام قيد القضية أو تاريخ الوارد أو تاريخ التسجيل الإلكتروني)
+    if (reportYearStr && reportYearStr !== "ALL") {
+      const yr = Number(reportYearStr);
+      if (!isNaN(yr)) {
+        if (dateBasis === "caseYear") {
+          where.caseYear = yr;
+        } else {
+          let startD: Date;
+          let endD: Date;
+          if (reportMonthStr && reportMonthStr !== "ALL") {
+            const m = Number(reportMonthStr) - 1;
+            startD = new Date(yr, m, 1, 0, 0, 0, 0);
+            endD = new Date(yr, m + 1, 0, 23, 59, 59, 999);
+          } else {
+            startD = new Date(yr, 0, 1, 0, 0, 0, 0);
+            endD = new Date(yr, 11, 31, 23, 59, 59, 999);
+          }
+
+          if (dateBasis === "incomingDate") {
+            where.AND = [
+              ...(where.AND || []),
+              {
+                OR: [
+                  { incomingDate: { gte: startD, lte: endD } },
+                  { AND: [{ incomingDate: null }, { createdAt: { gte: startD, lte: endD } }] },
+                ],
+              },
+            ];
+          } else {
+            where.createdAt = { gte: startD, lte: endD };
+          }
+        }
+      }
+    } else if (startDateStr || endDateStr) {
       const dateCond: any = {};
       if (startDateStr) {
         const start = new Date(startDateStr);
@@ -248,7 +282,7 @@ export async function GET(req: NextRequest) {
     todayEnd.setHours(23, 59, 59, 999);
 
     // ─── استعلام شامل لكافة السجلات بدون تقييد Cloudflare السابق ───
-    const [filteredCases, globalTotalCasesCount, globalTodayCasesCount, usersList, subCommitteesList] = await Promise.all([
+    const [filteredCases, globalTotalCasesCount, globalTodayCasesCount, usersList, subCommitteesList, allDbCasesForMetadata] = await Promise.all([
       prisma.case.findMany({
         where,
         orderBy: { createdAt: "desc" },
@@ -303,7 +337,61 @@ export async function GET(req: NextRequest) {
         select: { id: true, name: true },
         take: 200,
       }).catch(() => []),
+      prisma.case.findMany({
+        select: {
+          caseYear: true,
+          incomingDate: true,
+          createdAt: true,
+        },
+      }).catch(() => []),
     ]);
+
+    // استخراج السنوات والشهور الفعلية المسجلة بالكامل في قاعدة البيانات
+    const caseYearsMap = new Map<number, number>();
+    const incomingYearsMap = new Map<number, number>();
+    const incomingMonthsMap: Record<string, number> = {};
+    const createdYearsMap = new Map<number, number>();
+    const createdMonthsMap: Record<string, number> = {};
+
+    (allDbCasesForMetadata || []).forEach((c: any) => {
+      if (c.caseYear && !isNaN(c.caseYear)) {
+        caseYearsMap.set(c.caseYear, (caseYearsMap.get(c.caseYear) || 0) + 1);
+      }
+      if (c.incomingDate) {
+        const d = new Date(c.incomingDate);
+        if (!isNaN(d.getTime())) {
+          const y = d.getFullYear();
+          const m = d.getMonth() + 1;
+          incomingYearsMap.set(y, (incomingYearsMap.get(y) || 0) + 1);
+          const key = `${y}-${m}`;
+          incomingMonthsMap[key] = (incomingMonthsMap[key] || 0) + 1;
+        }
+      }
+      if (c.createdAt) {
+        const d = new Date(c.createdAt);
+        if (!isNaN(d.getTime())) {
+          const y = d.getFullYear();
+          const m = d.getMonth() + 1;
+          createdYearsMap.set(y, (createdYearsMap.get(y) || 0) + 1);
+          const key = `${y}-${m}`;
+          createdMonthsMap[key] = (createdMonthsMap[key] || 0) + 1;
+        }
+      }
+    });
+
+    const realYearsMetadata = {
+      caseYears: Array.from(caseYearsMap.entries())
+        .map(([year, count]) => ({ year, count }))
+        .sort((a, b) => b.year - a.year),
+      incomingYears: Array.from(incomingYearsMap.entries())
+        .map(([year, count]) => ({ year, count }))
+        .sort((a, b) => b.year - a.year),
+      incomingMonths: incomingMonthsMap,
+      createdYears: Array.from(createdYearsMap.entries())
+        .map(([year, count]) => ({ year, count }))
+        .sort((a, b) => b.year - a.year),
+      createdMonths: createdMonthsMap,
+    };
 
     // ─── حساب الإحصائيات الشاملة ───
     const totalFiltered = filteredCases.length;
@@ -447,6 +535,7 @@ export async function GET(req: NextRequest) {
       prosecutions,
       subCommitteesList,
       governoratesList: EGYPT_GOVERNORATES,
+      realYearsMetadata,
       cases: filteredCases,
       currentUser: {
         id: currentUserId,

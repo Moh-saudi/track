@@ -135,6 +135,13 @@ interface ReportData {
   }[];
   subCommitteesList: { id: string; name: string }[];
   governoratesList: string[];
+  realYearsMetadata?: {
+    caseYears: { year: number; count: number }[];
+    incomingYears: { year: number; count: number }[];
+    incomingMonths: Record<string, number>;
+    createdYears: { year: number; count: number }[];
+    createdMonths: Record<string, number>;
+  };
   cases: CaseItem[];
   currentUser: {
     id: string;
@@ -207,7 +214,10 @@ export default function RegistrationReportsPage() {
   const [respondentName, setRespondentName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [dateBasis, setDateBasis] = useState<"incomingDate" | "createdAt" | "caseYear">("incomingDate");
+  const [dateBasis, setDateBasis] = useState<"caseYear" | "incomingDate" | "createdAt">("caseYear");
+  const [reportYear, setReportYear] = useState("ALL");
+  const [reportMonth, setReportMonth] = useState("ALL");
+  const [showCustomDateRange, setShowCustomDateRange] = useState(false);
   const [dateShortcut, setDateShortcut] = useState<
     "ALL" | "TODAY" | "YESTERDAY" | "THIS_MONTH" | "LAST_MONTH" | "THIS_YEAR" | "LAST_YEAR" | "CUSTOM_MONTH" | "CUSTOM"
   >("ALL");
@@ -378,18 +388,51 @@ export default function RegistrationReportsPage() {
     return list;
   }, [data?.prosecutions, prosecutionId, governorate]);
 
-  // استخراج قائمة أعوام القيد المتاحة
-  const availableCaseYears = useMemo(() => {
-    const currentYr = new Date().getFullYear();
-    const defaults = [currentYr, currentYr - 1, currentYr - 2, currentYr - 3, currentYr - 4];
-    const set = new Set<number>(defaults);
-    if (data?.cases) {
-      data.cases.forEach((c) => {
-        if (c.caseYear && !isNaN(c.caseYear)) set.add(c.caseYear);
-      });
+  // قائمة السنوات الفعلية المتاحة المستخرجة حصراً من قاعدة البيانات (بدون افتراضات)
+  const activeYearsList = useMemo(() => {
+    if (data?.realYearsMetadata) {
+      if (dateBasis === "caseYear") return data.realYearsMetadata.caseYears;
+      if (dateBasis === "incomingDate") return data.realYearsMetadata.incomingYears;
+      return data.realYearsMetadata.createdYears;
     }
-    return Array.from(set).sort((a, b) => b - a);
-  }, [data?.cases]);
+    if (data?.cases) {
+      const map = new Map<number, number>();
+      data.cases.forEach((c) => {
+        const yr =
+          dateBasis === "caseYear"
+            ? c.caseYear
+            : dateBasis === "incomingDate"
+            ? (c.incomingDate ? new Date(c.incomingDate).getFullYear() : null)
+            : (c.createdAt ? new Date(c.createdAt).getFullYear() : null);
+        if (yr && !isNaN(yr)) map.set(yr, (map.get(yr) || 0) + 1);
+      });
+      return Array.from(map.entries())
+        .map(([year, count]) => ({ year, count }))
+        .sort((a, b) => b.year - a.year);
+    }
+    return [];
+  }, [data, dateBasis]);
+
+  // قائمة الشهور المرتبطة بالسنة المختارة الفعلية
+  const activeMonthsList = useMemo(() => {
+    if (reportYear === "ALL") return [];
+    const monthsMap =
+      dateBasis === "incomingDate"
+        ? data?.realYearsMetadata?.incomingMonths
+        : data?.realYearsMetadata?.createdMonths;
+
+    return ARABIC_MONTHS.map((m) => {
+      const monthNum = m.index + 1;
+      const key = `${reportYear}-${monthNum}`;
+      const count = monthsMap ? monthsMap[key] || 0 : 0;
+      return {
+        index: m.index,
+        monthNum,
+        name: m.name,
+        count,
+      };
+    });
+  }, [data, dateBasis, reportYear]);
 
   // السجلات المفلترة تفصيلياً داخل تبويب جدول السجلات التفصيلي
   const displayedCases = useMemo(() => {
@@ -413,11 +456,30 @@ export default function RegistrationReportsPage() {
   // بناء نص ملخص الفلاتر المطبقة للترويسة والطباعة
   function getFilterSummaryText(): string {
     const parts: string[] = [];
-    if (governorate !== "ALL") {
-      parts.push(governorate === "UNSPECIFIED" ? "المحافظة: غير محددة (شكاوى بدون نيابة)" : `المحافظة: ${governorate}`);
+    const basisLabel =
+      dateBasis === "caseYear"
+        ? "سنة قيد القضية"
+        : dateBasis === "incomingDate"
+        ? "تاريخ الوارد"
+        : "تاريخ التسجيل بالمنظومة";
+    parts.push(`الأساس: ${basisLabel}`);
+
+    if (reportYear !== "ALL") {
+      parts.push(`السنة: ${reportYear}`);
+      if (reportMonth !== "ALL") {
+        const mObj = ARABIC_MONTHS.find((m) => m.index + 1 === Number(reportMonth));
+        parts.push(`الشهر: ${mObj?.name || `شهر ${reportMonth}`}`);
+      } else {
+        parts.push("الشهر: كامل السنة");
+      }
+    } else if (caseYear !== "ALL") {
+      parts.push(`سنة القضية: ${caseYear}`);
+    } else {
+      parts.push("السنة: كافة السنوات والملفات");
     }
-    if (caseYear !== "ALL") {
-      parts.push(`عام قيد القضية: لسنة ${caseYear}`);
+
+    if (governorate !== "ALL") {
+      parts.push(governorate === "UNSPECIFIED" ? "المحافظة: غير محددة" : `المحافظة: ${governorate}`);
     }
     if (prosecutionId !== "ALL") {
       const p = data?.prosecutions.find((x) => x.id === prosecutionId);
@@ -427,25 +489,20 @@ export default function RegistrationReportsPage() {
       const p = data?.prosecutions.find((x) => x.id === partialProsecutionId);
       parts.push(`النيابة الجزئية: ${p?.name || partialProsecutionId}`);
     }
+    if (registrationType !== "ALL") {
+      parts.push(`النوع: ${TYPE_CONFIG[registrationType]?.label || registrationType}`);
+    }
+    if (status !== "ALL") {
+      parts.push(`المرحلة: ${STATUS_LABELS[status]?.label || status}`);
+    }
     if (entityType !== "ALL") parts.push(`فئة الجهة: ${entityType}`);
     if (branchOrHospital.trim()) parts.push(`الفرع/المنشأة: ${branchOrHospital.trim()}`);
     if (subCommitteeId !== "ALL") {
       const s = data?.subCommitteesList.find((x) => x.id === subCommitteeId);
       parts.push(`اللجنة: ${s?.name || subCommitteeId}`);
     }
-    if (status !== "ALL") {
-      parts.push(`المرحلة: ${STATUS_LABELS[status]?.label || status}`);
-    }
-    if (registrationType !== "ALL") {
-      parts.push(`النوع: ${TYPE_CONFIG[registrationType]?.label || registrationType}`);
-    }
-    if (createdById !== "ALL") {
-      const u = data?.usersWorkload.find((x) => x.id === createdById);
-      parts.push(`الموظف: ${u?.fullName || createdById}`);
-    }
     if (startDate || endDate) {
-      const basisLabel = dateBasis === "incomingDate" ? "تاريخ الوارد" : "تاريخ التسجيل بالمنظومة";
-      parts.push(`الفترة (${basisLabel}): ${startDate || "البداية"} إلى ${endDate || "الآن"}`);
+      parts.push(`فترة مخصصة: ${startDate || "البداية"} إلى ${endDate || "الآن"}`);
     }
     return parts.length > 0 ? parts.join(" | ") : "جميع السجلات (إجمالي عام بدون فلترة وبدون مراحل)";
   }
@@ -453,6 +510,8 @@ export default function RegistrationReportsPage() {
   interface FilterOverrides {
     governorate?: string;
     caseYear?: string;
+    reportYear?: string;
+    reportMonth?: string;
     prosecutionId?: string;
     partialProsecutionId?: string;
     entityType?: string;
@@ -479,6 +538,8 @@ export default function RegistrationReportsPage() {
     const activeGov = overridesObj.governorate !== undefined ? overridesObj.governorate : governorate;
     const activeYear = overridesObj.caseYear !== undefined ? overridesObj.caseYear : caseYear;
     const activeDateBasis = overridesObj.dateBasis !== undefined ? overridesObj.dateBasis : dateBasis;
+    const activeReportYear = overridesObj.reportYear !== undefined ? overridesObj.reportYear : reportYear;
+    const activeReportMonth = overridesObj.reportMonth !== undefined ? overridesObj.reportMonth : reportMonth;
     const activePros = overridesObj.prosecutionId !== undefined ? overridesObj.prosecutionId : prosecutionId;
     const activePartPros = overridesObj.partialProsecutionId !== undefined ? overridesObj.partialProsecutionId : partialProsecutionId;
     const activeEntityType = overridesObj.entityType !== undefined ? overridesObj.entityType : entityType;
@@ -494,8 +555,20 @@ export default function RegistrationReportsPage() {
 
     const params = new URLSearchParams();
     if (activeGov !== "ALL") params.set("governorate", activeGov);
-    if (activeYear !== "ALL") params.set("caseYear", activeYear);
     if (activeDateBasis) params.set("dateBasis", activeDateBasis);
+
+    if (activeReportYear && activeReportYear !== "ALL") {
+      params.set("reportYear", activeReportYear);
+      if (activeReportMonth && activeReportMonth !== "ALL") {
+        params.set("reportMonth", activeReportMonth);
+      }
+    } else if (activeYear !== "ALL") {
+      params.set("caseYear", activeYear);
+    } else if (activeStart || activeEnd) {
+      if (activeStart) params.set("startDate", activeStart);
+      if (activeEnd) params.set("endDate", activeEnd);
+    }
+
     if (activePros !== "ALL") params.set("prosecutionId", activePros);
     if (activePartPros !== "ALL") params.set("partialProsecutionId", activePartPros);
     if (activeEntityType !== "ALL") params.set("entityType", activeEntityType);
@@ -505,8 +578,6 @@ export default function RegistrationReportsPage() {
     if (activeType !== "ALL") params.set("registrationType", activeType);
     if (activeComp.trim()) params.set("complainantName", activeComp.trim());
     if (activeResp.trim()) params.set("respondentName", activeResp.trim());
-    if (activeStart) params.set("startDate", activeStart);
-    if (activeEnd) params.set("endDate", activeEnd);
     if (activeUser !== "ALL") params.set("createdById", activeUser);
 
     fetch(`/api/registration/reports?${params.toString()}`)
@@ -1146,214 +1217,175 @@ export default function RegistrationReportsPage() {
           </div>
         </div>
 
-        {/* ─── 1. شريط اختيار أساس البحث والتصفية الزمنية (تاريخ الوارد vs تاريخ التسجيل vs عام القيد) ─── */}
-        <div className="bg-gradient-to-r from-teal-900 to-slate-900 text-white p-3 rounded-xl mb-3 flex flex-wrap items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-amber-300" />
-            <span className="text-xs font-black">أساس ونوع التصفية الزمنية للتقرير:</span>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => changeDateBasis("incomingDate")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                dateBasis === "incomingDate"
-                  ? "bg-amber-400 text-slate-950 font-black shadow-md ring-2 ring-amber-300"
-                  : "bg-white/10 hover:bg-white/20 text-teal-100 border border-teal-500/30"
-              }`}
-              title="تصفية التقرير وفق تاريخ ورود السجل أو كتاب النيابة الرسمي"
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>تاريخ قيد الوارد (تاريخ استلام الشكوى / ورود كتاب النيابة)</span>
-              {dateBasis === "incomingDate" && <Check className="w-3.5 h-3.5" />}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => changeDateBasis("createdAt")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                dateBasis === "createdAt"
-                  ? "bg-amber-400 text-slate-950 font-black shadow-md ring-2 ring-amber-300"
-                  : "bg-white/10 hover:bg-white/20 text-teal-100 border border-teal-500/30"
-              }`}
-              title="تصفية التقرير وفق تاريخ إدخال وتسجيل السجل على المنظومة الإلكترونية"
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>تاريخ القيد والتسجيل الفعلي بالمنظومة</span>
-              {dateBasis === "createdAt" && <Check className="w-3.5 h-3.5" />}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => changeDateBasis("caseYear")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                dateBasis === "caseYear"
-                  ? "bg-amber-400 text-slate-950 font-black shadow-md ring-2 ring-amber-300"
-                  : "bg-white/10 hover:bg-white/20 text-teal-100 border border-teal-500/30"
-              }`}
-              title="تصفية التقرير وفق عام قيد القضية أو المحضر أو الشكوى"
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>عام قيد القضية / المحضر / الشكوى (السنة)</span>
-              {dateBasis === "caseYear" && <Check className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-        </div>
-
-        {/* ─── 2. أزرار سريعة للتقارير الدورية (يوم / شهر / عام) ومحدد الشهر المخصص ─── */}
-        <div className="mb-3 pb-3 border-b border-dashed border-slate-200 space-y-2.5">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-bold text-slate-700 ml-1">التقارير الدورية السريعة:</span>
-            {(
-              [
-                { id: "ALL", label: "كامل المدة (كافة السجلات)" },
-                { id: "TODAY", label: "تقرير اليوم" },
-                { id: "YESTERDAY", label: "تقرير أمس" },
-                { id: "THIS_MONTH", label: "تقرير هذا الشهر" },
-                { id: "LAST_MONTH", label: "تقرير الشهر السابق" },
-                { id: "THIS_YEAR", label: "تقرير هذا العام" },
-                { id: "LAST_YEAR", label: "تقرير العام السابق" },
-              ] as const
-            ).map((btn) => (
-              <button
-                key={btn.id}
-                type="button"
-                onClick={() => applyDateShortcut(btn.id)}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${
-                  dateShortcut === btn.id
-                    ? "bg-teal-700 text-white shadow-xs ring-2 ring-teal-400"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
-                }`}
-              >
-                {btn.label}
-              </button>
-            ))}
-          </div>
-
-          {/* محدد الشهر المخصص بالاسم والسنة (استخراج تقرير تفصيلي عن شهر محدد) */}
-          <div className="flex flex-wrap items-center gap-2 pt-1 bg-teal-50/50 p-2 rounded-xl border border-teal-200/60">
-            <span className="text-[11px] font-bold text-teal-950 flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-teal-700" />
-              <span>استخراج تقرير تفصيلي لشهر محدد:</span>
-            </span>
-            <select
-              value={selectedMonth}
-              onChange={(e) => {
-                const m = Number(e.target.value);
-                setSelectedMonth(m);
-                selectCustomMonth(m, selectedYear);
-              }}
-              className="text-xs py-1 px-2.5 rounded-lg border border-teal-300 bg-white font-bold text-teal-950 focus:ring-2 focus:ring-teal-500 cursor-pointer"
-            >
-              {ARABIC_MONTHS.map((m) => (
-                <option key={m.index} value={m.index}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={selectedYear}
-              onChange={(e) => {
-                const y = Number(e.target.value);
-                setSelectedYear(y);
-                selectCustomMonth(selectedMonth, y);
-              }}
-              className="text-xs py-1 px-2.5 rounded-lg border border-teal-300 bg-white font-bold text-teal-950 focus:ring-2 focus:ring-teal-500 font-mono cursor-pointer"
-            >
-              {availableCaseYears.map((yr) => (
-                <option key={yr} value={yr}>
-                  لسنة {yr}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => selectCustomMonth(selectedMonth, selectedYear)}
-              className="px-3 py-1 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-bold transition-colors shadow-xs flex items-center gap-1"
-            >
-              <span>تطبيق تقرير الشهر</span>
-            </button>
-            {startDate && endDate && dateShortcut === "CUSTOM_MONTH" && (
-              <span className="text-[11px] font-mono text-teal-800 bg-white px-2 py-0.5 rounded border border-teal-300">
-                من {startDate} إلى {endDate}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* ─── 3. أزرار سريعة ومباشرة لاختيار عام قيد القضية / السجل ─── */}
-        <div className="mb-4 pb-3 border-b border-dashed border-slate-200 flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] font-bold text-teal-900 flex items-center gap-1 ml-1">
-            <Calendar className="w-3.5 h-3.5 text-teal-600" />
-            <span>عام قيد القضية (السنة):</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => selectCaseYear("ALL")}
-            className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${
-              caseYear === "ALL"
-                ? "bg-teal-800 text-white shadow-xs ring-2 ring-teal-400"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
-            }`}
-          >
-            كافة الأعوام
-          </button>
-          {availableCaseYears.map((yr) => (
-            <button
-              key={yr}
-              type="button"
-              onClick={() => selectCaseYear(String(yr))}
-              className={`px-3 py-1 rounded-md text-xs font-mono font-bold transition-colors ${
-                caseYear === String(yr)
-                  ? "bg-teal-700 text-white shadow-xs ring-2 ring-teal-400"
-                  : "bg-teal-50 text-teal-900 hover:bg-teal-100 border border-teal-200"
-              }`}
-            >
-              سنة {yr}
-            </button>
-          ))}
-        </div>
-
+        {/* ─── محرك استخراج التقارير بالقوائم المنسدلة المرتبطة ─── */}
         <form onSubmit={handleFilterSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-            {/* 1. فلتر عام القيد (سنة قيد القضية / السجل) */}
-            <div>
-              <label className="label flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-teal-600" />
-                <span className="font-bold text-teal-950">عام القيد (سنة قيد القضية)</span>
-              </label>
-              <select
-                value={caseYear}
-                onChange={(e) => setCaseYear(e.target.value)}
-                className="input font-mono font-bold text-teal-900 border-teal-300 bg-teal-50/40 focus:border-teal-600"
-              >
-                <option value="ALL">جميع أعوام القيد</option>
-                {availableCaseYears.map((yr) => (
-                  <option key={yr} value={String(yr)}>
-                    سنة {yr}
-                  </option>
-                ))}
-              </select>
+          {/* 1. المجموعة الزمنية المرتبطة: أساس التقرير + السنة الفعلية بقاعدة البيانات + الشهر المرتبط */}
+          <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-teal-900 text-white p-4 rounded-2xl shadow-sm border border-teal-800/40 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-800/40 pb-2">
+              <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-amber-400" />
+                <span>المحددات الزمنية المرتبطة (من واقع السجلات الفعلية المسجلة فقط)</span>
+              </span>
+              <span className="text-[11px] text-teal-200">
+                {activeYearsList.length > 0
+                  ? `متاح (${activeYearsList.length}) سنوات فعلية بقاعدة البيانات`
+                  : "جاري حصر السنوات الفعلية..."}
+              </span>
             </div>
 
-            {/* 2. فلتر المحافظة */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
+              {/* قائمة 1: أساس ومعيار التقرير */}
+              <div>
+                <label className="block text-[11px] font-bold text-teal-100 mb-1 flex items-center gap-1">
+                  <span>1. معيار وتصنيف التقرير</span>
+                </label>
+                <select
+                  value={dateBasis}
+                  onChange={(e) => {
+                    const newBasis = e.target.value as "caseYear" | "incomingDate" | "createdAt";
+                    setDateBasis(newBasis);
+                    fetchReport({ dateBasis: newBasis, reportYear: reportYear !== "ALL" ? reportYear : undefined });
+                  }}
+                  className="w-full text-xs font-bold py-2 px-2.5 rounded-xl bg-slate-900/90 text-amber-300 border border-teal-500/50 focus:ring-2 focus:ring-teal-400 focus:outline-none cursor-pointer"
+                >
+                  <option value="caseYear">📅 عام قيد القضية / المحضر / الشكوى (سنة القضية)</option>
+                  <option value="incomingDate">📥 تاريخ استلام وقيد سجل الوارد (تاريخ الوارد)</option>
+                  <option value="createdAt">💻 تاريخ ووقت القيد الإلكتروني بالمنظومة</option>
+                </select>
+                <span className="text-[10px] text-teal-300/80 mt-1 block">
+                  {dateBasis === "caseYear"
+                    ? "يبحث وفق سنة قيد القضية المسجلة بالسجل"
+                    : dateBasis === "incomingDate"
+                    ? "يبحث وفق تاريخ استلام الشكوى / كتاب النيابة"
+                    : "يبحث وفق تاريخ حفظ السجل على السيستم"}
+                </span>
+              </div>
+
+              {/* قائمة 2: السنة الفعلية (مرتبطة ومستخرجة من قاعدة البيانات فقط) */}
+              <div>
+                <label className="block text-[11px] font-bold text-teal-100 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-amber-300" />
+                    <span>2. السنة (الأعوام المسجلة فعلياً)</span>
+                  </span>
+                  {reportYear !== "ALL" && (
+                    <span className="text-[10px] bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded font-black font-mono">
+                      سنة {reportYear}
+                    </span>
+                  )}
+                </label>
+                <select
+                  value={reportYear}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setReportYear(val);
+                    setReportMonth("ALL");
+                    setStartDate("");
+                    setEndDate("");
+                    setDateShortcut("ALL");
+                    fetchReport({
+                      reportYear: val,
+                      reportMonth: "ALL",
+                      startDate: "",
+                      endDate: "",
+                    });
+                  }}
+                  className="w-full text-xs font-mono font-bold py-2 px-2.5 rounded-xl bg-slate-900/90 text-white border border-teal-500/50 focus:ring-2 focus:ring-teal-400 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">جميع السنوات والملفات المسجلة (إجمالي عام)</option>
+                  {activeYearsList.map((item) => (
+                    <option key={item.year} value={String(item.year)}>
+                      سنة {item.year} — ({formatNumber(item.count)} سجل مسجل فعلياً)
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-teal-300/80 mt-1 block">
+                  {reportYear !== "ALL"
+                    ? `محددة سنة ${reportYear} فقط`
+                    : "تظهر فقط الأعوام التي تحوي ملفات مسجلة"}
+                </span>
+              </div>
+
+              {/* قائمة 3: الشهر (مرتبط بالسنة المختارة) */}
+              <div>
+                <label className="block text-[11px] font-bold text-teal-100 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Layers className="w-3.5 h-3.5 text-amber-300" />
+                    <span>3. الشهر (التقرير الشهري)</span>
+                  </span>
+                  {reportMonth !== "ALL" && (
+                    <span className="text-[10px] bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded font-black font-mono">
+                      شهر {reportMonth}
+                    </span>
+                  )}
+                </label>
+                <select
+                  value={reportMonth}
+                  disabled={reportYear === "ALL"}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setReportMonth(val);
+                    setStartDate("");
+                    setEndDate("");
+                    fetchReport({
+                      reportYear: reportYear,
+                      reportMonth: val,
+                      startDate: "",
+                      endDate: "",
+                    });
+                  }}
+                  className={`w-full text-xs font-bold py-2 px-2.5 rounded-xl bg-slate-900/90 border border-teal-500/50 focus:ring-2 focus:ring-teal-400 focus:outline-none cursor-pointer ${
+                    reportYear === "ALL"
+                      ? "opacity-50 text-slate-400 cursor-not-allowed"
+                      : "text-white"
+                  }`}
+                >
+                  <option value="ALL">
+                    {reportYear === "ALL"
+                      ? "اختر سنة أولاً لتفعيل اختيار الشهر (أو كامل المدة)"
+                      : `كامل سنة ${reportYear} (إجمالي العام بالكامل)`}
+                  </option>
+                  {activeMonthsList.map((m) => (
+                    <option key={m.monthNum} value={String(m.monthNum)}>
+                      {m.name} {m.count > 0 ? `— (${formatNumber(m.count)} سجل)` : "— (0 سجل)"}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-teal-300/80 mt-1 block">
+                  {reportYear === "ALL"
+                    ? "حدد السنة لتفعيل قائمة شهورها"
+                    : `يعرض إحصائية شهور سنة ${reportYear}`}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. المجموعة الجغرافية والقضائية والإجرائية المرتبطة */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 pt-1">
+            {/* المحافظة */}
             <div>
-              <label className="label flex items-center gap-1">
+              <label className="label flex items-center gap-1 font-bold text-slate-800">
                 <MapPin className="w-3 h-3 text-rose-600" />
-                <span>المحافظة</span>
+                <span>4. المحافظة</span>
               </label>
               <select
                 value={governorate}
                 onChange={(e) => {
-                  setGovernorate(e.target.value);
+                  const val = e.target.value;
+                  setGovernorate(val);
                   setProsecutionId("ALL");
                   setPartialProsecutionId("ALL");
+                  fetchReport({
+                    governorate: val,
+                    prosecutionId: "ALL",
+                    partialProsecutionId: "ALL",
+                  });
                 }}
-                className="input"
+                className="input font-semibold text-xs"
               >
                 <option value="ALL">جميع المحافظات (27 محافظة)</option>
                 <option value="UNSPECIFIED" className="font-bold text-amber-800 bg-amber-50">
-                  ⚠️ غير محددة المحافظة (شكاوى مباشرة بدون نيابة / غير مسجلة)
+                  ⚠️ غير محددة المحافظة (شكاوى مباشرة بدون نيابة)
                 </option>
                 {data?.governoratesList.map((gov) => (
                   <option key={gov} value={gov}>
@@ -1363,19 +1395,29 @@ export default function RegistrationReportsPage() {
               </select>
             </div>
 
-            {/* 3. فلتر النيابة الكلية */}
+            {/* النيابة الكلية (مرتبطة بالمحافظة) */}
             <div>
-              <label className="label">النيابة الكلية</label>
+              <label className="label flex items-center gap-1 font-bold text-slate-800">
+                <Scale className="w-3 h-3 text-teal-700" />
+                <span>5. النيابة الكلية</span>
+              </label>
               <select
                 value={prosecutionId}
                 onChange={(e) => {
-                  setProsecutionId(e.target.value);
+                  const val = e.target.value;
+                  setProsecutionId(val);
                   setPartialProsecutionId("ALL");
+                  fetchReport({
+                    prosecutionId: val,
+                    partialProsecutionId: "ALL",
+                  });
                 }}
-                className="input"
+                className="input font-semibold text-xs"
               >
                 <option value="ALL">
-                  {governorate === "ALL" ? "جميع النيابات الكلية" : `نيابات ${governorate} الكلية`}
+                  {governorate === "ALL" || governorate === "UNSPECIFIED"
+                    ? "جميع النيابات الكلية"
+                    : `نيابات ${governorate} الكلية`}
                 </option>
                 {plenaryProsecutions.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -1385,15 +1427,26 @@ export default function RegistrationReportsPage() {
               </select>
             </div>
 
-            {/* 4. فلتر النيابة الجزئية */}
+            {/* النيابة الجزئية (مرتبطة بالنيابة الكلية) */}
             <div>
-              <label className="label">النيابة الجزئية (اختياري)</label>
+              <label className="label flex items-center gap-1 font-bold text-slate-800">
+                <Scale className="w-3 h-3 text-slate-400" />
+                <span>6. النيابة الجزئية (اختياري)</span>
+              </label>
               <select
                 value={partialProsecutionId}
-                onChange={(e) => setPartialProsecutionId(e.target.value)}
-                className="input"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPartialProsecutionId(val);
+                  fetchReport({ partialProsecutionId: val });
+                }}
+                className="input text-xs"
               >
-                <option value="ALL">جميع النيابات الجزئية</option>
+                <option value="ALL">
+                  {prosecutionId !== "ALL"
+                    ? "كافة النيابات الجزئية التابعة للكلية"
+                    : "جميع النيابات الجزئية"}
+                </option>
                 {districtProsecutions.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -1402,16 +1455,67 @@ export default function RegistrationReportsPage() {
               </select>
             </div>
 
-            {/* 5. فلتر الفرع / نوع الجهة المشكو في حقها */}
+            {/* نوع القيد */}
             <div>
-              <label className="label flex items-center gap-1">
+              <label className="label flex items-center gap-1 font-bold text-slate-800">
+                <FileText className="w-3 h-3 text-indigo-600" />
+                <span>7. نوع القيد</span>
+              </label>
+              <select
+                value={registrationType}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setRegistrationType(val);
+                  fetchReport({ registrationType: val });
+                }}
+                className="input font-semibold text-xs"
+              >
+                <option value="ALL">جميع الأنواع (شكوى / قضية / محضر)</option>
+                <option value="CASE">قضية</option>
+                <option value="REPORT">محضر</option>
+                <option value="COMPLAINT">شكوى</option>
+              </select>
+            </div>
+
+            {/* المرحلة بسير العمل */}
+            <div>
+              <label className="label flex items-center gap-1 font-bold text-slate-800">
+                <Layers className="w-3 h-3 text-purple-600" />
+                <span>8. المرحلة الإجرائية</span>
+              </label>
+              <select
+                value={status}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setStatus(val);
+                  fetchReport({ status: val });
+                }}
+                className="input font-semibold text-xs"
+              >
+                <option value="ALL">جميع المراحل (إجمالي عام)</option>
+                <option value="REGISTERED">1. بانتظار التوجيه (قيد جديد)</option>
+                <option value="UNDER_SUBCOMMITTEE_REVIEW">2. قيد دراسة اللجنة الفرعية</option>
+                <option value="PENDING_SUPREME_REVIEW">3. بانتظار اعتماد اللجنة العليا</option>
+                <option value="REFERRED_FOR_REVIEW">4. محال لإعادة الدراسة</option>
+                <option value="APPROVED">5. معتمد (قرار نهائي)</option>
+                <option value="CLOSED">6. مغلق بالأرشيف</option>
+              </select>
+            </div>
+
+            {/* فئة الفرع / المنشأة */}
+            <div>
+              <label className="label flex items-center gap-1 font-bold text-slate-800">
                 <Building2 className="w-3 h-3 text-teal-600" />
-                <span>فئة الفرع / المنشأة</span>
+                <span>فئة المنشأة المشكو فيها</span>
               </label>
               <select
                 value={entityType}
-                onChange={(e) => setEntityType(e.target.value)}
-                className="input"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEntityType(val);
+                  fetchReport({ entityType: val });
+                }}
+                className="input text-xs"
               >
                 <option value="ALL">جميع فئات المنشآت</option>
                 {ENTITY_TYPES.map((t) => (
@@ -1422,9 +1526,9 @@ export default function RegistrationReportsPage() {
               </select>
             </div>
 
-            {/* 6. اسم الفرع أو المستشفى */}
+            {/* اسم المنشأة أو المستشفى */}
             <div>
-              <label className="label">اسم المستشفى / الفرع المشكو فيه</label>
+              <label className="label font-bold text-slate-800">اسم المستشفى / الفرع</label>
               <input
                 type="text"
                 value={branchOrHospital}
@@ -1434,13 +1538,17 @@ export default function RegistrationReportsPage() {
               />
             </div>
 
-            {/* 7. فلتر اللجنة الفرعية */}
+            {/* اللجنة الفرعية */}
             <div>
-              <label className="label">اللجنة الفرعية المختصة</label>
+              <label className="label font-bold text-slate-800">اللجنة الفرعية المختصة</label>
               <select
                 value={subCommitteeId}
-                onChange={(e) => setSubCommitteeId(e.target.value)}
-                className="input"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSubCommitteeId(val);
+                  fetchReport({ subCommitteeId: val });
+                }}
+                className="input text-xs"
               >
                 <option value="ALL">جميع اللجان الفرعية</option>
                 {data?.subCommitteesList.map((sc) => (
@@ -1451,45 +1559,33 @@ export default function RegistrationReportsPage() {
               </select>
             </div>
 
-            {/* 8. المرحلة بناءً على مراحل العمل */}
+            {/* اسم الشاكي */}
             <div>
-              <label className="label flex items-center gap-1">
-                <Layers className="w-3 h-3 text-purple-600" />
-                <span>المرحلة الحالية بسير العمل</span>
-              </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="input font-semibold"
-              >
-                <option value="ALL">جميع المراحل (إجمالي عام بدون مراحل)</option>
-                <option value="REGISTERED">1. بانتظار التوجيه (قيد جديد)</option>
-                <option value="UNDER_SUBCOMMITTEE_REVIEW">2. قيد دراسة اللجنة الفرعية</option>
-                <option value="PENDING_SUPREME_REVIEW">3. بانتظار اعتماد اللجنة العليا</option>
-                <option value="REFERRED_FOR_REVIEW">4. محال لإعادة الدراسة</option>
-                <option value="APPROVED">5. معتمد (قرار نهائي)</option>
-                <option value="CLOSED">6. مغلق بالأرشيف</option>
-              </select>
+              <label className="label font-bold text-slate-800">اسم الشاكي</label>
+              <input
+                type="text"
+                value={complainantName}
+                onChange={(e) => setComplainantName(e.target.value)}
+                placeholder="بحث باسم الشاكي..."
+                className="input text-xs"
+              />
             </div>
 
-            {/* 9. نوع السجل */}
+            {/* المشكو في حقه */}
             <div>
-              <label className="label">نوع السجل</label>
-              <select
-                value={registrationType}
-                onChange={(e) => setRegistrationType(e.target.value)}
-                className="input"
-              >
-                <option value="ALL">جميع الأنواع (شكوى / قضية / محضر)</option>
-                <option value="COMPLAINT">شكوى</option>
-                <option value="CASE">قضية</option>
-                <option value="REPORT">محضر</option>
-              </select>
+              <label className="label font-bold text-slate-800">المشكو في حقه</label>
+              <input
+                type="text"
+                value={respondentName}
+                onChange={(e) => setRespondentName(e.target.value)}
+                placeholder="اسم الطبيب / المشكو في حقه..."
+                className="input text-xs"
+              />
             </div>
 
-            {/* 10. الموظف القائم بالقيد (خاضع للصلاحيات) */}
+            {/* موظف القيد */}
             <div>
-              <label className="label flex items-center gap-1">
+              <label className="label flex items-center gap-1 font-bold text-slate-800">
                 <User className="w-3 h-3 text-blue-600" />
                 <span>الموظف القائم بالقيد</span>
               </label>
@@ -1503,8 +1599,12 @@ export default function RegistrationReportsPage() {
               ) : (
                 <select
                   value={createdById}
-                  onChange={(e) => setCreatedById(e.target.value)}
-                  className="input"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCreatedById(val);
+                    fetchReport({ createdById: val });
+                  }}
+                  className="input text-xs"
                 >
                   <option value="ALL">جميع موظفي التسجيل</option>
                   {data?.usersWorkload.map((u) => (
@@ -1515,81 +1615,101 @@ export default function RegistrationReportsPage() {
                 </select>
               )}
             </div>
+          </div>
 
-            {/* 11. من تاريخ */}
-            <div>
-              <label className="label">
-                {dateBasis === "incomingDate" ? "من تاريخ ورود السجل" : "من تاريخ التسجيل الإلكتروني"}
-              </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  setDateShortcut("CUSTOM");
+          {/* 3. شريط الإجراءات والتحكم واستعراض النتائج */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-black shadow-md transition-all disabled:opacity-50"
+              >
+                <Search className="w-4 h-4" />
+                <span>{loading ? "جاري استخراج التقرير..." : "استخراج وتطبيق التقرير"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("cases");
+                  fetchReport();
                 }}
-                className="input font-mono text-xs"
-              />
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-xs transition-colors"
+                title="الانتقال فوراً لجدول السجلات التفصيلي"
+              >
+                <Eye className="w-4 h-4 text-teal-300" />
+                <span>استعراض السجلات التفصيلية فوراً ({formatNumber(data?.cases.length)})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowCustomDateRange(!showCustomDateRange)}
+                className="text-xs font-bold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5"
+              >
+                <Calendar className="w-3.5 h-3.5 text-teal-700" />
+                <span>{showCustomDateRange ? "إخفاء التحديد المخصص باليوم" : "📅 تخصيص فترة باليوم (من تاريخ ... إلى تاريخ ...)"}</span>
+              </button>
             </div>
 
-            {/* 12. إلى تاريخ */}
-            <div>
-              <label className="label">
-                {dateBasis === "incomingDate" ? "إلى تاريخ ورود السجل" : "إلى تاريخ التسجيل الإلكتروني"}
-              </label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => {
-                  setEndDate(e.target.value);
-                  setDateShortcut("CUSTOM");
-                }}
-                className="input font-mono text-xs"
-              />
-            </div>
-
-            {/* 13. اسم الشاكي */}
-            <div>
-              <label className="label">اسم الشاكي</label>
-              <input
-                type="text"
-                value={complainantName}
-                onChange={(e) => setComplainantName(e.target.value)}
-                placeholder="بحث باسم الشاكي..."
-                className="input text-xs"
-              />
-            </div>
-
-            {/* 14. المشكو في حقه */}
-            <div>
-              <label className="label">المشكو في حقه</label>
-              <input
-                type="text"
-                value={respondentName}
-                onChange={(e) => setRespondentName(e.target.value)}
-                placeholder="اسم الطبيب / المشكو في حقه..."
-                className="input text-xs"
-              />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-300 transition-colors flex items-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                <span>إلغاء الفلاتر وعرض الإجمالي العام</span>
+              </button>
             </div>
           </div>
 
-          {/* أزرار تطبيق الفلترة وإعادة التعيين */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-300 transition-colors"
-            >
-              إلغاء الفلاتر وعرض الإجمالي
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 px-6 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs transition-colors disabled:opacity-50"
-            >
-              <Search className="w-3.5 h-3.5" />
-              <span>{loading ? "جاري الفرز..." : "تطبيق الفلترة"}</span>
-            </button>
+          {/* تحديد فترة مخصصة باليوم (اختياري وقابل للطي) */}
+          {showCustomDateRange && (
+            <div className="p-3.5 bg-teal-50/60 rounded-xl border border-teal-200 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end animate-in fade-in">
+              <div>
+                <label className="label text-[11px] font-bold text-teal-950">من تاريخ:</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="input text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="label text-[11px] font-bold text-teal-950">إلى تاريخ:</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="input text-xs font-mono"
+                />
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReportYear("ALL");
+                    setReportMonth("ALL");
+                    fetchReport({ startDate, endDate, reportYear: "ALL", reportMonth: "ALL" });
+                  }}
+                  className="btn-primary text-xs py-2 px-3 w-full"
+                >
+                  تطبيق الفترة المخصصة
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* شريط ملخص التقرير المطبق حالياً */}
+          <div className="text-xs text-slate-700 font-medium bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="font-black text-slate-900">📌 التقرير المطبق:</span>
+              <span className="text-teal-950 font-bold">{getFilterSummaryText()}</span>
+            </div>
+            <span className="font-mono text-teal-800 font-bold bg-white px-2 py-0.5 rounded border border-slate-200">
+              {formatNumber(data?.cases.length)} سجل مطابق
+            </span>
           </div>
         </form>
       </div>
@@ -2021,10 +2141,10 @@ export default function RegistrationReportsPage() {
                       onChange={(e) => setCasesTableYear(e.target.value)}
                       className="h-8 px-2 text-xs font-mono font-bold rounded-lg border border-slate-300 bg-white text-slate-800 focus:border-teal-600"
                     >
-                      <option value="ALL">جميع السنوات</option>
-                      {availableCaseYears.map((yr) => (
-                        <option key={yr} value={String(yr)}>
-                          سنة {yr}
+                      <option value="ALL">جميع السنوات المسجلة</option>
+                      {activeYearsList.map((item) => (
+                        <option key={item.year} value={String(item.year)}>
+                          سنة {item.year} ({formatNumber(item.count)})
                         </option>
                       ))}
                     </select>
