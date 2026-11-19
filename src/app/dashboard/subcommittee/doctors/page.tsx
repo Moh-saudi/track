@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { UserCheck, Plus, CreditCard, Building, Building2, Stethoscope, AlertTriangle, CheckCircle2, Pause, Play, Trash2, X } from "lucide-react";
+import { UserCheck, Plus, CreditCard, Building, Building2, Stethoscope, AlertTriangle, AlertCircle, CheckCircle2, Pause, Play, Trash2, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { PageHeader, StatCard, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Badge } from "@/components/ui";
 
@@ -225,6 +225,53 @@ export default function SubcommitteeDoctorsPage() {
         }
       />
 
+      {/* رسائل التنبيه العائمة في الواجهة الأمامية فوق جميع النوافذ والمودالات */}
+      {error && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] max-w-lg w-[92%] sm:w-auto min-w-[340px] pointer-events-auto animate-in fade-in slide-in-from-top-4 duration-200">
+          <div className="p-3.5 rounded-2xl shadow-2xl bg-rose-950/95 text-white border-2 border-rose-500 backdrop-blur-md flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-rose-500/30 border border-rose-400/40 flex items-center justify-center text-rose-200 shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-xs text-rose-200">تنبيه بالخطأ</p>
+                <p className="text-xs text-white font-medium">{error}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="text-rose-300 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {successMsg && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] max-w-lg w-[92%] sm:w-auto min-w-[340px] pointer-events-auto animate-in fade-in slide-in-from-top-4 duration-200">
+          <div className="p-3.5 rounded-2xl shadow-2xl bg-emerald-950/95 text-white border-2 border-emerald-500 backdrop-blur-md flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/30 border border-emerald-400/40 flex items-center justify-center text-emerald-200 shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-xs text-emerald-200">تمت العملية بنجاح</p>
+                <p className="text-xs text-white font-medium">{successMsg}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSuccessMsg(null)}
+              className="text-emerald-300 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* التنبيهات ورسائل النجاح */}
       {error && (
         <div className="alert-error text-xs">
@@ -254,12 +301,19 @@ export default function SubcommitteeDoctorsPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setEditingFinanceDoc(null)}
+                onClick={() => { setEditingFinanceDoc(null); setError(null); }}
                 className="text-slate-400 hover:text-slate-700 p-1"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {error && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSaveFinanceUpdate} className="space-y-4 font-body">
               <div className="form-group">
@@ -385,7 +439,7 @@ export default function SubcommitteeDoctorsPage() {
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
                 <button
                   type="button"
-                  onClick={() => setEditingFinanceDoc(null)}
+                  onClick={() => { setEditingFinanceDoc(null); setError(null); }}
                   className="btn-secondary text-xs px-4 py-2"
                 >
                   إلغاء

@@ -748,7 +748,54 @@ export function AdminUsersTable({
 
   return (
     <div className="space-y-4">
-      {/* رسائل التنبيه */}
+      {/* رسائل التنبيه العائمة في الواجهة الأمامية فوق جميع النوافذ والمودالات */}
+      {error && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] max-w-lg w-[92%] sm:w-auto min-w-[340px] pointer-events-auto animate-in fade-in slide-in-from-top-4 duration-200">
+          <div className="p-3.5 rounded-2xl shadow-2xl bg-rose-950/95 text-white border-2 border-rose-500 backdrop-blur-md flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-rose-500/30 border border-rose-400/40 flex items-center justify-center text-rose-200 shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-xs text-rose-200">تنبيه بالخطأ</p>
+                <p className="text-xs text-white font-medium">{error}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="text-rose-300 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {successMsg && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] max-w-lg w-[92%] sm:w-auto min-w-[340px] pointer-events-auto animate-in fade-in slide-in-from-top-4 duration-200">
+          <div className="p-3.5 rounded-2xl shadow-2xl bg-emerald-950/95 text-white border-2 border-emerald-500 backdrop-blur-md flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/30 border border-emerald-400/40 flex items-center justify-center text-emerald-200 shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-xs text-emerald-200">تمت العملية بنجاح</p>
+                <p className="text-xs text-white font-medium">{successMsg}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSuccessMsg(null)}
+              className="text-emerald-300 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* رسائل التنبيه العادية في تدفق الصفحة */}
       {successMsg && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />

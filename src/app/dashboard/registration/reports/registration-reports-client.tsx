@@ -4007,9 +4007,9 @@ export default function RegistrationReportsPage() {
           </div>
         </div>
       )}
-      {/* ─── إشعار تفاعلي عصري أنيق (In-App Modern Toast Notification) ─── */}
+      {/* ─── إشعار تفاعلي عصري أنيق في الواجهة الأمامية فوق كل النوافذ (In-App Toast) ─── */}
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] max-w-lg w-[92%] sm:w-auto min-w-[340px] pointer-events-auto animate-in fade-in-50 slide-in-from-top-4 duration-300">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] max-w-lg w-[92%] sm:w-auto min-w-[340px] pointer-events-auto animate-in fade-in-50 slide-in-from-top-4 duration-300">
           <div
             className={`p-4 rounded-2xl shadow-2xl border flex items-start gap-3 backdrop-blur-md ${
               toast.type === "success"
