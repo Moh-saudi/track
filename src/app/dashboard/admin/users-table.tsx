@@ -459,7 +459,17 @@ export function AdminUsersTable({
 
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error?.message || data.error || "تعذر إنشاء المستخدم");
+          let errMsg = "تعذر إنشاء المستخدم";
+          if (typeof data.error === "string") {
+            errMsg = data.error;
+          } else if (data.error?.message) {
+            errMsg = data.error.message;
+          } else if (data.error?.fieldErrors) {
+            errMsg = Object.values(data.error.fieldErrors).flat().join(" - ");
+          } else if (typeof data.error === "object") {
+            errMsg = Object.values(data.error).flat().join(" - ");
+          }
+          throw new Error(errMsg);
         }
 
         const createdFullName = data.fullName || formFullName;
@@ -1030,10 +1040,17 @@ export function AdminUsersTable({
                 <UserPlus className="w-4 h-4 text-teal-600" />
                 <span>إضافة مستخدم جديد</span>
               </h3>
-              <button type="button" onClick={() => setIsCreateOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+              <button type="button" onClick={() => { setIsCreateOpen(false); setError(null); }} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {error && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span className="font-medium">{error}</span>
+              </div>
+            )}
 
             <form onSubmit={handleCreateUser} className="space-y-3">
               {/* الصف الأول: الاسم + البريد */}
@@ -1138,7 +1155,7 @@ export function AdminUsersTable({
 
               {/* الأزرار */}
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
-                <Button type="button" variant="secondary" size="sm" onClick={() => setIsCreateOpen(false)}>إلغاء</Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => { setIsCreateOpen(false); setError(null); }}>إلغاء</Button>
                 <Button type="submit" variant="primary" size="sm" loading={isPending}
                   disabled={isPending || formFullName.length < 2 || !formEmail.includes("@")}>
                   إنشاء الحساب
@@ -1160,10 +1177,17 @@ export function AdminUsersTable({
                 <Edit className="w-4 h-4 text-teal-600" />
                 <span>تعديل: {editUser.fullName}</span>
               </h3>
-              <button type="button" onClick={() => setEditUser(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+              <button type="button" onClick={() => { setEditUser(null); setError(null); }} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {error && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span className="font-medium">{error}</span>
+              </div>
+            )}
 
             <form onSubmit={handleUpdateUser} className="space-y-3">
               {/* الصف 1: الاسم + البريد (قراءة فقط) */}
@@ -1246,7 +1270,7 @@ export function AdminUsersTable({
 
               {/* الأزرار */}
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
-                <Button type="button" variant="secondary" size="sm" onClick={() => setEditUser(null)}>إلغاء</Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => { setEditUser(null); setError(null); }}>إلغاء</Button>
                 <Button type="submit" variant="primary" size="sm" loading={isPending} disabled={isPending}>
                   حفظ التعديلات
                 </Button>
@@ -1273,12 +1297,19 @@ export function AdminUsersTable({
               </div>
               <button
                 type="button"
-                onClick={() => setPasswordUser(null)}
+                onClick={() => { setPasswordUser(null); setError(null); }}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {error && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span className="font-medium">{error}</span>
+              </div>
+            )}
 
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
               <p><strong className="text-slate-700">المستخدم:</strong> {passwordUser.fullName}</p>
@@ -1313,7 +1344,7 @@ export function AdminUsersTable({
                   type="button"
                   variant="secondary"
                   size="sm"
-                  onClick={() => setPasswordUser(null)}
+                  onClick={() => { setPasswordUser(null); setError(null); }}
                 >
                   إلغاء
                 </Button>
@@ -1774,7 +1805,7 @@ export function AdminUsersTable({
                   onClick={() => {
                     const target = detailsUser;
                     setDetailsUser(null);
-                    setEditUser(target);
+                    if (target) openEditModal(target);
                   }}
                   icon={<Edit className="w-3.5 h-3.5" />}
                 >

@@ -11,14 +11,19 @@ import { isValidEgyptianPhone } from "@/lib/formatters";
 import { ensureSchemaMigrated } from "@/lib/db-migrate";
 
 const createUserSchema = z.object({
-  email:           z.string().email("بريد إلكتروني غير صحيح"),
-  fullName:        z.string().min(2, "الاسم مطلوب"),
+  email:           z.string().trim().min(3, "البريد الإلكتروني مطلوب").refine(
+                     (val) => /^[^\s@]+@[^\s@]+$/.test(val),
+                     "صيغة البريد الإلكتروني غير صحيحة"
+                   ),
+  fullName:        z.string().trim().min(2, "الاسم مطلوب"),
   password:        z.string().min(1, "كلمة المرور مطلوبة"),
   role:            z.enum(["REGISTRATION_CLERK", "FOLLOW_UP_OFFICER", "SUBCOMMITTEE_MEMBER", "SUPREME_COMMITTEE", "SUPREME_SUPERVISOR", "FINANCE", "ADMIN", "RISK_OFFICER"]),
-  employer:        z.string().optional().nullable(),
+  employer:        z.string().trim().optional().nullable(),
   subCommitteeId:  z.string().optional().nullable(),
   specialtyId:     z.string().optional().nullable(),
-  nationalId:      z.string().regex(/^\d{14}$/, "الرقم القومي يجب أن يتكون من 14 رقماً").optional().nullable(),
+  nationalId:      z.string().trim().refine((val) => !val || /^\d{14}$/.test(val), {
+                     message: "الرقم القومي يجب أن يتكون من 14 رقماً",
+                   }).optional().nullable(),
   phone:           z.string().trim().refine((val) => !val || isValidEgyptianPhone(val), {
                      message: "رقم الهاتف يجب أن يتكون من 11 رقماً مصرياً يبدأ بـ 01 (مثال: 01012345678)",
                    }).optional().nullable(),
@@ -63,7 +68,12 @@ export async function POST(req: NextRequest) {
   await ensureSchemaMigrated();
 
   const parsed = createUserSchema.safeParse(await req.json());
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const allErrors = Object.values(fieldErrors).flat().concat(parsed.error.flatten().formErrors);
+    const errorMsg = allErrors.length > 0 ? allErrors.join("، ") : "البيانات المدخلة غير صحيحة";
+    return NextResponse.json({ error: errorMsg }, { status: 400 });
+  }
   const data = parsed.data;
   const normalizedEmail = data.email.toLowerCase().trim();
 
