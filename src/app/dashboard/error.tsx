@@ -22,12 +22,15 @@ export default function DashboardError({
     const isChunkOr306 =
       error?.message?.includes("306") ||
       error?.message?.includes("Loading chunk") ||
+      error?.message?.includes("failed to fetch") ||
       error?.name === "ChunkLoadError";
 
     if (isChunkOr306 && typeof window !== "undefined") {
-      const reloadKey = "app_chunk_reload_" + (error.digest || "last");
-      if (!sessionStorage.getItem(reloadKey)) {
-        sessionStorage.setItem(reloadKey, "true");
+      const now = Date.now();
+      const lastReload = Number(sessionStorage.getItem("app_chunk_reload_ts") || "0");
+      // إذا مر أكثر من 8 ثوانٍ على آخر إعادة تحميل تلقائي، نسمح بإعادة التحميل لتحديث الكاش مع النشر الجديد فوراً
+      if (now - lastReload > 8000) {
+        sessionStorage.setItem("app_chunk_reload_ts", String(now));
         window.location.reload();
       }
     }
