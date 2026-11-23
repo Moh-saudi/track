@@ -32,7 +32,7 @@ export async function GET() {
           },
         },
       });
-      steps.step2_result = { count: sessions.length };
+      steps.step2_result = { count: sessions.length, sessionSample: sessions[0] };
     } catch (e: any) {
       steps.step2_error = { message: e.message, code: e.code, meta: e.meta };
     }
