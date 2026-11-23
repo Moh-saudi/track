@@ -24,11 +24,15 @@ import {
   Users,
   ChevronDown,
   Check,
+  AlertTriangle,
+  CheckCircle2,
+  ExternalLink,
+  Loader2,
 } from "lucide-react";
 import { EGYPT_GOVERNORATES } from "@/lib/constants/governorates";
 import { OFFICIAL_PROSECUTIONS_LIST } from "@/lib/constants/prosecutions";
 import { ENTITY_TYPES, getEntityPlaceholder } from "@/lib/constants/entities";
-import { isValidEgyptianPhone, sanitizeEgyptianPhone } from "@/lib/formatters";
+import { isValidEgyptianPhone, sanitizeEgyptianPhone, formatDate } from "@/lib/formatters";
 
 interface Prosecution {
   id: string;
@@ -235,6 +239,54 @@ export default function NewCasePage() {
 
   const [error, setError] = useState<string | null>(null);
 
+  // ─── التحقق اللحظي المبكر من عدم التكرار فور إدخال رقم السجل / رقم القضية ───
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
+  const [incomingDuplicate, setIncomingDuplicate] = useState<{
+    exists: boolean;
+    caseItem: any;
+  } | null>(null);
+  const [prosecutionDuplicate, setProsecutionDuplicate] = useState<{
+    exists: boolean;
+    count: number;
+    cases: any[];
+  } | null>(null);
+
+  useEffect(() => {
+    const trimmedCaseNum = caseNumber.trim();
+    const trimmedProsNum = prosecutionCaseNumber.trim();
+
+    if (!trimmedCaseNum && !trimmedProsNum) {
+      setIncomingDuplicate(null);
+      setProsecutionDuplicate(null);
+      setCheckingDuplicate(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setCheckingDuplicate(true);
+      try {
+        const params = new URLSearchParams();
+        if (trimmedCaseNum) params.set("caseNumber", trimmedCaseNum);
+        if (caseYear) params.set("caseYear", String(caseYear));
+        if (trimmedProsNum) params.set("prosecutionCaseNumber", trimmedProsNum);
+        if (registrationType) params.set("registrationType", registrationType);
+
+        const res = await fetch(`/api/cases/check-duplicate?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          setIncomingDuplicate(data.incomingDuplicate || null);
+          setProsecutionDuplicate(data.prosecutionDuplicate || null);
+        }
+      } catch (err) {
+        console.error("Failed to check duplicate:", err);
+      } finally {
+        setCheckingDuplicate(false);
+      }
+    }, 380);
+
+    return () => clearTimeout(timer);
+  }, [caseNumber, caseYear, prosecutionCaseNumber, registrationType]);
+
   // تحميل النيابات وتحديثها من السيرفر
   useEffect(() => {
     async function loadData() {
@@ -440,6 +492,11 @@ export default function NewCasePage() {
       return;
     }
 
+    if (incomingDuplicate?.exists) {
+      setError(`لا يمكن إتمام القيد لأن رقم السجل (${caseNumber}/${caseYear}) مسجل بالفعل مسبقاً على المنظومة لتفادي التكرار.`);
+      return;
+    }
+
     const firstComplainant = complainants[0]?.name.trim();
     if (!firstComplainant) {
       setError("اسم الشاكي الأول حقل إلزامي (شاكي واحد على الأقل)");
@@ -620,32 +677,65 @@ export default function NewCasePage() {
             </div>
 
             <div className="form-group">
-              <label className="form-label form-label-required">رقم سجل الوارد</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="form-label form-label-required mb-0">رقم سجل الوارد</label>
+                {checkingDuplicate && (
+                  <span className="text-[10px] text-teal-600 font-bold flex items-center gap-1">
+                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                    <span>فحص...</span>
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 required
                 value={caseNumber}
                 onChange={(e) => setCaseNumber(e.target.value)}
                 placeholder="مثال: 1425"
-                className="form-input text-xs font-mono font-medium h-10"
+                className={`form-input text-xs font-mono font-medium h-10 ${
+                  incomingDuplicate?.exists
+                    ? "border-rose-500 bg-rose-50/50 text-rose-900 focus:border-rose-600 focus:ring-rose-500/20"
+                    : caseNumber.trim() && !checkingDuplicate && incomingDuplicate && !incomingDuplicate.exists
+                    ? "border-emerald-500 bg-emerald-50/30 text-emerald-900 focus:border-emerald-600"
+                    : ""
+                }`}
                 dir="ltr"
               />
+              {incomingDuplicate?.exists ? (
+                <div className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1 animate-in fade-in">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>مكرر ومسجل مسبقاً بنفس الرقم والسنة!</span>
+                </div>
+              ) : caseNumber.trim() && !checkingDuplicate && incomingDuplicate && !incomingDuplicate.exists ? (
+                <div className="text-[11px] text-emerald-600 font-bold mt-1 flex items-center gap-1 animate-in fade-in">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>رقم متاح للقيد (غير مكرر)</span>
+                </div>
+              ) : null}
             </div>
 
             <div className="form-group">
-              <label
-                className={`form-label ${
-                  registrationType === "CASE" || registrationType === "REPORT"
-                    ? "form-label-required"
-                    : ""
-                }`}
-              >
-                {registrationType === "REPORT"
-                  ? "رقم محضر النيابة"
-                  : registrationType === "CASE"
-                  ? "رقم القضية"
-                  : "رقم الشكوى"}
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label
+                  className={`form-label mb-0 ${
+                    registrationType === "CASE" || registrationType === "REPORT"
+                      ? "form-label-required"
+                      : ""
+                  }`}
+                >
+                  {registrationType === "REPORT"
+                    ? "رقم محضر النيابة"
+                    : registrationType === "CASE"
+                    ? "رقم القضية"
+                    : "رقم الشكوى"}
+                </label>
+                {checkingDuplicate && prosecutionCaseNumber.trim() && (
+                  <span className="text-[10px] text-teal-600 font-bold flex items-center gap-1">
+                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                    <span>فحص...</span>
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 required={registrationType === "CASE" || registrationType === "REPORT"}
@@ -659,12 +749,25 @@ export default function NewCasePage() {
                     : "مثال: 582 لسنة 2026"
                 }
                 className={`form-input text-xs font-mono font-medium h-10 ${
-                  (registrationType === "CASE" || registrationType === "REPORT") && !prosecutionCaseNumber.trim()
+                  prosecutionDuplicate?.exists
+                    ? "border-amber-400 bg-amber-50/40 text-amber-900 focus:border-amber-500 focus:ring-amber-400/20"
+                    : (registrationType === "CASE" || registrationType === "REPORT") && !prosecutionCaseNumber.trim()
                     ? "border-amber-300 focus:border-teal-600"
                     : ""
                 }`}
                 dir="auto"
               />
+              {prosecutionDuplicate?.exists ? (
+                <div className="text-[11px] text-amber-700 font-bold mt-1 flex items-center gap-1 animate-in fade-in">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>يوجد ({prosecutionDuplicate.count}) قيد مسجل بنفس الرقم القضائي</span>
+                </div>
+              ) : prosecutionCaseNumber.trim().length >= 2 && !checkingDuplicate && prosecutionDuplicate && !prosecutionDuplicate.exists ? (
+                <div className="text-[11px] text-emerald-600 font-bold mt-1 flex items-center gap-1 animate-in fade-in">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>رقم قضية غير مسجل مسبقاً</span>
+                </div>
+              ) : null}
             </div>
 
             <div className="form-group">
@@ -691,6 +794,110 @@ export default function NewCasePage() {
               />
             </div>
           </div>
+
+          {/* تنبيه التحقق الاستباقي الفوري من التكرار والازدواج */}
+          {incomingDuplicate?.exists && incomingDuplicate.caseItem && (
+            <div className="p-4 bg-rose-50 border-2 border-rose-400 rounded-2xl shadow-sm space-y-3 animate-in fade-in-50 slide-in-from-top-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-700 shrink-0 mt-0.5">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-rose-950 flex items-center gap-2">
+                      <span>تنبيه هام: رقم سجل الوارد ({caseNumber} / {caseYear}) مسجل بالفعل مسبقاً!</span>
+                      <span className="text-[10px] bg-rose-200 text-rose-900 px-2 py-0.5 rounded-full font-bold">
+                        تكرار مؤكد
+                      </span>
+                    </h4>
+                    <p className="text-xs text-rose-800 mt-0.5">
+                      لتفادي العمل المضاعف وإعادة إدخال بيانات مكررة، هذا السجل موجود مسبقاً على المنظومة بكامل تفاصيله:
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                  <Link
+                    href={`/dashboard/registration/${incomingDuplicate.caseItem.id}`}
+                    target="_blank"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold transition-all shadow-xs"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>معاينة السجل الأصلي</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCaseNumber("");
+                    }}
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white hover:bg-rose-100 text-rose-800 border border-rose-300 text-xs font-bold transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>تغيير الرقم</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* بطاقة تفاصيل السجل المسجل مسبقاً */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 p-3 bg-white/95 rounded-xl border border-rose-200 text-xs text-slate-800">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block mb-0.5">الشاكي المسجل:</span>
+                  <span className="font-bold text-slate-900">{incomingDuplicate.caseItem.complainantName || "غير محدد"}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block mb-0.5">المشكو فيه / المنشأة:</span>
+                  <span className="font-bold text-slate-900">{incomingDuplicate.caseItem.hospitalName || incomingDuplicate.caseItem.entityName || "غير محدد"}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block mb-0.5">النيابة والمحافظة:</span>
+                  <span className="font-bold text-slate-900">{incomingDuplicate.caseItem.prosecution || incomingDuplicate.caseItem.governorate || "غير محدد"}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block mb-0.5">تاريخ القيد والموظف:</span>
+                  <span className="font-bold text-slate-900 font-mono text-[11px]">
+                    {incomingDuplicate.caseItem.createdAt ? formatDate(incomingDuplicate.caseItem.createdAt) : "—"}
+                    {incomingDuplicate.caseItem.createdBy?.fullName ? ` (${incomingDuplicate.caseItem.createdBy.fullName})` : ""}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {prosecutionDuplicate?.exists && prosecutionDuplicate.cases?.length > 0 && (
+            <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-xl space-y-2 animate-in fade-in-50">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+                  <span className="text-xs font-bold text-amber-900">
+                    تنبيه تشابه: تم العثور على ({prosecutionDuplicate.count}) سجل بنفس رقم القضية/المحضر ({prosecutionCaseNumber}):
+                  </span>
+                </div>
+                <span className="text-[10px] text-amber-800 font-medium">يرجى التأكد من عدم تكرار نفس القضية</span>
+              </div>
+              <div className="space-y-1.5">
+                {prosecutionDuplicate.cases.map((match) => (
+                  <div key={match.id} className="flex items-center justify-between p-2.5 bg-white/95 rounded-lg border border-amber-200 text-xs">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="font-mono font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                        وارد #{match.caseNumber} / {match.caseYear}
+                      </span>
+                      <span className="text-slate-800">الشاكي: <strong>{match.complainantName || "—"}</strong></span>
+                      <span className="text-slate-600">الجهة: {match.hospitalName || match.entityName || "—"}</span>
+                      <span className="text-slate-500">النيابة: {match.prosecution || match.governorate || "—"}</span>
+                    </div>
+                    <Link
+                      href={`/dashboard/registration/${match.id}`}
+                      target="_blank"
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-700 hover:text-teal-900 underline shrink-0"
+                    >
+                      <span>معاينة السجل</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* 3. الشاكون وأصحاب الشكوى (صفوف أفقية متجاورة ونظيفة) */}
           <div className="p-4 bg-slate-50/60 border border-slate-200 rounded-xl space-y-3">
@@ -999,20 +1206,32 @@ export default function NewCasePage() {
           </div>
 
           {/* أزرار الحفظ والإلغاء */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-            <Link href="/dashboard/registration" prefetch={false}>
-              <Button type="button" variant="secondary">
-                إلغاء
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200">
+            <div>
+              {incomingDuplicate?.exists && (
+                <span className="text-xs text-rose-600 font-bold flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>لا يمكن الحفظ لوجود تكرار في رقم سجل الوارد ({caseNumber} / {caseYear})</span>
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Link href="/dashboard/registration" prefetch={false}>
+                <Button type="button" variant="secondary">
+                  إلغاء
+                </Button>
+              </Link>
+              <Button
+                type="submit"
+                variant="primary"
+                loading={isPending}
+                disabled={isPending || incomingDuplicate?.exists}
+                icon={<Save className="w-4 h-4" />}
+              >
+                قيد وحفظ السجل رسمياً
               </Button>
-            </Link>
-            <Button
-              type="submit"
-              variant="primary"
-              loading={isPending}
-              icon={<Save className="w-4 h-4" />}
-            >
-              قيد وحفظ السجل رسمياً
-            </Button>
+            </div>
           </div>
         </form>
       </Card>
