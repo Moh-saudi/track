@@ -49,6 +49,21 @@ interface ProsecutionItem {
   createdAt: string;
 }
 
+const CASE_STATUS_CONFIG: Record<
+  string,
+  {
+    label: string;
+    variant: "default" | "review" | "sky" | "emerald" | "rose" | "teal";
+  }
+> = {
+  REGISTERED: { label: "قيد جديد", variant: "default" },
+  UNDER_SUBCOMMITTEE_REVIEW: { label: "قيد دراسة الفرعية", variant: "review" },
+  PENDING_SUPREME_REVIEW: { label: "بانتظار اللجنة العليا", variant: "sky" },
+  REFERRED_FOR_REVIEW: { label: "معادة للدراسة", variant: "rose" },
+  APPROVED: { label: "معتمدة نهائياً", variant: "emerald" },
+  CLOSED: { label: "مغلقة / محفوظة", variant: "default" },
+};
+
 export default function ProsecutionsManagementPage() {
   const [prosecutions, setProsecutions] = useState<ProsecutionItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1051,9 +1066,17 @@ export default function ProsecutionsManagementPage() {
                           {c.hospitalName || c.entityName || "—"}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="amber" size="sm">
-                            {c.status}
-                          </Badge>
+                          {(() => {
+                            const statusCfg = CASE_STATUS_CONFIG[c.status] || {
+                              label: c.status || "غير محدد",
+                              variant: "default" as const,
+                            };
+                            return (
+                              <Badge variant={statusCfg.variant} size="sm">
+                                {statusCfg.label}
+                              </Badge>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell className="text-center">
                           <a
