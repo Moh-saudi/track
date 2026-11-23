@@ -1,0 +1,926 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+  <Title>نموذج حصر وتسجيل أطباء واستشاريي اللجان الفرعية</Title>
+  <Subject>اللجنة العليا للمسؤولية الطبية وسلامة المريض</Subject>
+  <Author>رئاسة مجلس الوزراء - جمهورية مصر العربية</Author>
+ </DocumentProperties>
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Center" ss:ReadingOrder="RightToLeft"/>
+   <Borders/>
+   <Font ss:FontName="Segoe UI" ss:Size="10" ss:Color="#1E293B"/>
+  </Style>
+  <Style ss:ID="TitleHeader">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#0F766E"/>
+   </Borders>
+   <Font ss:FontName="Segoe UI" ss:Size="14" ss:Color="#FFFFFF" ss:Bold="1"/>
+   <Interior ss:Color="#0F766E" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="SubTitleHeader">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Font ss:FontName="Segoe UI" ss:Size="11" ss:Color="#0F766E" ss:Bold="1"/>
+   <Interior ss:Color="#CCFBF1" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="ColHeader">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#0D9488"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+   </Borders>
+   <Font ss:FontName="Segoe UI" ss:Size="10" ss:Color="#FFFFFF" ss:Bold="1"/>
+   <Interior ss:Color="#134E4A" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="DataCell">
+   <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+   <Font ss:FontName="Segoe UI" ss:Size="9.5" ss:Color="#1E293B"/>
+  </Style>
+  <Style ss:ID="DataCellCenter">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+   <Font ss:FontName="Segoe UI" ss:Size="9.5" ss:Color="#1E293B"/>
+  </Style>
+  <Style ss:ID="SampleDataCell">
+   <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+   <Font ss:FontName="Segoe UI" ss:Size="9.5" ss:Color="#334155"/>
+   <Interior ss:Color="#F0FDFA" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="SampleDataCellCenter">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+   <Font ss:FontName="Segoe UI" ss:Size="9.5" ss:Color="#334155"/>
+   <Interior ss:Color="#F0FDFA" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="InstructionsHeader">
+   <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+   <Font ss:FontName="Segoe UI" ss:Size="11" ss:Color="#0F766E" ss:Bold="1"/>
+   <Interior ss:Color="#F0FDFA" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="InstructionsText">
+   <Alignment ss:Horizontal="Right" ss:Vertical="Top" ss:WrapText="1"/>
+   <Font ss:FontName="Segoe UI" ss:Size="10" ss:Color="#334155"/>
+  </Style>
+ </Styles>
+
+ <!-- ════════════════ ورقة 1: بيانات الأطباء ════════════════ -->
+ <Worksheet ss:Name="بيانات أطباء اللجان الفرعية">
+  <Table ss:DefaultRowHeight="24">
+   <Column ss:Width="220"/>
+   <Column ss:Width="200"/>
+   <Column ss:Width="120"/>
+   <Column ss:Width="170"/>
+   <Column ss:Width="220"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="160"/>
+   <Column ss:Width="150"/>
+   <Column ss:Width="200"/>
+   <Column ss:Width="220"/>
+
+   <!-- ترويسة رئيسية -->
+   <Row ss:Height="36">
+    <Cell ss:MergeAcross="12" ss:StyleID="TitleHeader">
+     <Data ss:Type="String">اللجنة العليا للمسؤولية الطبية وسلامة المريض — نموذج الحصر والرفع الجماعي لأطباء واستشاريي اللجان الفرعية</Data>
+    </Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:MergeAcross="12" ss:StyleID="SubTitleHeader">
+     <Data ss:Type="String">يرجى تسجيل بيانات الأطباء بكل لجنة بدقة (الصفوف الـ 5 الأولى نماذج استرشادية يمكن حذفها أو استبدالها ببياناتكم الفعلية)</Data>
+    </Cell>
+   </Row>
+
+   <!-- أسماء الأعمدة -->
+   <Row ss:Height="32">
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">اسم اللجنة الفرعية (أو كودها)</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">اسم الطبيب الاستشاري (رباعي/ثلاثي)</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">اللقب العلمي</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">التخصص الطبي المعياري</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">جهة العمل / المستشفى الأصلية</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">الرقم القومي (14 رقماً)</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">رقم الهاتف المحمول (11 رقماً)</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">طريقة الصرف المالي</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">اسم البنك</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">رقم كارت الفيزا / ميزة (16 رقماً)</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">رقم الحساب البنكي</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">رقم الآيبان (IBAN إن وجد)</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">ملاحظات إدارية</Data></Cell>
+   </Row>
+
+   <!-- صفوف البيانات التجريبية الاسترشادية -->
+   
+   <Row ss:Height="25">
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">كلية طب جامعة القاهرة (قصر العيني)</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">أحمد محمود حسن إبراهيم</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">جراحة عامة</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">مستشفيات جامعة القاهرة - قصر العيني</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">27501010101234</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">01012345678</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">فيزا مرتبات</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">البنك الأهلي المصري</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">5248123456789012</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">رئيس قسم الجراحة الأسبق - خبير جراحات المناظير</Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">كلية طب جامعة عين شمس</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">منى عبد العزيز محمد الدمرداش</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">التخدير وعلاج الألم</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">مستشفى الدمرداش الجامعي</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">28205150105678</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">01123456789</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">حساب بنكي</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">بنك مصر</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">12345678901234</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">EG380002000100000012345678901</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">استشاري تخدير جراحات القلب المفتوح</Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">كلية طب جامعة الزقازيق</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">طارق سليم عبد الرحمن النجار</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">أستاذ مساعد</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">أمراض النساء والتوليد</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">مستشفيات جامعة الزقازيق</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">27811200109012</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">01234567890</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">فيزا مرتبات</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">بنك القاهرة</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">5378223344556677</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">خبير مناظير الرحم والحقن المجهري</Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">كلية طب جامعة الإسكندرية</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">سامح فاروق مصطفى الخولي</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">استشاري</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">جراحة عظام وكسور</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">المستشفى الرئيسي الجامعي بالإسكندرية</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">28003040103456</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">01098765432</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">كارت ميزة</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">البنك الأهلي المصري</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">6038112233445566</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">استشاري جراحة المفاصل الصناعية والإصابات الرياضية</Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">الهيئة العامة للمستشفيات والمعاهد التعليمية</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">ياسر كمال حسن عبد الله</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">استشاري زميل</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">أمراض القلب والأوعية الدموية</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">معهد القلب القومي بإمبابة</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">27608100107890</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">01551234567</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">حساب بنكي</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">البنك التجاري الدولي (CIB)</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">100023456789</Data></Cell>
+    <Cell ss:StyleID="SampleDataCellCenter"><Data ss:Type="String">EG150010000100000100023456789</Data></Cell>
+    <Cell ss:StyleID="SampleDataCell"><Data ss:Type="String">استشاري قسطرة القلب التداخلية والحالات الحرجة</Data></Cell>
+   </Row>
+
+   <!-- 20 صف فارغ جاهز للكتابة والتعبئة -->
+   
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:Height="25">
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String"></Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String"></Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <RightToLeft/>
+   <FreezePanes/>
+   <FrozenNoSplit/>
+   <SplitHorizontal>3</SplitHorizontal>
+   <TopRowBottomPane>3</TopRowBottomPane>
+   <ActivePane>2</ActivePane>
+  </WorksheetOptions>
+ </Worksheet>
+
+ <!-- ════════════════ ورقة 2: دليل اللجان الفرعية ════════════════ -->
+ <Worksheet ss:Name="دليل اللجان الفرعية المعتمدة">
+  <Table ss:DefaultRowHeight="24">
+   <Column ss:Width="100"/>
+   <Column ss:Width="300"/>
+   <Column ss:Width="250"/>
+
+   <Row ss:Height="32">
+    <Cell ss:MergeAcross="2" ss:StyleID="TitleHeader">
+     <Data ss:Type="String">قائمة اللجان والجهات الفرعية الـ 16 المعتمدة رسمياً بالمنظومة</Data>
+    </Cell>
+   </Row>
+   <Row ss:Height="28">
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">كود اللجنة</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">اسم اللجنة الفرعية / الجهة الرسمية</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">النطاق الجغرافي / المؤسسي</Data></Cell>
+   </Row>
+   
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-01</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">المجلس الصحي المصري</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">مستوى مركزي / قومي</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-02</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">الهيئة العامة للمستشفيات والمعاهد التعليمية</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">مستشفيات ومعاهد تعليمية</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-03</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">كلية طب جامعة القاهرة (قصر العيني)</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">إقليم القاهرة الكبرى</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-04</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">كلية طب جامعة عين شمس</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">إقليم القاهرة الكبرى</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-05</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">كلية طب جامعة الأزهر (بنين بالقاهرة)</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">نطاق جامعي أزهري</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-06</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">كلية طب جامعة الإسكندرية</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">إقليم الإسكندرية والساحل</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-07</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">كلية طب جامعة الفيوم</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">إقليم شمال الصعيد</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-08</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">كلية طب جامعة المنيا</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">إقليم شمال الصعيد</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-09</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">كلية طب جامعة أسيوط</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">إقليم وسط وجنوب الصعيد</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-10</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">كلية طب جامعة سوهاج</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">إقليم جنوب الصعيد</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-11</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">كلية طب جامعة أسوان</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">إقليم جنوب الصعيد</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-12</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">كلية طب جامعة المنصورة</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">إقليم الدلتا</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-13</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">كلية طب جامعة المنوفية</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">إقليم الدلتا</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-14</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">كلية طب جامعة طنطا</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">إقليم الدلتا</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-15</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">كلية طب جامعة الزقازيق</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">إقليم شرق الدلتا والقناة</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SC-16</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">كلية طب جامعة قناة السويس</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">إقليم القناة وسيناء</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <RightToLeft/>
+  </WorksheetOptions>
+ </Worksheet>
+
+ <!-- ════════════════ ورقة 3: دليل التخصصات الطبية ════════════════ -->
+ <Worksheet ss:Name="دليل التخصصات المعيارية">
+  <Table ss:DefaultRowHeight="24">
+   <Column ss:Width="100"/>
+   <Column ss:Width="320"/>
+
+   <Row ss:Height="32">
+    <Cell ss:MergeAcross="1" ss:StyleID="TitleHeader">
+     <Data ss:Type="String">قائمة التخصصات الطبية المعيارية المعتمدة بالمنظومة (34 تخصصاً)</Data>
+    </Cell>
+   </Row>
+   <Row ss:Height="28">
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">كود التخصص</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">اسم التخصص الطبي المعتمد</Data></Cell>
+   </Row>
+   
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-01</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">جراحة عامة</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-02</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">جراحة عظام وكسور</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-03</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">جراحة مخ وأعصاب</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-04</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">جراحة قلب وصدر</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-05</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">جراحة مسالك بولية وكلى</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-06</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">جراحة أوعية دموية</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-07</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">جراحة تجميل وحروق</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-08</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">أمراض النساء والتوليد</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-09</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">طب الأطفال وحديثي الولادة</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-10</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">التخدير وعلاج الألم</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-11</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">العناية المركزة وطب الحالات الحرجة</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-12</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">الباطنة العامة وأمراض الجهاز الهضمي</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-13</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">أمراض القلب والأوعية الدموية</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-14</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">الأمراض الصدرية</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-15</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">أمراض المخ والأعصاب</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-16</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">طب وجراحة العيون</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-17</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">أمراض الأنف والأذن والحنجرة</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-18</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">طب الأسنان وجراحة الفم والفكين</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-19</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">الأورام والطب النووي</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-20</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">الأشعة التشخيصية والتدخلية</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-21</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">الطب الشرعي والسموم الإكلينيكية</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-22</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">الباثولوجيا الإكلينيكية والتحاليل الطبية</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-23</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">جراحة أطفال</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-24</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">جراحة أورام ومناظير</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-25</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">جراحة السمنة ومناظير الجهاز الهضمي</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-26</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">جراحة العمود الفقري</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-27</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">أمراض الكلى والغسيل الكلوي</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-28</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">الأمراض الجلدية والتناسلية</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-29</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">الأمراض النفسية وعلاج الإدمان</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-30</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">الروماتيزم والتأهيل والعلاج الطبيعي</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-31</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">الأمراض المتوطنة والجهاز الهضمي والكبد</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-32</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">طب الفم والأسنان (تقويم واستعاضة)</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-33</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">طب الحالات الحرجة والطوارئ</Data></Cell>
+   </Row>
+   <Row ss:Height="24">
+    <Cell ss:StyleID="DataCellCenter"><Data ss:Type="String">SPEC-34</Data></Cell>
+    <Cell ss:StyleID="DataCell"><Data ss:Type="String">الباثولوجي (علم الأمراض الأنسجة)</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <RightToLeft/>
+  </WorksheetOptions>
+ </Worksheet>
+
+ <!-- ════════════════ ورقة 4: تعليمات وإرشادات التعبئة ════════════════ -->
+ <Worksheet ss:Name="تعليمات وإرشادات التعبئة">
+  <Table ss:DefaultRowHeight="26">
+   <Column ss:Width="250"/>
+   <Column ss:Width="550"/>
+
+   <Row ss:Height="32">
+    <Cell ss:MergeAcross="1" ss:StyleID="TitleHeader">
+     <Data ss:Type="String">إرشادات وضوابط تعبئة نموذج حصر الأطباء والاستشاريين</Data>
+    </Cell>
+   </Row>
+
+   <Row ss:Height="28">
+    <Cell ss:StyleID="InstructionsHeader"><Data ss:Type="String">1. اسم اللجنة الفرعية</Data></Cell>
+    <Cell ss:StyleID="InstructionsText"><Data ss:Type="String">يرجى كتابة اسم اللجنة بالضبط كما هو مدون في ورقة (دليل اللجان الفرعية) أو كتابة كود اللجنة مثل SC-03 أو SC-04.</Data></Cell>
+   </Row>
+
+   <Row ss:Height="28">
+    <Cell ss:StyleID="InstructionsHeader"><Data ss:Type="String">2. اسم الطبيب الاستشاري</Data></Cell>
+    <Cell ss:StyleID="InstructionsText"><Data ss:Type="String">يجب كتابة الاسم ثلاثياً أو رباعياً بوضوح دون ألقاب قبل الاسم (الألقاب مثل أ.د توضع في خانة اللقب العلمي).</Data></Cell>
+   </Row>
+
+   <Row ss:Height="28">
+    <Cell ss:StyleID="InstructionsHeader"><Data ss:Type="String">3. التخصص الطبي</Data></Cell>
+    <Cell ss:StyleID="InstructionsText"><Data ss:Type="String">يرجى اختيار التخصص كما هو مدون في ورقة (دليل التخصصات المعيارية) لتسهيل الفرز وتوزيع القضايا آلياً.</Data></Cell>
+   </Row>
+
+   <Row ss:Height="28">
+    <Cell ss:StyleID="InstructionsHeader"><Data ss:Type="String">4. جهة العمل الأصلية</Data></Cell>
+    <Cell ss:StyleID="InstructionsText"><Data ss:Type="String">إلزامية؛ لكشف أي تعارض مصالح محتمل تلقائياً عند تكليف الطبيب بفحص شكوى تخص نفس المستشفى التابع لها.</Data></Cell>
+   </Row>
+
+   <Row ss:Height="28">
+    <Cell ss:StyleID="InstructionsHeader"><Data ss:Type="String">5. الرقم القومي (14 رقماً)</Data></Cell>
+    <Cell ss:StyleID="InstructionsText"><Data ss:Type="String">إلزامي لصرف المكافآت والبدلات المالية المقررة قانوناً. يجب أن يتكون من 14 رقماً مصرياً صحيحاً.</Data></Cell>
+   </Row>
+
+   <Row ss:Height="28">
+    <Cell ss:StyleID="InstructionsHeader"><Data ss:Type="String">6. رقم الهاتف المحمول</Data></Cell>
+    <Cell ss:StyleID="InstructionsText"><Data ss:Type="String">يجب أن يتكون من 11 رقماً مصرياً صحيحاً يبدأ بـ (010 أو 011 أو 012 أو 015) لاستقبال رسائل التكليف والإشعارات.</Data></Cell>
+   </Row>
+
+   <Row ss:Height="28">
+    <Cell ss:StyleID="InstructionsHeader"><Data ss:Type="String">7. البيانات المالية والمصرفية</Data></Cell>
+    <Cell ss:StyleID="InstructionsText"><Data ss:Type="String">اختر طريقة الصرف (فيزا مرتبات / حساب بنكي / كارت ميزة). وفي حال الحساب البنكي يرجى تدوين اسم البنك ورقم الحساب أو الآيبان.</Data></Cell>
+   </Row>
+
+   <Row ss:Height="28">
+    <Cell ss:StyleID="InstructionsHeader"><Data ss:Type="String">8. سرية وتشفير البيانات</Data></Cell>
+    <Cell ss:StyleID="InstructionsText"><Data ss:Type="String">تنويه أمني: يتم تشفير الأرقام القومية وبيانات الحسابات البنكية فور رفعها بالمنظومة وفق معايير التشفير الحكومية AES-256-GCM.</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <RightToLeft/>
+  </WorksheetOptions>
+ </Worksheet>
+</Workbook>

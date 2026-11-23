@@ -22,7 +22,9 @@
     "admin:bootstrap": "tsx scripts/create-initial-admin.ts",
     "preflight:production": "tsx scripts/preflight-production.ts",
     "data:migrate-sensitive": "tsx scripts/migrate-sensitive-fields.ts",
-    "data:migrate-attachment-paths": "tsx scripts/migrate-attachment-paths.ts"
+    "data:migrate-attachment-paths": "tsx scripts/migrate-attachment-paths.ts",
+    "doctors:template": "tsx scripts/generate-doctor-templates.ts",
+    "doctors:import": "tsx scripts/import-doctors.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
