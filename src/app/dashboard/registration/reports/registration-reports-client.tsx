@@ -232,6 +232,11 @@ export default function RegistrationReportsPage() {
   const [casesTableYear, setCasesTableYear] = useState("ALL");
   const [error, setError] = useState<string | null>(null);
 
+  // ─── حقول البحث المخصصة والمستقلة (برقم الوارد / برقم القضية / بتاريخ التسجيل) ───
+  const [searchIncomingNumber, setSearchIncomingNumber] = useState("");
+  const [searchProsecutionNumber, setSearchProsecutionNumber] = useState("");
+  const [searchRegistrationDate, setSearchRegistrationDate] = useState("");
+
   // نظام الإشعارات والتنبيهات المودرن التفاعلي (In-App Toast System)
   const [toast, setToast] = useState<{
     type: "success" | "error" | "info";
@@ -446,6 +451,37 @@ export default function RegistrationReportsPage() {
     if (!data?.cases) return [];
     return data.cases.filter((c) => {
       if (casesTableYear !== "ALL" && String(c.caseYear) !== casesTableYear) return false;
+
+      // 1. فلتر البحث برقم الوارد (رقم السجل)
+      if (searchIncomingNumber.trim()) {
+        const q = searchIncomingNumber.trim().toLowerCase();
+        const fullIncoming = `${c.caseNumber}/${c.caseYear}`.toLowerCase();
+        const incomingOnly = String(c.caseNumber).toLowerCase();
+        if (!fullIncoming.includes(q) && !incomingOnly.includes(q)) {
+          return false;
+        }
+      }
+
+      // 2. فلتر البحث برقم القضية أو المحضر أو الشكوى
+      if (searchProsecutionNumber.trim()) {
+        const q = searchProsecutionNumber.trim().toLowerCase();
+        const prosCaseNo = (c.prosecutionCaseNumber || "").toLowerCase();
+        if (!prosCaseNo.includes(q)) {
+          return false;
+        }
+      }
+
+      // 3. فلتر البحث بتاريخ التسجيل بالمنظومة
+      if (searchRegistrationDate.trim()) {
+        const q = searchRegistrationDate.trim();
+        const createdIso = c.createdAt ? new Date(c.createdAt).toISOString().slice(0, 10) : "";
+        const createdFmt = c.createdAt ? formatDate(c.createdAt) : "";
+        if (!createdIso.includes(q) && !createdFmt.includes(q)) {
+          return false;
+        }
+      }
+
+      // 4. البحث السريع العام الإضافي
       if (casesTableSearch.trim()) {
         const q = casesTableSearch.toLowerCase().trim();
         const mNum = `${c.caseNumber}/${c.caseYear}`.includes(q);
@@ -458,11 +494,15 @@ export default function RegistrationReportsPage() {
       }
       return true;
     });
-  }, [data?.cases, casesTableYear, casesTableSearch]);
+  }, [data?.cases, casesTableYear, casesTableSearch, searchIncomingNumber, searchProsecutionNumber, searchRegistrationDate]);
 
   // بناء نص ملخص الفلاتر المطبقة للترويسة والطباعة
   function getFilterSummaryText(): string {
     const parts: string[] = [];
+    if (searchIncomingNumber.trim()) parts.push(`رقم الوارد: ${searchIncomingNumber.trim()}`);
+    if (searchProsecutionNumber.trim()) parts.push(`رقم القضية: ${searchProsecutionNumber.trim()}`);
+    if (searchRegistrationDate.trim()) parts.push(`تاريخ التسجيل: ${searchRegistrationDate.trim()}`);
+
     const basisLabel =
       dateBasis === "caseYear"
         ? "سنة قيد القضية"
@@ -532,6 +572,9 @@ export default function RegistrationReportsPage() {
     endDate?: string;
     dateBasis?: "incomingDate" | "createdAt" | "caseYear";
     createdById?: string;
+    incomingNumber?: string;
+    prosecutionCaseNumber?: string;
+    registrationDate?: string;
   }
 
   function fetchReport(overrides?: FilterOverrides | string, overrideYear?: string) {
@@ -559,6 +602,9 @@ export default function RegistrationReportsPage() {
     const activeStart = overridesObj.startDate !== undefined ? overridesObj.startDate : startDate;
     const activeEnd = overridesObj.endDate !== undefined ? overridesObj.endDate : endDate;
     const activeUser = overridesObj.createdById !== undefined ? overridesObj.createdById : createdById;
+    const activeIncomingNumber = overridesObj.incomingNumber !== undefined ? overridesObj.incomingNumber : searchIncomingNumber;
+    const activeProsecutionCaseNumber = overridesObj.prosecutionCaseNumber !== undefined ? overridesObj.prosecutionCaseNumber : searchProsecutionNumber;
+    const activeRegistrationDate = overridesObj.registrationDate !== undefined ? overridesObj.registrationDate : searchRegistrationDate;
 
     const params = new URLSearchParams();
     if (activeGov !== "ALL") params.set("governorate", activeGov);
@@ -586,6 +632,9 @@ export default function RegistrationReportsPage() {
     if (activeComp.trim()) params.set("complainantName", activeComp.trim());
     if (activeResp.trim()) params.set("respondentName", activeResp.trim());
     if (activeUser !== "ALL") params.set("createdById", activeUser);
+    if (activeIncomingNumber.trim()) params.set("incomingNumber", activeIncomingNumber.trim());
+    if (activeProsecutionCaseNumber.trim()) params.set("prosecutionCaseNumber", activeProsecutionCaseNumber.trim());
+    if (activeRegistrationDate.trim()) params.set("registrationDate", activeRegistrationDate.trim());
 
     fetch(`/api/registration/reports?${params.toString()}`)
       .then(async (res) => {
@@ -899,7 +948,7 @@ export default function RegistrationReportsPage() {
 
   function handleFilterSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (caseYear !== "ALL") {
+    if (caseYear !== "ALL" || searchIncomingNumber || searchProsecutionNumber || searchRegistrationDate) {
       setActiveTab("cases"); // إظهار السجلات التفصيلية فوراً كما هو مطلوب
     }
     fetchReport();
@@ -995,6 +1044,9 @@ export default function RegistrationReportsPage() {
     setCaseYear("ALL");
     setCasesTableSearch("");
     setCasesTableYear("ALL");
+    setSearchIncomingNumber("");
+    setSearchProsecutionNumber("");
+    setSearchRegistrationDate("");
     setProsecutionId("ALL");
     setPartialProsecutionId("ALL");
     setEntityType("ALL");
@@ -1027,6 +1079,9 @@ export default function RegistrationReportsPage() {
       startDate: "",
       endDate: "",
       dateBasis: "incomingDate",
+      incomingNumber: "",
+      prosecutionCaseNumber: "",
+      registrationDate: "",
     });
   }
 
@@ -1341,6 +1396,173 @@ export default function RegistrationReportsPage() {
 
         {/* ─── محرك استخراج التقارير بالقوائم المنسدلة المرتبطة ─── */}
         <form onSubmit={handleFilterSubmit} className="space-y-4">
+          {/* 0. حقول البحث المستقلة والمباشرة: رقم الوارد | رقم القضية أو المحضر | تاريخ التسجيل */}
+          <div className="bg-slate-900 border-2 border-teal-500/50 rounded-2xl p-4 shadow-lg text-white space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-teal-500/30 pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300">
+                  <Search className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-black text-white flex items-center gap-2 flex-wrap">
+                    <span>البحث المباشر بالسجلات (برقم الوارد / برقم القضية / بتاريخ التسجيل)</span>
+                    <span className="text-[10px] bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full font-bold">
+                      بحث تفصيلي فوري
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-teal-200/80 mt-0.5">
+                    لكل معيار حقل بحث مخصص ومستقل - ويتم استعراض السجل التفصيلي المباشر فوراً بمجرد البحث
+                  </p>
+                </div>
+              </div>
+
+              {(searchIncomingNumber || searchProsecutionNumber || searchRegistrationDate) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchIncomingNumber("");
+                    setSearchProsecutionNumber("");
+                    setSearchRegistrationDate("");
+                    fetchReport({ incomingNumber: "", prosecutionCaseNumber: "", registrationDate: "" });
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/40 text-xs font-bold transition-colors self-start sm:self-auto"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>تفريغ حقول البحث</span>
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* حقل 1: البحث برقم الوارد */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-teal-100 flex items-center gap-1.5">
+                  <Hash className="w-3.5 h-3.5 text-amber-300" />
+                  <span>1. حقل البحث برقم الوارد (رقم السجل)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchIncomingNumber}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSearchIncomingNumber(val);
+                      if (activeTab !== "cases") setActiveTab("cases");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        setActiveTab("cases");
+                        fetchReport({ incomingNumber: searchIncomingNumber });
+                      }
+                    }}
+                    placeholder="رقم الوارد، مثال: 1941 أو 1941 / 2026..."
+                    className="w-full text-xs font-mono font-bold py-2.5 pr-9 pl-3 rounded-xl bg-slate-800/90 text-white border border-teal-500/50 focus:ring-2 focus:ring-teal-400 focus:outline-none placeholder:text-slate-500"
+                  />
+                  <Hash className="w-4 h-4 text-teal-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+                <span className="text-[10px] text-teal-300/80">رقم سجل الوارد المسجل</span>
+              </div>
+
+              {/* حقل 2: البحث برقم القضية أو المحضر */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-teal-100 flex items-center gap-1.5">
+                  <Scale className="w-3.5 h-3.5 text-amber-300" />
+                  <span>2. حقل البحث برقم القضية / المحضر / الشكوى</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchProsecutionNumber}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSearchProsecutionNumber(val);
+                      if (activeTab !== "cases") setActiveTab("cases");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        setActiveTab("cases");
+                        fetchReport({ prosecutionCaseNumber: searchProsecutionNumber });
+                      }
+                    }}
+                    placeholder="رقم القضية، مثال: 1466 أو 1466 لسنة 2026..."
+                    className="w-full text-xs font-bold py-2.5 pr-9 pl-3 rounded-xl bg-slate-800/90 text-white border border-teal-500/50 focus:ring-2 focus:ring-teal-400 focus:outline-none placeholder:text-slate-500"
+                  />
+                  <Scale className="w-4 h-4 text-teal-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+                <span className="text-[10px] text-teal-300/80">رقم قضية النيابة أو المحضر</span>
+              </div>
+
+              {/* حقل 3: البحث بتاريخ التسجيل */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-teal-100 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-amber-300" />
+                    <span>3. حقل البحث بتاريخ التسجيل</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const todayStr = new Date().toISOString().slice(0, 10);
+                      setSearchRegistrationDate(todayStr);
+                      if (activeTab !== "cases") setActiveTab("cases");
+                      fetchReport({ registrationDate: todayStr });
+                    }}
+                    className="text-[10px] bg-teal-500/30 hover:bg-teal-500/50 text-teal-200 px-2 py-0.5 rounded font-bold transition-colors"
+                  >
+                    تسجيل اليوم
+                  </button>
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={searchRegistrationDate}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSearchRegistrationDate(val);
+                      if (activeTab !== "cases") setActiveTab("cases");
+                      fetchReport({ registrationDate: val });
+                    }}
+                    className="w-full text-xs font-mono font-bold py-2.5 pr-9 pl-3 rounded-xl bg-slate-800/90 text-white border border-teal-500/50 focus:ring-2 focus:ring-teal-400 focus:outline-none cursor-pointer"
+                  />
+                  <Calendar className="w-4 h-4 text-teal-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+                <span className="text-[10px] text-teal-300/80">تاريخ إدخال السجل على المنظومة</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-teal-500/20 text-xs">
+              <div className="text-[11px] text-teal-200">
+                {displayedCases.length > 0 ? (
+                  <span>
+                    النتائج المطابقة: <strong className="text-amber-300 font-mono text-sm">{formatNumber(displayedCases.length)}</strong> سجل تفصيلي
+                  </span>
+                ) : (
+                  <span>لا توجد سجلات مطابقة لمحددات البحث الحالية</span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("cases");
+                    fetchReport({
+                      incomingNumber: searchIncomingNumber,
+                      prosecutionCaseNumber: searchProsecutionNumber,
+                      registrationDate: searchRegistrationDate,
+                    });
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black shadow transition-all"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  <span>استعراض السجل التفصيلي الآن</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* 1. المجموعة الزمنية المرتبطة: أساس التقرير + السنة الفعلية بقاعدة البيانات + الشهر المرتبط */}
           <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-teal-900 text-white p-4 rounded-2xl shadow-sm border border-teal-800/40 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-800/40 pb-2">
@@ -2254,16 +2476,17 @@ export default function RegistrationReportsPage() {
                   )}
                 </div>
 
-                {/* شريط بحث وفلتر سريع بعام القيد داخل جدول السجلات التفصيلي */}
+                {/* شريط فلاتر وبحث مخصص ومستقل داخل جدول السجلات التفصيلي */}
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* سنة القيد */}
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-slate-600">سنة القيد:</span>
+                    <span className="text-[11px] font-bold text-slate-600">السنة:</span>
                     <select
                       value={casesTableYear}
                       onChange={(e) => setCasesTableYear(e.target.value)}
                       className="h-8 px-2 text-xs font-mono font-bold rounded-lg border border-slate-300 bg-white text-slate-800 focus:border-teal-600"
                     >
-                      <option value="ALL">جميع السنوات المسجلة</option>
+                      <option value="ALL">كافة السنوات</option>
                       {activeYearsList.map((item) => (
                         <option key={item.year} value={String(item.year)}>
                           سنة {item.year} ({formatNumber(item.count)})
@@ -2272,27 +2495,69 @@ export default function RegistrationReportsPage() {
                     </select>
                   </div>
 
-                  <div className="relative min-w-[210px]">
+                  {/* 1. حقل رقم الوارد المستقل */}
+                  <div className="relative min-w-[130px]" title="بحث مستقل برقم الوارد / رقم السجل">
+                    <Hash className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-teal-600" />
+                    <input
+                      type="text"
+                      value={searchIncomingNumber}
+                      onChange={(e) => setSearchIncomingNumber(e.target.value)}
+                      placeholder="رقم الوارد..."
+                      className="w-full h-8 pr-8 pl-2 text-xs font-mono font-bold rounded-lg border border-slate-300 bg-white placeholder:text-slate-400 focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
+                    />
+                  </div>
+
+                  {/* 2. حقل رقم القضية / المحضر المستقل */}
+                  <div className="relative min-w-[145px]" title="بحث مستقل برقم القضية أو المحضر">
+                    <Scale className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-teal-600" />
+                    <input
+                      type="text"
+                      value={searchProsecutionNumber}
+                      onChange={(e) => setSearchProsecutionNumber(e.target.value)}
+                      placeholder="رقم القضية / المحضر..."
+                      className="w-full h-8 pr-8 pl-2 text-xs rounded-lg border border-slate-300 bg-white placeholder:text-slate-400 focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
+                    />
+                  </div>
+
+                  {/* 3. حقل تاريخ التسجيل المستقل */}
+                  <div className="relative min-w-[140px]" title="بحث مستقل بتاريخ التسجيل بالمنظومة">
+                    <Calendar className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-teal-600 pointer-events-none" />
+                    <input
+                      type="date"
+                      value={searchRegistrationDate}
+                      onChange={(e) => setSearchRegistrationDate(e.target.value)}
+                      className="w-full h-8 pr-7 pl-1 text-[11px] font-mono rounded-lg border border-slate-300 bg-white text-slate-800 focus:border-teal-600 cursor-pointer"
+                    />
+                  </div>
+
+                  {/* 4. بحث عام إضافي */}
+                  <div className="relative min-w-[140px]" title="بحث عام باسم الشاكي، النيابة، أو المشكو في حقه">
                     <Search className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
                       value={casesTableSearch}
                       onChange={(e) => setCasesTableSearch(e.target.value)}
-                      placeholder="بحث فوري: رقم، شاكي، نيابة..."
+                      placeholder="بحث: شاكي، نيابة..."
                       className="w-full h-8 pr-8 pl-2 text-xs rounded-lg border border-slate-300 bg-white placeholder:text-slate-400 focus:border-teal-600"
                     />
                   </div>
 
-                  {(casesTableSearch || casesTableYear !== "ALL") && (
+                  {(casesTableSearch || searchIncomingNumber || searchProsecutionNumber || searchRegistrationDate || casesTableYear !== "ALL") && (
                     <button
                       type="button"
                       onClick={() => {
                         setCasesTableSearch("");
+                        setSearchIncomingNumber("");
+                        setSearchProsecutionNumber("");
+                        setSearchRegistrationDate("");
                         setCasesTableYear("ALL");
+                        fetchReport({ incomingNumber: "", prosecutionCaseNumber: "", registrationDate: "" });
                       }}
-                      className="h-8 px-2.5 text-[11px] font-bold rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors"
+                      className="h-8 px-2.5 text-[11px] font-bold rounded-lg bg-rose-100 text-rose-800 hover:bg-rose-200 border border-rose-300 transition-colors flex items-center gap-1"
+                      title="مسح وتصفير كافة محددات البحث"
                     >
-                      تصفية
+                      <RotateCcw className="w-3 h-3" />
+                      <span>تصفية</span>
                     </button>
                   )}
                 </div>

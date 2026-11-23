@@ -38,7 +38,52 @@ export async function GET(req: NextRequest) {
     const reportYearStr = searchParams.get("reportYear");
     const reportMonthStr = searchParams.get("reportMonth");
 
+    // فلاتر البحث المستقلة والمباشرة (برقم الوارد / برقم القضية / بتاريخ التسجيل)
+    const incomingNumber = searchParams.get("incomingNumber") || searchParams.get("caseNumber");
+    const prosecutionCaseNumber = searchParams.get("prosecutionCaseNumber");
+    const registrationDateStr = searchParams.get("registrationDate");
+
     const where: any = {};
+
+    // فلتر البحث برقم الوارد (رقم السجل)
+    if (incomingNumber?.trim()) {
+      const incQuery = incomingNumber.trim();
+      if (incQuery.includes("/")) {
+        const [numPart, yearPart] = incQuery.split("/").map((s) => s.trim());
+        const yr = Number(yearPart);
+        if (!isNaN(yr) && numPart) {
+          where.AND = [
+            ...(where.AND || []),
+            { caseNumber: { contains: numPart, mode: "insensitive" } },
+            { caseYear: yr },
+          ];
+        } else {
+          where.caseNumber = { contains: incQuery, mode: "insensitive" };
+        }
+      } else {
+        where.caseNumber = { contains: incQuery, mode: "insensitive" };
+      }
+    }
+
+    // فلتر البحث برقم القضية أو المحضر أو الشكوى
+    if (prosecutionCaseNumber?.trim()) {
+      where.prosecutionCaseNumber = { contains: prosecutionCaseNumber.trim(), mode: "insensitive" };
+    }
+
+    // فلتر البحث بتاريخ التسجيل بالمنظومة (createdAt)
+    if (registrationDateStr?.trim()) {
+      const regDate = new Date(registrationDateStr.trim());
+      if (!isNaN(regDate.getTime())) {
+        const startOfDay = new Date(regDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(regDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        where.AND = [
+          ...(where.AND || []),
+          { createdAt: { gte: startOfDay, lte: endOfDay } },
+        ];
+      }
+    }
 
     // ─── إحكام الصلاحيات (RBAC Server-side Isolation) ───
     if (user.role === "REGISTRATION_CLERK") {
