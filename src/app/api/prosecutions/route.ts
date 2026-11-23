@@ -45,10 +45,54 @@ export async function GET(req: NextRequest) {
       orderBy: [{ governorate: "asc" }, { name: "asc" }],
       include: {
         parent: { select: { id: true, name: true } },
+        _count: {
+          select: {
+            cases: true,
+            partialCases: true,
+          },
+        },
       },
     });
 
     if (prosecutions.length > 0) {
+      if (all) {
+        // حساب إجمالي السجلات بدقة سواء بالمعرف البرمجي أو بالاسم النصي
+        const [caseProsCounts, casePartCounts] = await Promise.all([
+          prisma.case.groupBy({
+            by: ["prosecution"],
+            _count: { id: true },
+            where: { prosecution: { not: null } },
+          }).catch(() => []),
+          prisma.case.groupBy({
+            by: ["partialProsecution"],
+            _count: { id: true },
+            where: { partialProsecution: { not: null } },
+          }).catch(() => []),
+        ]);
+
+        const prosCountMap = new Map<string, number>();
+        caseProsCounts.forEach((c: any) => {
+          if (c.prosecution) prosCountMap.set(c.prosecution.trim(), c._count.id);
+        });
+
+        const partCountMap = new Map<string, number>();
+        casePartCounts.forEach((c: any) => {
+          if (c.partialProsecution) partCountMap.set(c.partialProsecution.trim(), c._count.id);
+        });
+
+        const withCounts = prosecutions.map((p) => {
+          const relationCases = (p._count?.cases || 0) + (p._count?.partialCases || 0);
+          const nameCases = (prosCountMap.get(p.name.trim()) || 0) + (partCountMap.get(p.name.trim()) || 0);
+          const totalCases = Math.max(relationCases, nameCases);
+          return {
+            ...p,
+            casesCount: totalCases,
+          };
+        });
+
+        return NextResponse.json(withCounts);
+      }
+
       return NextResponse.json(prosecutions);
     }
   } catch (err: any) {

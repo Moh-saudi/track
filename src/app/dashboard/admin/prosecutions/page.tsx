@@ -27,8 +27,14 @@ import {
   X,
   Scale,
   GitFork,
+  ArrowRightLeft,
+  FileText,
+  ExternalLink,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { EGYPT_GOVERNORATES } from "@/lib/constants/governorates";
+import { formatDate } from "@/lib/formatters";
 
 interface ProsecutionItem {
   id: string;
@@ -39,6 +45,7 @@ interface ProsecutionItem {
   parentId?: string | null;
   parent?: { id: string; name: string } | null;
   active: boolean;
+  casesCount?: number;
   createdAt: string;
 }
 
@@ -68,6 +75,90 @@ export default function ProsecutionsManagementPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGovFilter, setSelectedGovFilter] = useState("");
   const [selectedTypeFilter, setSelectedTypeFilter] = useState("");
+
+  // نافذة معاينة السجلات التفصيلية للنيابة
+  const [selectedProsCasesModal, setSelectedProsCasesModal] = useState<ProsecutionItem | null>(null);
+  const [prosCasesList, setProsCasesList] = useState<any[]>([]);
+  const [loadingProsCases, setLoadingProsCases] = useState(false);
+  const [prosCasesSearch, setProsCasesSearch] = useState("");
+
+  // نافذة تحويل ونقل السجلات إلى نيابة أخرى
+  const [transferringPros, setTransferringPros] = useState<ProsecutionItem | null>(null);
+  const [transferTargetPlenaryId, setTransferTargetPlenaryId] = useState("");
+  const [transferTargetDistrictId, setTransferTargetDistrictId] = useState("NONE");
+  const [transferReason, setTransferReason] = useState("");
+  const [isSubmittingTransfer, setIsSubmittingTransfer] = useState(false);
+
+  async function openCasesModal(item: ProsecutionItem) {
+    setSelectedProsCasesModal(item);
+    setLoadingProsCases(true);
+    setProsCasesSearch("");
+    setProsCasesList([]);
+    try {
+      const res = await fetch(`/api/prosecutions/${item.id}/cases`);
+      if (!res.ok) throw new Error("تعذر جلب سجلات النيابة");
+      const json = await res.json();
+      setProsCasesList(json.cases || []);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoadingProsCases(false);
+    }
+  }
+
+  function openTransferModal(item: ProsecutionItem) {
+    setTransferringPros(item);
+    setTransferTargetPlenaryId("");
+    setTransferTargetDistrictId("NONE");
+    setTransferReason("");
+    setError(null);
+  }
+
+  async function handleExecuteTransfer(e: React.FormEvent) {
+    e.preventDefault();
+    if (!transferringPros || !transferTargetPlenaryId) return;
+
+    setIsSubmittingTransfer(true);
+    setError(null);
+    setSuccessMsg(null);
+
+    try {
+      const res = await fetch(`/api/prosecutions/${transferringPros.id}/transfer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetPlenaryId: transferTargetPlenaryId,
+          targetDistrictId: transferTargetDistrictId === "NONE" ? null : transferTargetDistrictId,
+          reason: transferReason.trim() || undefined,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "تعذر تحويل السجلات");
+
+      setSuccessMsg(json.message || "تم تحويل ونقل السجلات بنجاح");
+      setTransferringPros(null);
+      setSelectedProsCasesModal(null);
+      await loadData();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSubmittingTransfer(false);
+    }
+  }
+
+  const filteredProsCases = prosCasesList.filter((c) => {
+    if (!prosCasesSearch.trim()) return true;
+    const q = prosCasesSearch.toLowerCase().trim();
+    return (
+      `${c.caseNumber}/${c.caseYear}`.includes(q) ||
+      c.prosecutionCaseNumber?.toLowerCase().includes(q) ||
+      c.complainantName?.toLowerCase().includes(q) ||
+      (c.hospitalName || c.entityName)?.toLowerCase().includes(q) ||
+      c.respondentName?.toLowerCase().includes(q) ||
+      c.status?.toLowerCase().includes(q)
+    );
+  });
 
   async function loadData() {
     try {
@@ -620,7 +711,7 @@ export default function ProsecutionsManagementPage() {
       )}
 
       {/* بطاقات الإحصاءات */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard
           title="إجمالي النيابات"
           value={prosecutions.length}
@@ -650,6 +741,12 @@ export default function ProsecutionsManagementPage() {
           value={prosecutions.filter((p) => p.active).length}
           icon={<CheckCircle2 className="w-6 h-6" />}
           variant="emerald"
+        />
+        <StatCard
+          title="إجمالي السجلات"
+          value={prosecutions.reduce((sum, p) => sum + (p.casesCount || 0), 0)}
+          icon={<FileText className="w-6 h-6" />}
+          variant="teal"
         />
       </div>
 
@@ -715,6 +812,7 @@ export default function ProsecutionsManagementPage() {
                 <TableHead>النوع والتصنيف</TableHead>
                 <TableHead>التبعية القضائية</TableHead>
                 <TableHead>المحافظة</TableHead>
+                <TableHead>السجلات المسجلة</TableHead>
                 <TableHead>الحالة</TableHead>
                 <TableHead className="text-center">التحكم والإجراءات</TableHead>
               </TableRow>
@@ -765,6 +863,22 @@ export default function ProsecutionsManagementPage() {
                     )}
                   </TableCell>
                   <TableCell>
+                    {item.casesCount !== undefined && item.casesCount > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => openCasesModal(item)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 font-mono font-bold text-xs cursor-pointer transition-colors shadow-2xs group"
+                        title="انقر لاستعراض السجلات المسجلة على هذه النيابة تفصيلياً"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-teal-600 group-hover:scale-110 transition-transform" />
+                        <span>{item.casesCount} سجل</span>
+                        <ExternalLink className="w-3 h-3 text-teal-500 opacity-60" />
+                      </button>
+                    ) : (
+                      <span className="text-slate-400 font-mono text-xs px-2 py-0.5">0 سجل</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     {item.active ? (
                       <Badge variant="approved" size="sm" icon={<CheckCircle2 className="w-3 h-3 text-emerald-600" />}>
                         نشطة ومتاحة للقيد
@@ -785,6 +899,16 @@ export default function ProsecutionsManagementPage() {
                         icon={<Edit2 className="w-3 h-3" />}
                       >
                         تعديل
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => openTransferModal(item)}
+                        icon={<ArrowRightLeft className="w-3 h-3 text-amber-600" />}
+                        title="تحويل ونقل كافة سجلات هذه النيابة إلى نيابة أخرى"
+                      >
+                        تحويل السجلات
                       </Button>
                       <Button
                         type="button"
@@ -811,6 +935,285 @@ export default function ProsecutionsManagementPage() {
           </Table>
         )}
       </Card>
+
+      {/* ─── نافذة استعراض السجلات التفصيلية للنيابة ─── */}
+      {selectedProsCasesModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in-50">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95">
+            {/* رأس النافذة */}
+            <div className="p-4 border-b border-slate-200 bg-gradient-to-r from-teal-900 via-slate-900 to-teal-950 text-white flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white flex items-center gap-2 flex-wrap">
+                    <span>سجلات وقضايا: {selectedProsCasesModal.name}</span>
+                    <Badge variant="teal" size="sm">
+                      {selectedProsCasesModal.type === "DISTRICT" ? "نيابة جزئية" : selectedProsCasesModal.type === "ADMINISTRATIVE" ? "نيابة إدارية" : "نيابة كلية"}
+                    </Badge>
+                  </h3>
+                  <p className="text-[11px] text-teal-200/80 mt-0.5">
+                    المحافظة: {selectedProsCasesModal.governorate || "غير محددة"} • إجمالي السجلات: {prosCasesList.length} سجل
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    openTransferModal(selectedProsCasesModal);
+                  }}
+                  className="bg-amber-400 hover:bg-amber-300 text-slate-950 border-0 font-bold"
+                  icon={<ArrowRightLeft className="w-3.5 h-3.5" />}
+                >
+                  تحويل هذه السجلات لنيابة أخرى
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedProsCasesModal(null)}
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* شريط البحث السريع داخل النافذة */}
+            <div className="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={prosCasesSearch}
+                  onChange={(e) => setProsCasesSearch(e.target.value)}
+                  placeholder="بحث سريع: برقم السجل، رقم القضية، الشاكي، المستشفى..."
+                  className="form-input text-xs pr-8 h-8 w-full"
+                />
+              </div>
+              <span className="text-xs text-slate-600 font-mono font-medium">
+                معروض {filteredProsCases.length} من أصل {prosCasesList.length} سجل
+              </span>
+            </div>
+
+            {/* جدول السجلات */}
+            <div className="flex-1 overflow-y-auto p-0">
+              {loadingProsCases ? (
+                <div className="p-12 text-center text-xs text-slate-500 font-bold flex flex-col items-center gap-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                  <span>جارٍ جلب السجلات التفصيلية...</span>
+                </div>
+              ) : filteredProsCases.length === 0 ? (
+                <div className="p-12 text-center text-xs text-slate-400 font-bold">
+                  {prosCasesSearch ? "لا توجد سجلات مطابقة للبحث" : "لا توجد سجلات مسجلة على هذه النيابة"}
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">#</TableHead>
+                      <TableHead>رقم وتاريخ الوارد</TableHead>
+                      <TableHead>النوع</TableHead>
+                      <TableHead>رقم القضية / المحضر</TableHead>
+                      <TableHead>الشاكي</TableHead>
+                      <TableHead>المشكو في حقه / المستشفى</TableHead>
+                      <TableHead>المرحلة</TableHead>
+                      <TableHead className="text-center w-24">معاينة</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProsCases.map((c, idx) => (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-mono text-xs text-slate-400">{idx + 1}</TableCell>
+                        <TableCell>
+                          <div className="font-mono font-bold text-slate-900 text-xs">
+                            وارد #{c.caseNumber} / {c.caseYear}
+                          </div>
+                          <div className="text-[10px] text-teal-700 font-mono">
+                            {c.incomingDate ? formatDate(c.incomingDate) : formatDate(c.createdAt)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="teal" size="sm">
+                            {c.registrationType === "CASE" ? "قضية" : c.registrationType === "REPORT" ? "محضر" : "شكوى"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs font-semibold text-slate-800">
+                          {c.prosecutionCaseNumber || "—"}
+                        </TableCell>
+                        <TableCell className="text-xs font-medium text-slate-900">
+                          {c.complainantName || "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-700">
+                          {c.hospitalName || c.entityName || "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="amber" size="sm">
+                            {c.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <a
+                            href={`/dashboard/registration/${c.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-700 hover:text-teal-900 hover:underline"
+                          >
+                            <span>فتح</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+
+            {/* ذيل النافذة */}
+            <div className="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+              <span className="text-xs text-slate-500 font-medium">
+                إجمالي السجلات المسجلة: <strong className="text-slate-800 font-mono">{prosCasesList.length}</strong> سجل
+              </span>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setSelectedProsCasesModal(null)}>
+                إغلاق
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── نافذة تحويل ونقل سجلات النيابة إلى جهة أخرى ─── */}
+      {transferringPros && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in-50">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in zoom-in-95">
+            <div className="p-4 border-b border-slate-200 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ArrowRightLeft className="w-5 h-5 text-amber-400" />
+                <h3 className="text-sm font-black text-white">
+                  تحويل ونقل سجلات النيابة إلى جهة أخرى
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTransferringPros(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleExecuteTransfer} className="p-5 space-y-4">
+              {/* بطاقة النيابة المصدر */}
+              <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-xl space-y-1">
+                <span className="text-[11px] font-bold text-amber-800 block">الجهة والنيابة المصدر:</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-black text-slate-900">{transferringPros.name}</span>
+                  <Badge variant="teal" size="sm">
+                    {transferringPros.casesCount || 0} سجل مسجل
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-amber-900/80">
+                  النوع: {transferringPros.type === "DISTRICT" ? "جزئية" : "كلية"} • المحافظة: {transferringPros.governorate || "غير محددة"}
+                </p>
+              </div>
+
+              {/* اختيار النيابة الكلية الهدف */}
+              <div className="form-group">
+                <label className="form-label form-label-required">النيابة الكلية المحول إليها (إلزامي) *</label>
+                <select
+                  required
+                  value={transferTargetPlenaryId}
+                  onChange={(e) => {
+                    setTransferTargetPlenaryId(e.target.value);
+                    setTransferTargetDistrictId("NONE");
+                  }}
+                  className="form-input text-xs font-bold h-10 w-full bg-white"
+                >
+                  <option value="">-- حدد النيابة الكلية الهدف --</option>
+                  {parentCandidates
+                    .filter((p) => p.id !== transferringPros.id)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.governorate ? `(محافظة ${p.governorate})` : ""}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* اختيار النيابة الجزئية الهدف (اختياري) */}
+              <div className="form-group">
+                <label className="form-label">النيابة الجزئية التابعة لها (اختياري)</label>
+                <select
+                  value={transferTargetDistrictId}
+                  disabled={!transferTargetPlenaryId}
+                  onChange={(e) => setTransferTargetDistrictId(e.target.value)}
+                  className="form-input text-xs h-10 w-full bg-white disabled:bg-slate-100 disabled:text-slate-400"
+                >
+                  <option value="NONE">بدون نيابة جزئية (إحالة للكلية مباشرة)</option>
+                  {prosecutions
+                    .filter((p) => p.type === "DISTRICT" && p.parentId === transferTargetPlenaryId && p.id !== transferringPros.id)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+                <span className="text-[10px] text-slate-500 mt-1 block">
+                  في حال كانت السجلات منسوبة لنيابة جزئية ترغب في نقلها لجزئية أخرى تابعة للكلية
+                </span>
+              </div>
+
+              {/* سبب وسند النقل */}
+              <div className="form-group">
+                <label className="form-label form-label-required">سبب وسند التحويل (للتوثيق والرقابة الأمنية) *</label>
+                <input
+                  type="text"
+                  required
+                  value={transferReason}
+                  onChange={(e) => setTransferReason(e.target.value)}
+                  placeholder="مثال: دمج النيابة / إعادة توزيع الاختصاص المكاني / تصحيح القيد..."
+                  className="form-input text-xs h-10 w-full bg-white"
+                />
+              </div>
+
+              {/* تنبيه تحذيري مسبق */}
+              <div className="p-3 bg-slate-100 rounded-xl text-xs text-slate-700 space-y-1 border border-slate-200">
+                <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                  <AlertCircle className="w-4 h-4 text-teal-600" />
+                  <span>تأكيد العملية</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  سيتم تعديل وتحديث جهة الاختصاص لكافة السجلات المرتبطة بالنيابة المصدر ({transferringPros.casesCount || 0} سجل) ونقلها إلى النيابة المختارة، وسيتم توثيق العملية وتاريخها وهوية منفذها في سجل التدقيق الأمني.
+                </p>
+              </div>
+
+              {/* الأزرار */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isSubmittingTransfer}
+                  onClick={() => setTransferringPros(null)}
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  loading={isSubmittingTransfer}
+                  icon={<ArrowRightLeft className="w-4 h-4" />}
+                >
+                  تأكيد تحويل ونقل السجلات
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
