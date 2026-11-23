@@ -16,35 +16,91 @@ const createSchema = z.object({
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
-  if (!session?.user || (role !== "SUPREME_COMMITTEE" && role !== "ADMIN")) {
+  if (
+    !session?.user ||
+    (role !== "SUPREME_COMMITTEE" &&
+      role !== "ADMIN" &&
+      role !== "SUPREME_SUPERVISOR")
+  ) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
 
-  const sessions = await prisma.supremeSession.findMany({
-    orderBy: { sessionDate: "asc" },
-    include: {
-      createdBy: { select: { fullName: true } },
-      cases: {
+  try {
+    const [sessionsRes, membersRes, casesRes] = await Promise.allSettled([
+      prisma.supremeSession.findMany({
+        orderBy: { sessionDate: "asc" },
+        include: {
+          createdBy: { select: { fullName: true } },
+          cases: {
+            select: {
+              id: true,
+              caseNumber: true,
+              caseYear: true,
+              complainantName: true,
+              hospitalName: true,
+              status: true,
+              entityType: true,
+              entityName: true,
+              subCommittee: { select: { name: true } },
+            },
+          },
+        },
+      }),
+      prisma.user.findMany({
+        where: { role: "SUPREME_COMMITTEE", active: true },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          employer: true,
+        },
+        orderBy: { fullName: "asc" },
+      }),
+      prisma.case.findMany({
+        where: {
+          status: { in: ["PENDING_SUPREME_REVIEW", "UNDER_SUBCOMMITTEE_REVIEW"] },
+        },
         select: {
           id: true,
           caseNumber: true,
           caseYear: true,
           complainantName: true,
           hospitalName: true,
-          status: true,
+          entityType: true,
+          entityName: true,
           subCommittee: { select: { name: true } },
         },
-      },
-    },
-  });
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
 
-  return NextResponse.json(sessions);
+    const sessions = sessionsRes.status === "fulfilled" ? sessionsRes.value || [] : [];
+    const supremeMembers = membersRes.status === "fulfilled" ? membersRes.value || [] : [];
+    const availableCases = casesRes.status === "fulfilled" ? casesRes.value || [] : [];
+
+    return NextResponse.json({
+      sessions,
+      supremeMembers,
+      availableCases,
+    });
+  } catch (err: any) {
+    console.error("GET /api/supreme/sessions error:", err);
+    return NextResponse.json(
+      { error: err.message || "تعذر جلب بيانات الجلسات" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
-  if (!session?.user || (role !== "SUPREME_COMMITTEE" && role !== "ADMIN")) {
+  if (
+    !session?.user ||
+    (role !== "SUPREME_COMMITTEE" &&
+      role !== "ADMIN" &&
+      role !== "SUPREME_SUPERVISOR")
+  ) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
 

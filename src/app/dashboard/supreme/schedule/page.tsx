@@ -1,121 +1,67 @@
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { ScheduleClientView } from "./schedule-client-view";
-import Link from "next/link";
 import {
   Calendar,
   FileCheck,
   BarChart3,
   Users,
   Clock,
-  CheckCircle2,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
-export const revalidate = 0;
+export default function SupremeSchedulePage() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [supremeMembers, setSupremeMembers] = useState<any[]>([]);
+  const [pendingCases, setPendingCases] = useState<any[]>([]);
 
-export default async function SupremeSchedulePage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    redirect("/login");
-  }
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/supreme/sessions");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "تعذر جلب بيانات الجلسات");
+      }
+      const data = await res.json();
+      const rawSessions = Array.isArray(data.sessions) ? data.sessions : [];
+      const cleanSessions = rawSessions.map((s: any) => ({
+        id: s.id,
+        sessionNumber: s.sessionNumber || "جلسة بدون عنوان",
+        sessionDate: s.sessionDate || new Date().toISOString(),
+        location: s.location || null,
+        status: s.status || "SCHEDULED",
+        notes: s.notes || null,
+        createdBy: s.createdBy ? { fullName: s.createdBy.fullName } : null,
+        cases: Array.isArray(s.cases) ? s.cases : [],
+      }));
 
-  const userRole = (session.user as any)?.role;
-  if (
-    userRole !== "SUPREME_COMMITTEE" &&
-    userRole !== "ADMIN" &&
-    userRole !== "SUPREME_SUPERVISOR"
-  ) {
-    redirect("/dashboard");
-  }
-
-  let rawSessions: any[] = [];
-  let supremeMembers: any[] = [];
-  let pendingCases: any[] = [];
-
-  try {
-    const [sessionsRes, membersRes, pendingRes] = await Promise.allSettled([
-      prisma.supremeSession.findMany({
-        orderBy: { sessionDate: "asc" },
-        include: {
-          createdBy: { select: { fullName: true } },
-          cases: {
-            select: {
-              id: true,
-              caseNumber: true,
-              caseYear: true,
-              complainantName: true,
-              hospitalName: true,
-              entityType: true,
-              entityName: true,
-            },
-          },
-        },
-      }),
-      prisma.user.findMany({
-        where: { role: "SUPREME_COMMITTEE", active: true },
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          employer: true,
-        },
-        orderBy: { fullName: "asc" },
-      }),
-      prisma.case.findMany({
-        where: {
-          status: { in: ["PENDING_SUPREME_REVIEW", "UNDER_SUBCOMMITTEE_REVIEW"] },
-        },
-        select: {
-          id: true,
-          caseNumber: true,
-          caseYear: true,
-          complainantName: true,
-          hospitalName: true,
-          entityType: true,
-          entityName: true,
-          subCommittee: { select: { name: true } },
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-    ]);
-
-    if (sessionsRes.status === "fulfilled") {
-      rawSessions = sessionsRes.value || [];
-    } else {
-      console.error("Failed to fetch supreme sessions:", sessionsRes.reason);
+      setSessions(cleanSessions);
+      setSupremeMembers(Array.isArray(data.supremeMembers) ? data.supremeMembers : []);
+      setPendingCases(Array.isArray(data.availableCases) ? data.availableCases : []);
+    } catch (err: any) {
+      console.error("Load schedule error:", err);
+      setError(err.message || "حدث خطأ أثناء تحميل بيانات الجدول");
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    if (membersRes.status === "fulfilled") {
-      supremeMembers = membersRes.value || [];
-    } else {
-      console.error("Failed to fetch supreme members:", membersRes.reason);
-    }
-
-    if (pendingRes.status === "fulfilled") {
-      pendingCases = pendingRes.value || [];
-    } else {
-      console.error("Failed to fetch pending cases:", pendingRes.reason);
-    }
-  } catch (dbErr) {
-    console.error("SupremeSchedulePage DB fetch error:", dbErr);
-  }
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const now = new Date();
-  const sessions = rawSessions.map((s) => ({
-    id: s.id,
-    sessionNumber: s.sessionNumber || "جلسة بدون عنوان",
-    sessionDate: s.sessionDate ? new Date(s.sessionDate).toISOString() : new Date().toISOString(),
-    location: s.location || null,
-    status: s.status || "SCHEDULED",
-    notes: s.notes || null,
-    createdBy: s.createdBy ? { fullName: s.createdBy.fullName } : null,
-    cases: Array.isArray(s.cases) ? s.cases : [],
-  }));
-
   const upcomingSessions = sessions.filter((s) => {
     try {
       return new Date(s.sessionDate) >= now;
@@ -188,12 +134,32 @@ export default async function SupremeSchedulePage() {
         />
       </div>
 
-      {/* ─── عرض التقويم وجدول الأجندة التفاعلي ─── */}
-      <ScheduleClientView
-        sessions={sessions as any}
-        supremeMembers={supremeMembers}
-        availableCases={pendingCases}
-      />
+      {/* ─── حالة التحميل أو الخطأ أو عرض المكون ─── */}
+      {loading ? (
+        <div className="bg-white rounded-3xl border border-slate-200 p-16 flex flex-col items-center justify-center gap-3 text-slate-500 shadow-xs">
+          <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+          <p className="text-sm font-semibold font-body">جارٍ تحميل أجندة وتقويم جلسات اللجنة العليا...</p>
+        </div>
+      ) : error ? (
+        <div className="bg-rose-50 border border-rose-200 rounded-3xl p-8 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 mx-auto flex items-center justify-center">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-rose-900 font-heading">تعذر تحميل بيانات الأجندة</h3>
+            <p className="text-xs text-rose-700 font-body mt-1">{error}</p>
+          </div>
+          <Button type="button" variant="primary" size="sm" onClick={loadData} icon={<RefreshCw className="w-3.5 h-3.5" />}>
+            إعادة المحاولة
+          </Button>
+        </div>
+      ) : (
+        <ScheduleClientView
+          sessions={sessions}
+          supremeMembers={supremeMembers}
+          availableCases={pendingCases}
+        />
+      )}
     </div>
   );
 }
