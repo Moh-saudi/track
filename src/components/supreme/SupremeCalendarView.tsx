@@ -134,21 +134,38 @@ export function SupremeCalendarView({
       });
     }
 
-    const todayStr = new Date().toISOString().split("T")[0];
+    const nowObj = new Date();
+    const todayYear = nowObj.getFullYear();
+    const todayMonth = nowObj.getMonth();
+    const todayDate = nowObj.getDate();
 
     // Current month days
     for (let day = 1; day <= totalDays; day++) {
       const d = new Date(currentYear, currentMonth, day);
-      const dStr = d.toISOString().split("T")[0];
       const daySessions = sessions.filter((s) => {
-        const sDateStr = new Date(s.sessionDate).toISOString().split("T")[0];
-        return sDateStr === dStr;
+        if (!s.sessionDate) return false;
+        try {
+          const sDate = new Date(s.sessionDate);
+          if (isNaN(sDate.getTime())) return false;
+          return (
+            sDate.getFullYear() === currentYear &&
+            sDate.getMonth() === currentMonth &&
+            sDate.getDate() === day
+          );
+        } catch {
+          return false;
+        }
       });
+
+      const isToday =
+        todayYear === currentYear &&
+        todayMonth === currentMonth &&
+        todayDate === day;
 
       cells.push({
         date: d,
         isCurrentMonth: true,
-        isToday: dStr === todayStr,
+        isToday,
         sessions: daySessions,
       });
     }

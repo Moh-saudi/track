@@ -19,18 +19,25 @@ export const revalidate = 0;
 
 export default async function SupremeSchedulePage() {
   const session = await getServerSession(authOptions);
-  const userRole = (session?.user as any)?.role;
+  if (!session?.user) {
+    redirect("/login");
+  }
 
-  if (userRole !== "SUPREME_COMMITTEE" && userRole !== "ADMIN") {
+  const userRole = (session.user as any)?.role;
+  if (
+    userRole !== "SUPREME_COMMITTEE" &&
+    userRole !== "ADMIN" &&
+    userRole !== "SUPREME_SUPERVISOR"
+  ) {
     redirect("/dashboard");
   }
 
-  let sessions: any[] = [];
+  let rawSessions: any[] = [];
   let supremeMembers: any[] = [];
   let pendingCases: any[] = [];
 
   try {
-    const [fetchedSessions, fetchedMembers, fetchedPending] = await Promise.all([
+    const [sessionsRes, membersRes, pendingRes] = await Promise.allSettled([
       prisma.supremeSession.findMany({
         orderBy: { sessionDate: "asc" },
         include: {
@@ -75,17 +82,50 @@ export default async function SupremeSchedulePage() {
         orderBy: { createdAt: "desc" },
       }),
     ]);
-    sessions = fetchedSessions || [];
-    supremeMembers = fetchedMembers || [];
-    pendingCases = fetchedPending || [];
+
+    if (sessionsRes.status === "fulfilled") {
+      rawSessions = sessionsRes.value || [];
+    } else {
+      console.error("Failed to fetch supreme sessions:", sessionsRes.reason);
+    }
+
+    if (membersRes.status === "fulfilled") {
+      supremeMembers = membersRes.value || [];
+    } else {
+      console.error("Failed to fetch supreme members:", membersRes.reason);
+    }
+
+    if (pendingRes.status === "fulfilled") {
+      pendingCases = pendingRes.value || [];
+    } else {
+      console.error("Failed to fetch pending cases:", pendingRes.reason);
+    }
   } catch (dbErr) {
     console.error("SupremeSchedulePage DB fetch error:", dbErr);
   }
 
   const now = new Date();
-  const upcomingSessions = sessions.filter((s) => new Date(s.sessionDate) >= now);
+  const sessions = rawSessions.map((s) => ({
+    id: s.id,
+    sessionNumber: s.sessionNumber || "جلسة بدون عنوان",
+    sessionDate: s.sessionDate ? new Date(s.sessionDate).toISOString() : new Date().toISOString(),
+    location: s.location || null,
+    status: s.status || "SCHEDULED",
+    notes: s.notes || null,
+    createdBy: s.createdBy ? { fullName: s.createdBy.fullName } : null,
+    cases: Array.isArray(s.cases) ? s.cases : [],
+  }));
+
+  const upcomingSessions = sessions.filter((s) => {
+    try {
+      return new Date(s.sessionDate) >= now;
+    } catch {
+      return false;
+    }
+  });
+
   const totalCasesInSessions = sessions.reduce(
-    (acc, s) => acc + s.cases.length,
+    (acc, s) => acc + (Array.isArray(s.cases) ? s.cases.length : 0),
     0
   );
 
