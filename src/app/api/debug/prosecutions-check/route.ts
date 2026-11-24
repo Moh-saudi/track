@@ -5,66 +5,42 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    // 1. جلب حركات التدقيق الخاصة بالتحويل
-    const transferLogs = await prisma.auditLog.findMany({
+    const sourceId = "cmtt6fw29001n68bdcb9yi6ys"; // السادس من أكتوبر الكلية
+    const targetId = "cmtt6fsn6001f68bd5dyos433"; // أكتوبر الكلية
+
+    // نقل وتصحيح ربط الـ 14 سجلاً التابعة لمعرف السادس من أكتوبر الكلية لتصبح تابعة لمعرف أكتوبر الكلية
+    const updateResult = await prisma.case.updateMany({
       where: {
-        entityId: "PROSECUTION_TRANSFER_BATCH",
+        prosecutionId: sourceId,
       },
-      orderBy: { createdAt: "desc" },
-      take: 10,
+      data: {
+        prosecutionId: targetId,
+        prosecution: "أكتوبر الكلية",
+        governorate: "الجيزة",
+      },
     });
 
-    // 2. البحث عن نيابات أكتوبر
+    // إعادة فحص الإحصائيات بعد التحديث
     const octoberPros = await prisma.prosecution.findMany({
       where: {
         name: { contains: "أكتوبر" },
       },
       include: {
-        parent: { select: { id: true, name: true } },
         _count: { select: { cases: true, partialCases: true, children: true } },
       },
     });
 
-    // 3. البحث عن القضايا التي تحتوي على "أكتوبر" في prosecution أو partialProsecution
-    const cases = await prisma.case.findMany({
-      where: {
-        OR: [
-          { prosecution: { contains: "أكتوبر" } },
-          { partialProsecution: { contains: "أكتوبر" } },
-        ],
-      },
-      select: {
-        id: true,
-        caseNumber: true,
-        caseYear: true,
-        prosecutionId: true,
-        prosecution: true,
-        partialProsecutionId: true,
-        partialProsecution: true,
-        governorate: true,
-      },
-      take: 100,
-    });
-
     return NextResponse.json({
-      transferLogs,
-      octoberPros,
-      casesSummary: {
-        totalFound: cases.length,
-        casesByProsecution: cases.reduce((acc: any, c) => {
-          const k = `${c.prosecution || "بدون"} || ${c.partialProsecution || "بدون"}`;
-          acc[k] = (acc[k] || 0) + 1;
-          return acc;
-        }, {}),
-        casesByProsId: cases.reduce((acc: any, c) => {
-          const k = `${c.prosecutionId || "null"} || ${c.partialProsecutionId || "null"}`;
-          acc[k] = (acc[k] || 0) + 1;
-          return acc;
-        }, {}),
-        sampleCases: cases.slice(0, 10),
-      },
+      success: true,
+      updatedCasesCount: updateResult.count,
+      octoberPros: octoberPros.map((p) => ({
+        id: p.id,
+        name: p.name,
+        active: p.active,
+        casesCount: (p._count?.cases || 0) + (p._count?.partialCases || 0),
+      })),
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message, stack: err.stack }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
