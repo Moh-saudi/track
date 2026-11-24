@@ -449,150 +449,6 @@ export default function ProsecutionsManagementPage() {
         </div>
       )}
 
-      {/* نموذج تعديل نيابة قائمة */}
-      {editingItem && (
-        <Card className="space-y-4 bg-teal-50/50 border-teal-200 animate-in fade-in zoom-in-95">
-          <div className="flex items-center justify-between border-b border-teal-200/70 pb-2">
-            <div>
-              <h2 className="text-sm font-bold text-teal-900 font-heading">
-                تعديل بيانات النيابة: {editingItem.name}
-              </h2>
-              <p className="text-xs text-teal-700 font-body">
-                تعديل الاسم، النوع (كلية / جزئية / نيابة إدارية)، والتبعية القضائية والمحافظة
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setEditingItem(null)}
-              className="text-teal-700 hover:text-teal-900 p-1"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <form onSubmit={handleSaveEdit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-              <div className="form-group">
-                <label className="form-label form-label-required">اسم النيابة / الجهة</label>
-                <input
-                  type="text"
-                  required
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  placeholder="اسم النيابة..."
-                  className="form-input text-xs"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label form-label-required">نوع وتصنيف النيابة</label>
-                <select
-                  value={editType}
-                  onChange={(e) => {
-                    const nextType = e.target.value as "PLENARY" | "DISTRICT" | "ADMINISTRATIVE";
-                    setEditType(nextType);
-                    if (nextType === "PLENARY") {
-                      setEditParentId("");
-                    }
-                  }}
-                  className="form-select text-xs font-bold"
-                >
-                  <option value="PLENARY">نيابة كلية (عامة)</option>
-                  <option value="DISTRICT">نيابة جزئية (عامة)</option>
-                  <option value="ADMINISTRATIVE">نيابة إدارية</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">المحافظة التابعة لها</label>
-                <select
-                  value={editGov}
-                  onChange={(e) => setEditGov(e.target.value)}
-                  className="form-select text-xs"
-                >
-                  <option value="">-- بدون تحديد محافظة --</option>
-                  {EGYPT_GOVERNORATES.map((gov) => (
-                    <option key={gov} value={gov}>
-                      {gov}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label font-bold text-teal-950 flex items-center justify-between">
-                  <span>التبعية القضائية (الجهة المشرفة)</span>
-                  {editType === "DISTRICT" ? (
-                    <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
-                      مطلوبة للجزئية
-                    </span>
-                  ) : editType === "ADMINISTRATIVE" ? (
-                    <span className="text-[10px] text-violet-700 font-normal bg-violet-50 px-1.5 py-0.2 rounded border border-violet-200">
-                      اختياري / مستقلة
-                    </span>
-                  ) : null}
-                </label>
-                <select
-                  value={editParentId}
-                  onChange={(e) => setEditParentId(e.target.value)}
-                  disabled={editType === "PLENARY"}
-                  className={`form-select text-xs font-medium ${
-                    editType === "PLENARY"
-                      ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                      : "bg-white"
-                  }`}
-                >
-                  {editType === "PLENARY" ? (
-                    <option value="">-- جهة كلية رئيسية (بدون تبعية) --</option>
-                  ) : editType === "DISTRICT" ? (
-                    <>
-                      <option value="">-- حدد النيابة الكلية التابعة لها --</option>
-                      {parentCandidates
-                        .filter((p) => p.id !== editingItem.id && (!p.type || p.type === "PLENARY"))
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} {p.governorate ? `(${p.governorate})` : ""}
-                          </option>
-                        ))}
-                    </>
-                  ) : (
-                    <>
-                      <option value="">-- بدون تبعية (فرع / إدارة مستقلة) --</option>
-                      {parentCandidates
-                        .filter((p) => p.id !== editingItem.id)
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} {p.type === "ADMINISTRATIVE" ? "(نيابة إدارية)" : "(نيابة كلية)"} {p.governorate ? `[${p.governorate}]` : ""}
-                          </option>
-                        ))}
-                    </>
-                  )}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-teal-200">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setEditingItem(null)}
-              >
-                إلغاء
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                loading={isPending}
-              >
-                حفظ التعديلات
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
-
       {/* نموذج الإضافة */}
       {showAddForm && (
         <Card className="space-y-4 bg-slate-50/80 animate-in fade-in zoom-in-95 border-teal-200">
@@ -748,144 +604,203 @@ export default function ProsecutionsManagementPage() {
         </Card>
       )}
 
-      {/* ─── 1. بطاقات إحصاءات وتوزيع السجلات القضائية ─── */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 font-heading">
-            <FileText className="w-4 h-4 text-teal-600" />
-            توزيع السجلات والقضايا حسب الاختصاص القضائي
-          </h3>
-          <span className="text-[11px] text-slate-500 font-body hidden sm:inline">
-            اضغط على أي بطاقة لفلترة وعرض سجلات ذلك الاختصاص
-          </span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard
-            title="إجمالي القضايا الفعلي"
-            value={totalUniqueCases !== null ? totalUniqueCases : 1043}
-            subtitle="إجمالي القضايا الفريدة المسجلة بالمنظومة"
-            icon={<FileText className="w-6 h-6" />}
-            variant="teal"
-            onClick={() => {
-              setSelectedTypeFilter("");
-              setSelectedGovFilter("");
-            }}
-            className={`cursor-pointer transition-all ${
-              !selectedTypeFilter ? "ring-2 ring-teal-500/50 shadow-sm" : "hover:border-teal-300"
-            }`}
-          />
-          <StatCard
-            title="سجلات النيابات الكلية"
-            value={plenaryCasesCount}
-            subtitle="سجلات منسوبة للنيابات الكلية المشرفة"
-            icon={<Scale className="w-6 h-6" />}
-            variant="sky"
-            onClick={() => {
-              setSelectedTypeFilter(selectedTypeFilter === "PLENARY" ? "" : "PLENARY");
-            }}
-            className={`cursor-pointer transition-all ${
-              selectedTypeFilter === "PLENARY" ? "ring-2 ring-sky-500 shadow-sm" : "hover:border-sky-300"
-            }`}
-          />
-          <StatCard
-            title="سجلات النيابات الجزئية"
-            value={districtCasesCount}
-            subtitle="سجلات محددة بنيابة جزئية تابعة"
-            icon={<GitFork className="w-6 h-6" />}
-            variant="amber"
-            onClick={() => {
-              setSelectedTypeFilter(selectedTypeFilter === "DISTRICT" ? "" : "DISTRICT");
-            }}
-            className={`cursor-pointer transition-all ${
-              selectedTypeFilter === "DISTRICT" ? "ring-2 ring-amber-500 shadow-sm" : "hover:border-amber-300"
-            }`}
-          />
-          <StatCard
-            title="سجلات النيابة الإدارية"
-            value={adminCasesCount}
-            subtitle="سجلات وشكاوى هيئة النيابة الإدارية"
-            icon={<Building2 className="w-6 h-6" />}
-            variant="violet"
-            onClick={() => {
-              setSelectedTypeFilter(selectedTypeFilter === "ADMINISTRATIVE" ? "" : "ADMINISTRATIVE");
-            }}
-            className={`cursor-pointer transition-all ${
-              selectedTypeFilter === "ADMINISTRATIVE" ? "ring-2 ring-violet-500 shadow-sm" : "hover:border-violet-300"
-            }`}
-          />
-        </div>
-      </div>
+      {/* ─── بطاقات الإحصاءات السريعة المدمجة (تصميم مصغر وأنيق) ─── */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-3 sm:p-3.5 shadow-2xs space-y-3">
+        {/* توزيع السجلات */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5 px-1">
+            <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5 font-heading">
+              <FileText className="w-3.5 h-3.5 text-teal-600" />
+              توزيع السجلات والقضايا حسب الاختصاص القضائي
+            </span>
+            <span className="text-[10px] text-slate-400 font-body hidden sm:inline">
+              انقر على أي كرت للتصفية الفورية لسجلات النيابة
+            </span>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedTypeFilter("");
+                setSelectedGovFilter("");
+              }}
+              className={`text-right p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 bg-teal-50/50 hover:bg-teal-50 cursor-pointer ${
+                !selectedTypeFilter ? "border-teal-500 ring-2 ring-teal-500/30" : "border-teal-200"
+              }`}
+            >
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-teal-900 truncate">إجمالي القضايا الفعلي</p>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <span className="text-base sm:text-lg font-bold font-heading text-teal-950 leading-none">
+                    {totalUniqueCases !== null ? totalUniqueCases : 1043}
+                  </span>
+                  <span className="text-[10px] text-teal-700 font-medium">قضية فريدة</span>
+                </div>
+              </div>
+              <div className="w-7 h-7 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
+                <FileText className="w-3.5 h-3.5" />
+              </div>
+            </button>
 
-      {/* ─── 2. بطاقات هيكل جهات وهيئات النيابة ─── */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 font-heading">
-            <Building2 className="w-4 h-4 text-teal-600" />
-            هيكل جهات وهيئات النيابة المعرفة بالمنظومة
-          </h3>
-          <span className="text-[11px] text-slate-500 font-body hidden sm:inline">
-            تصنيف الجهات الرسمية وحالة تفعيلها للقيد
-          </span>
+            <button
+              type="button"
+              onClick={() => setSelectedTypeFilter(selectedTypeFilter === "PLENARY" ? "" : "PLENARY")}
+              className={`text-right p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 bg-sky-50/50 hover:bg-sky-50 cursor-pointer ${
+                selectedTypeFilter === "PLENARY" ? "border-sky-500 ring-2 ring-sky-500/30" : "border-sky-200"
+              }`}
+            >
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-sky-900 truncate">سجلات النيابات الكلية</p>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <span className="text-base sm:text-lg font-bold font-heading text-sky-950 leading-none">
+                    {plenaryCasesCount}
+                  </span>
+                  <span className="text-[10px] text-sky-700 font-medium">سجل كلي</span>
+                </div>
+              </div>
+              <div className="w-7 h-7 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                <Scale className="w-3.5 h-3.5" />
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedTypeFilter(selectedTypeFilter === "DISTRICT" ? "" : "DISTRICT")}
+              className={`text-right p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 bg-amber-50/50 hover:bg-amber-50 cursor-pointer ${
+                selectedTypeFilter === "DISTRICT" ? "border-amber-500 ring-2 ring-amber-500/30" : "border-amber-200"
+              }`}
+            >
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-amber-900 truncate">سجلات النيابات الجزئية</p>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <span className="text-base sm:text-lg font-bold font-heading text-amber-950 leading-none">
+                    {districtCasesCount}
+                  </span>
+                  <span className="text-[10px] text-amber-700 font-medium">سجل جزئي</span>
+                </div>
+              </div>
+              <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <GitFork className="w-3.5 h-3.5" />
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedTypeFilter(selectedTypeFilter === "ADMINISTRATIVE" ? "" : "ADMINISTRATIVE")}
+              className={`text-right p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 bg-violet-50/50 hover:bg-violet-50 cursor-pointer ${
+                selectedTypeFilter === "ADMINISTRATIVE" ? "border-violet-500 ring-2 ring-violet-500/30" : "border-violet-200"
+              }`}
+            >
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-violet-900 truncate">سجلات النيابة الإدارية</p>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <span className="text-base sm:text-lg font-bold font-heading text-violet-950 leading-none">
+                    {adminCasesCount}
+                  </span>
+                  <span className="text-[10px] text-violet-700 font-medium">سجل إداري</span>
+                </div>
+              </div>
+              <div className="w-7 h-7 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+                <Building2 className="w-3.5 h-3.5" />
+              </div>
+            </button>
+          </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <StatCard
-            title="إجمالي النيابات"
-            value={prosecutions.length}
-            subtitle="جهة معرفة بالنظام"
-            icon={<Building2 className="w-6 h-6" />}
-            variant="slate"
-            onClick={() => {
-              setSelectedTypeFilter("");
-              setSelectedGovFilter("");
-            }}
-            className="cursor-pointer hover:border-slate-300 transition-all"
-          />
-          <StatCard
-            title="النيابات الكلية"
-            value={plenaryProsCount}
-            subtitle="جهة كلية رئيسية"
-            icon={<Scale className="w-6 h-6" />}
-            variant="sky"
-            onClick={() => {
-              setSelectedTypeFilter(selectedTypeFilter === "PLENARY" ? "" : "PLENARY");
-            }}
-            className={`cursor-pointer transition-all ${
-              selectedTypeFilter === "PLENARY" ? "ring-2 ring-sky-500 shadow-sm" : "hover:border-sky-300"
-            }`}
-          />
-          <StatCard
-            title="النيابات الجزئية"
-            value={districtProsCount}
-            subtitle="نيابة فرعية تابعة"
-            icon={<GitFork className="w-6 h-6" />}
-            variant="amber"
-            onClick={() => {
-              setSelectedTypeFilter(selectedTypeFilter === "DISTRICT" ? "" : "DISTRICT");
-            }}
-            className={`cursor-pointer transition-all ${
-              selectedTypeFilter === "DISTRICT" ? "ring-2 ring-amber-500 shadow-sm" : "hover:border-amber-300"
-            }`}
-          />
-          <StatCard
-            title="النيابات الإدارية"
-            value={adminProsCount}
-            subtitle="فرع نيابة إدارية مستقل"
-            icon={<Building2 className="w-6 h-6" />}
-            variant="violet"
-            onClick={() => {
-              setSelectedTypeFilter(selectedTypeFilter === "ADMINISTRATIVE" ? "" : "ADMINISTRATIVE");
-            }}
-            className={`cursor-pointer transition-all ${
-              selectedTypeFilter === "ADMINISTRATIVE" ? "ring-2 ring-violet-500 shadow-sm" : "hover:border-violet-300"
-            }`}
-          />
-          <StatCard
-            title="مفعلة للقيد بالسجل"
-            value={activeProsCount}
-            subtitle="متاحة لموظفي القيد"
-            icon={<CheckCircle2 className="w-6 h-6" />}
-            variant="emerald"
-          />
+
+        {/* هيكل جهات وهيئات النيابة */}
+        <div className="border-t border-slate-100 pt-2.5">
+          <div className="flex items-center justify-between mb-1.5 px-1">
+            <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5 font-heading">
+              <Building2 className="w-3.5 h-3.5 text-teal-600" />
+              هيكل جهات وهيئات النيابة المعرفة بالمنظومة
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedTypeFilter("");
+                setSelectedGovFilter("");
+              }}
+              className="text-right p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-100/70 transition-all flex items-center justify-between gap-2 cursor-pointer"
+            >
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium text-slate-500 truncate">إجمالي النيابات</p>
+                <p className="text-base font-bold font-heading text-slate-800 leading-none mt-0.5">
+                  {prosecutions.length} <span className="text-[10px] text-slate-400 font-normal">جهة</span>
+                </p>
+              </div>
+              <div className="w-6 h-6 rounded-md bg-slate-200/80 text-slate-600 flex items-center justify-center shrink-0">
+                <Building2 className="w-3 h-3" />
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedTypeFilter(selectedTypeFilter === "PLENARY" ? "" : "PLENARY")}
+              className={`text-right p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 bg-sky-50/40 hover:bg-sky-50 cursor-pointer ${
+                selectedTypeFilter === "PLENARY" ? "border-sky-500 ring-2 ring-sky-500/30" : "border-sky-200/80"
+              }`}
+            >
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium text-sky-800 truncate">النيابات الكلية</p>
+                <p className="text-base font-bold font-heading text-sky-950 leading-none mt-0.5">
+                  {plenaryProsCount} <span className="text-[10px] text-sky-600 font-normal">كلية</span>
+                </p>
+              </div>
+              <div className="w-6 h-6 rounded-md bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                <Scale className="w-3 h-3" />
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedTypeFilter(selectedTypeFilter === "DISTRICT" ? "" : "DISTRICT")}
+              className={`text-right p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 bg-amber-50/40 hover:bg-amber-50 cursor-pointer ${
+                selectedTypeFilter === "DISTRICT" ? "border-amber-500 ring-2 ring-amber-500/30" : "border-amber-200/80"
+              }`}
+            >
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium text-amber-800 truncate">النيابات الجزئية</p>
+                <p className="text-base font-bold font-heading text-amber-950 leading-none mt-0.5">
+                  {districtProsCount} <span className="text-[10px] text-amber-600 font-normal">جزئية</span>
+                </p>
+              </div>
+              <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <GitFork className="w-3 h-3" />
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedTypeFilter(selectedTypeFilter === "ADMINISTRATIVE" ? "" : "ADMINISTRATIVE")}
+              className={`text-right p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 bg-violet-50/40 hover:bg-violet-50 cursor-pointer ${
+                selectedTypeFilter === "ADMINISTRATIVE" ? "border-violet-500 ring-2 ring-violet-500/30" : "border-violet-200/80"
+              }`}
+            >
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium text-violet-800 truncate">النيابات الإدارية</p>
+                <p className="text-base font-bold font-heading text-violet-950 leading-none mt-0.5">
+                  {adminProsCount} <span className="text-[10px] text-violet-600 font-normal">إدارية</span>
+                </p>
+              </div>
+              <div className="w-6 h-6 rounded-md bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+                <Building2 className="w-3 h-3" />
+              </div>
+            </button>
+
+            <div className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/50 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium text-emerald-800 truncate">مفعلة للقيد بالسجل</p>
+                <p className="text-base font-bold font-heading text-emerald-950 leading-none mt-0.5">
+                  {activeProsCount} <span className="text-[10px] text-emerald-600 font-normal">نشطة</span>
+                </p>
+              </div>
+              <div className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-3 h-3" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1355,6 +1270,162 @@ export default function ProsecutionsManagementPage() {
                   icon={<ArrowRightLeft className="w-4 h-4" />}
                 >
                   تأكيد تحويل ونقل السجلات
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── نافذة تعديل بيانات النيابة (Modal منبثق في منتصف الشاشة) ─── */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in-50">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in zoom-in-95">
+            <div className="p-4 border-b border-teal-200 bg-teal-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-teal-300" />
+                <div>
+                  <h3 className="text-sm font-black text-white">
+                    تعديل بيانات النيابة: {editingItem.name}
+                  </h3>
+                  <p className="text-[11px] text-teal-200 font-body">
+                    تعديل الاسم والتصنيف والتبعية القضائية والمحافظة
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingItem(null)}
+                className="p-1 rounded-lg text-teal-200 hover:text-white hover:bg-teal-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="p-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* 1. اسم النيابة */}
+                <div className="form-group sm:col-span-2">
+                  <label className="form-label form-label-required">اسم النيابة / الجهة</label>
+                  <input
+                    type="text"
+                    required
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="اسم النيابة..."
+                    className="form-input text-xs h-10 w-full bg-white"
+                    autoFocus
+                  />
+                </div>
+
+                {/* 2. نوع وتصنيف النيابة */}
+                <div className="form-group">
+                  <label className="form-label form-label-required">نوع وتصنيف النيابة</label>
+                  <select
+                    value={editType}
+                    onChange={(e) => {
+                      const nextType = e.target.value as "PLENARY" | "DISTRICT" | "ADMINISTRATIVE";
+                      setEditType(nextType);
+                      if (nextType === "PLENARY") {
+                        setEditParentId("");
+                      }
+                    }}
+                    className="form-select text-xs h-10 w-full bg-white font-bold"
+                  >
+                    <option value="PLENARY">نيابة كلية (عامة)</option>
+                    <option value="DISTRICT">نيابة جزئية (عامة)</option>
+                    <option value="ADMINISTRATIVE">نيابة إدارية</option>
+                  </select>
+                </div>
+
+                {/* 3. المحافظة */}
+                <div className="form-group">
+                  <label className="form-label">المحافظة التابعة لها</label>
+                  <select
+                    value={editGov}
+                    onChange={(e) => setEditGov(e.target.value)}
+                    className="form-select text-xs h-10 w-full bg-white"
+                  >
+                    <option value="">-- بدون تحديد محافظة --</option>
+                    {EGYPT_GOVERNORATES.map((gov) => (
+                      <option key={gov} value={gov}>
+                        {gov}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 4. التبعية القضائية */}
+                <div className="form-group sm:col-span-2">
+                  <label className="form-label font-bold text-teal-950 flex items-center justify-between">
+                    <span>التبعية القضائية (الجهة المشرفة)</span>
+                    {editType === "DISTRICT" ? (
+                      <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                        مطلوبة للجزئية
+                      </span>
+                    ) : editType === "ADMINISTRATIVE" ? (
+                      <span className="text-[10px] text-violet-700 font-normal bg-violet-50 px-1.5 py-0.5 rounded border border-violet-200">
+                        اختياري / هيئة النيابة الإدارية
+                      </span>
+                    ) : null}
+                  </label>
+                  <select
+                    value={editParentId}
+                    onChange={(e) => setEditParentId(e.target.value)}
+                    disabled={editType === "PLENARY"}
+                    className={`form-select text-xs h-10 w-full font-medium ${
+                      editType === "PLENARY"
+                        ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                        : "bg-white"
+                    }`}
+                  >
+                    {editType === "PLENARY" ? (
+                      <option value="">-- جهة كلية رئيسية (بدون تبعية) --</option>
+                    ) : editType === "DISTRICT" ? (
+                      <>
+                        <option value="">-- حدد النيابة الكلية التابعة لها --</option>
+                        {parentCandidates
+                          .filter((p) => p.id !== editingItem.id && (!p.type || p.type === "PLENARY"))
+                          .map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} {p.governorate ? `(${p.governorate})` : ""}
+                            </option>
+                          ))}
+                      </>
+                    ) : (
+                      <>
+                        <option value="">-- بدون تبعية (فرع / إدارة مستقلة) --</option>
+                        {parentCandidates
+                          .filter((p) => p.id !== editingItem.id)
+                          .map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} {p.type === "ADMINISTRATIVE" ? "(نيابة إدارية)" : "(نيابة كلية)"} {p.governorate ? `[${p.governorate}]` : ""}
+                            </option>
+                          ))}
+                      </>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              {/* أزرار الحفظ والإلغاء */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setEditingItem(null)}
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  loading={isPending}
+                  icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                >
+                  حفظ التعديلات
                 </Button>
               </div>
             </form>

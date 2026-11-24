@@ -23,10 +23,37 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body.parentId !== undefined) updateData.parentId = body.parentId || null;
     if (typeof body.active === "boolean") updateData.active = body.active;
 
+    const oldPros = await prisma.prosecution.findUnique({ where: { id } });
+
     const updated = await prisma.prosecution.update({
       where: { id: id },
       data: updateData,
     });
+
+    // إذا تم تعديل اسم النيابة، نحدث اسمها النصي في سجلات القضايا المرتبطة بها لضمان التطابق
+    if (body.name && oldPros && oldPros.name !== updateData.name) {
+      if (oldPros.type === "DISTRICT") {
+        await prisma.case.updateMany({
+          where: {
+            OR: [
+              { partialProsecutionId: id },
+              { partialProsecution: oldPros.name },
+            ],
+          },
+          data: { partialProsecution: updateData.name },
+        });
+      } else {
+        await prisma.case.updateMany({
+          where: {
+            OR: [
+              { prosecutionId: id },
+              { prosecution: oldPros.name },
+            ],
+          },
+          data: { prosecution: updateData.name },
+        });
+      }
+    }
 
     return NextResponse.json(updated);
   } catch (err: any) {
