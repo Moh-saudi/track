@@ -21,7 +21,7 @@ export async function GET() {
       },
       include: {
         parent: { select: { id: true, name: true } },
-        _count: { select: { cases: true, partialCases: true, districts: true } },
+        _count: { select: { cases: true, partialCases: true, children: true } },
       },
     });
 
