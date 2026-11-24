@@ -54,24 +54,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    // 4. استخراج كافة القضايا المرتبطة بالنيابة المصدر (برمجياً عبر الـ ID أو بالاسم النصي)
+    // 4. استخراج كافة القضايا المرتبطة بالنيابة المصدر (برمجياً عبر المعرف ID أو بالاسم النصي)
+    const trimmedName = sourcePros.name.trim();
     const matchingCases = await prisma.case.findMany({
       where: {
         OR: [
           { prosecutionId: id },
           { partialProsecutionId: id },
           { prosecution: sourcePros.name },
+          { prosecution: trimmedName },
           { partialProsecution: sourcePros.name },
+          { partialProsecution: trimmedName },
         ],
       },
       select: { id: true, caseNumber: true, caseYear: true, prosecution: true, partialProsecution: true },
     });
 
     if (matchingCases.length === 0) {
+      // حتى لو لم تكن هناك قضايا، إذا كانت نيابة كلية ولها نيابات جزئية تابعة، ننقل تبعيتها
+      if (sourcePros.type === "PLENARY") {
+        await prisma.prosecution.updateMany({
+          where: { parentId: sourcePros.id },
+          data: { parentId: targetPlenary.id },
+        });
+      }
+
       return NextResponse.json({
         success: true,
         updatedCount: 0,
-        message: "لا توجد سجلات مسجلة على هذه النيابة لتحويلها.",
+        message: "لا توجد سجلات قضايا مسجلة على هذه النيابة لتحويلها.",
       });
     }
 
@@ -95,11 +106,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       updatePayload.partialProsecution = null;
     }
 
-    // 6. تنفيذ التحديث الشامل
+    // 6. تنفيذ التحديث الشامل للقضايا
     const updateResult = await prisma.case.updateMany({
       where: { id: { in: caseIds } },
       data: updatePayload,
     });
+
+    // إذا كانت النيابة المحولة كلية، ننقل تبعية أي نيابات جزئية تابعة لها إلى النيابة الكلية الجديدة
+    if (sourcePros.type === "PLENARY") {
+      await prisma.prosecution.updateMany({
+        where: { parentId: sourcePros.id },
+        data: { parentId: targetPlenary.id },
+      });
+    }
 
     // 7. توثيق حركة التدقيق الرقابي
     await writeAuditLog({
