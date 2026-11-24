@@ -66,6 +66,7 @@ const CASE_STATUS_CONFIG: Record<
 
 export default function ProsecutionsManagementPage() {
   const [prosecutions, setProsecutions] = useState<ProsecutionItem[]>([]);
+  const [totalUniqueCases, setTotalUniqueCases] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -179,6 +180,10 @@ export default function ProsecutionsManagementPage() {
     try {
       const res = await fetch("/api/prosecutions?all=true");
       if (!res.ok) throw new Error("تعذر تحميل قائمة النيابات");
+      const totalHeader = res.headers.get("x-total-cases");
+      if (totalHeader) {
+        setTotalUniqueCases(parseInt(totalHeader, 10));
+      }
       const data = await res.json();
       setProsecutions(data);
     } catch (err: any) {
@@ -758,8 +763,8 @@ export default function ProsecutionsManagementPage() {
           variant="emerald"
         />
         <StatCard
-          title="إجمالي السجلات"
-          value={prosecutions.reduce((sum, p) => sum + (p.casesCount || 0), 0)}
+          title="إجمالي السجلات المسجلة"
+          value={totalUniqueCases !== null ? totalUniqueCases : prosecutions.reduce((sum, p) => sum + (p.casesCount || 0), 0)}
           icon={<FileText className="w-6 h-6" />}
           variant="teal"
         />

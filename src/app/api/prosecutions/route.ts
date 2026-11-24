@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     if (prosecutions.length > 0) {
       if (all) {
         // حساب إجمالي السجلات بدقة سواء بالمعرف البرمجي أو بالاسم النصي
-        const [caseProsCounts, casePartCounts] = await Promise.all([
+        const [caseProsCounts, casePartCounts, totalUniqueCases] = await Promise.all([
           prisma.case.groupBy({
             by: ["prosecution"],
             _count: { id: true },
@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
             _count: { id: true },
             where: { partialProsecution: { not: null } },
           }).catch(() => []),
+          prisma.case.count().catch(() => 0),
         ]);
 
         const prosCountMap = new Map<string, number>();
@@ -90,7 +91,11 @@ export async function GET(req: NextRequest) {
           };
         });
 
-        return NextResponse.json(withCounts);
+        return NextResponse.json(withCounts, {
+          headers: {
+            "x-total-cases": String(totalUniqueCases),
+          },
+        });
       }
 
       return NextResponse.json(prosecutions);
