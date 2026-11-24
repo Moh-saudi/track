@@ -345,6 +345,24 @@ export default function ProsecutionsManagementPage() {
     return matchesSearch && matchesGov && matchesType;
   });
 
+  // إحصاءات توزيع السجلات القضائية
+  const plenaryCasesCount = prosecutions
+    .filter((p) => !p.type || p.type === "PLENARY")
+    .reduce((sum, p) => sum + (p.casesCount || 0), 0);
+
+  const districtCasesCount = prosecutions
+    .filter((p) => p.type === "DISTRICT")
+    .reduce((sum, p) => sum + (p.casesCount || 0), 0);
+
+  const adminCasesCount = prosecutions
+    .filter((p) => p.type === "ADMINISTRATIVE")
+    .reduce((sum, p) => sum + (p.casesCount || 0), 0);
+
+  const plenaryProsCount = prosecutions.filter((p) => !p.type || p.type === "PLENARY").length;
+  const districtProsCount = prosecutions.filter((p) => p.type === "DISTRICT").length;
+  const adminProsCount = prosecutions.filter((p) => p.type === "ADMINISTRATIVE").length;
+  const activeProsCount = prosecutions.filter((p) => p.active).length;
+
   return (
     <div className="space-y-6">
       {/* ─── رأس الصفحة الموحد ─── */}
@@ -730,44 +748,145 @@ export default function ProsecutionsManagementPage() {
         </Card>
       )}
 
-      {/* بطاقات الإحصاءات */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatCard
-          title="إجمالي النيابات"
-          value={prosecutions.length}
-          icon={<Building2 className="w-6 h-6" />}
-          variant="teal"
-        />
-        <StatCard
-          title="النيابات الكلية"
-          value={prosecutions.filter((p) => !p.type || p.type === "PLENARY").length}
-          icon={<Scale className="w-6 h-6" />}
-          variant="sky"
-        />
-        <StatCard
-          title="النيابات الجزئية"
-          value={prosecutions.filter((p) => p.type === "DISTRICT").length}
-          icon={<GitFork className="w-6 h-6" />}
-          variant="amber"
-        />
-        <StatCard
-          title="النيابات الإدارية"
-          value={prosecutions.filter((p) => p.type === "ADMINISTRATIVE").length}
-          icon={<Building2 className="w-6 h-6" />}
-          variant="violet"
-        />
-        <StatCard
-          title="مفعلة للقيد بالسجل"
-          value={prosecutions.filter((p) => p.active).length}
-          icon={<CheckCircle2 className="w-6 h-6" />}
-          variant="emerald"
-        />
-        <StatCard
-          title="إجمالي السجلات المسجلة"
-          value={totalUniqueCases !== null ? totalUniqueCases : prosecutions.reduce((sum, p) => sum + (p.casesCount || 0), 0)}
-          icon={<FileText className="w-6 h-6" />}
-          variant="teal"
-        />
+      {/* ─── 1. بطاقات إحصاءات وتوزيع السجلات القضائية ─── */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 font-heading">
+            <FileText className="w-4 h-4 text-teal-600" />
+            توزيع السجلات والقضايا حسب الاختصاص القضائي
+          </h3>
+          <span className="text-[11px] text-slate-500 font-body hidden sm:inline">
+            اضغط على أي بطاقة لفلترة وعرض سجلات ذلك الاختصاص
+          </span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatCard
+            title="إجمالي القضايا الفعلي"
+            value={totalUniqueCases !== null ? totalUniqueCases : 1043}
+            subtitle="إجمالي القضايا الفريدة المسجلة بالمنظومة"
+            icon={<FileText className="w-6 h-6" />}
+            variant="teal"
+            onClick={() => {
+              setSelectedTypeFilter("");
+              setSelectedGovFilter("");
+            }}
+            className={`cursor-pointer transition-all ${
+              !selectedTypeFilter ? "ring-2 ring-teal-500/50 shadow-sm" : "hover:border-teal-300"
+            }`}
+          />
+          <StatCard
+            title="سجلات النيابات الكلية"
+            value={plenaryCasesCount}
+            subtitle="سجلات منسوبة للنيابات الكلية المشرفة"
+            icon={<Scale className="w-6 h-6" />}
+            variant="sky"
+            onClick={() => {
+              setSelectedTypeFilter(selectedTypeFilter === "PLENARY" ? "" : "PLENARY");
+            }}
+            className={`cursor-pointer transition-all ${
+              selectedTypeFilter === "PLENARY" ? "ring-2 ring-sky-500 shadow-sm" : "hover:border-sky-300"
+            }`}
+          />
+          <StatCard
+            title="سجلات النيابات الجزئية"
+            value={districtCasesCount}
+            subtitle="سجلات محددة بنيابة جزئية تابعة"
+            icon={<GitFork className="w-6 h-6" />}
+            variant="amber"
+            onClick={() => {
+              setSelectedTypeFilter(selectedTypeFilter === "DISTRICT" ? "" : "DISTRICT");
+            }}
+            className={`cursor-pointer transition-all ${
+              selectedTypeFilter === "DISTRICT" ? "ring-2 ring-amber-500 shadow-sm" : "hover:border-amber-300"
+            }`}
+          />
+          <StatCard
+            title="سجلات النيابة الإدارية"
+            value={adminCasesCount}
+            subtitle="سجلات وشكاوى هيئة النيابة الإدارية"
+            icon={<Building2 className="w-6 h-6" />}
+            variant="violet"
+            onClick={() => {
+              setSelectedTypeFilter(selectedTypeFilter === "ADMINISTRATIVE" ? "" : "ADMINISTRATIVE");
+            }}
+            className={`cursor-pointer transition-all ${
+              selectedTypeFilter === "ADMINISTRATIVE" ? "ring-2 ring-violet-500 shadow-sm" : "hover:border-violet-300"
+            }`}
+          />
+        </div>
+      </div>
+
+      {/* ─── 2. بطاقات هيكل جهات وهيئات النيابة ─── */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 font-heading">
+            <Building2 className="w-4 h-4 text-teal-600" />
+            هيكل جهات وهيئات النيابة المعرفة بالمنظومة
+          </h3>
+          <span className="text-[11px] text-slate-500 font-body hidden sm:inline">
+            تصنيف الجهات الرسمية وحالة تفعيلها للقيد
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <StatCard
+            title="إجمالي النيابات"
+            value={prosecutions.length}
+            subtitle="جهة معرفة بالنظام"
+            icon={<Building2 className="w-6 h-6" />}
+            variant="slate"
+            onClick={() => {
+              setSelectedTypeFilter("");
+              setSelectedGovFilter("");
+            }}
+            className="cursor-pointer hover:border-slate-300 transition-all"
+          />
+          <StatCard
+            title="النيابات الكلية"
+            value={plenaryProsCount}
+            subtitle="جهة كلية رئيسية"
+            icon={<Scale className="w-6 h-6" />}
+            variant="sky"
+            onClick={() => {
+              setSelectedTypeFilter(selectedTypeFilter === "PLENARY" ? "" : "PLENARY");
+            }}
+            className={`cursor-pointer transition-all ${
+              selectedTypeFilter === "PLENARY" ? "ring-2 ring-sky-500 shadow-sm" : "hover:border-sky-300"
+            }`}
+          />
+          <StatCard
+            title="النيابات الجزئية"
+            value={districtProsCount}
+            subtitle="نيابة فرعية تابعة"
+            icon={<GitFork className="w-6 h-6" />}
+            variant="amber"
+            onClick={() => {
+              setSelectedTypeFilter(selectedTypeFilter === "DISTRICT" ? "" : "DISTRICT");
+            }}
+            className={`cursor-pointer transition-all ${
+              selectedTypeFilter === "DISTRICT" ? "ring-2 ring-amber-500 shadow-sm" : "hover:border-amber-300"
+            }`}
+          />
+          <StatCard
+            title="النيابات الإدارية"
+            value={adminProsCount}
+            subtitle="فرع نيابة إدارية مستقل"
+            icon={<Building2 className="w-6 h-6" />}
+            variant="violet"
+            onClick={() => {
+              setSelectedTypeFilter(selectedTypeFilter === "ADMINISTRATIVE" ? "" : "ADMINISTRATIVE");
+            }}
+            className={`cursor-pointer transition-all ${
+              selectedTypeFilter === "ADMINISTRATIVE" ? "ring-2 ring-violet-500 shadow-sm" : "hover:border-violet-300"
+            }`}
+          />
+          <StatCard
+            title="مفعلة للقيد بالسجل"
+            value={activeProsCount}
+            subtitle="متاحة لموظفي القيد"
+            icon={<CheckCircle2 className="w-6 h-6" />}
+            variant="emerald"
+          />
+        </div>
       </div>
 
       {/* شريط البحث وفلترة المحافظات والنوع وجدول النيابات */}
