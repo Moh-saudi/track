@@ -21,6 +21,11 @@ import {
   Calendar,
   Layers,
   RotateCcw,
+  UserCheck,
+  Trophy,
+  Award,
+  Star,
+  Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -63,11 +68,38 @@ export interface UnifiedCase {
   finalDecisionType?: "FAULT_CONFIRMED" | "NO_FAULT" | "INSUFFICIENT_DOCS" | null;
 }
 
+export interface DoctorStat {
+  id: string;
+  name: string;
+  active: boolean;
+  subCommitteeName: string;
+  specialtyName: string;
+  assignmentCount: number;
+}
+
+export interface CommitteeCompletionStat {
+  id: string;
+  name: string;
+  completed: number;
+  total: number;
+  completionRate: number;
+}
+
+export interface CommitteeSpecialtyStat {
+  commId: string;
+  commName: string;
+  topSpecs: Array<{ name: string; count: number }>;
+  total: number;
+}
+
 interface UnifiedReportsClientProps {
   initialCases: UnifiedCase[];
   subCommitteesList: Array<{ id: string; name: string }>;
   specialtiesList: SpecialtyStat[];
   prosecutionsList: ProsecutionStat[];
+  topDoctors: DoctorStat[];
+  topCompletedCommittees: CommitteeCompletionStat[];
+  committeeTopSpecialties: CommitteeSpecialtyStat[];
   userRole?: string;
 }
 
@@ -91,6 +123,9 @@ export function UnifiedReportsClient({
   subCommitteesList,
   specialtiesList,
   prosecutionsList,
+  topDoctors,
+  topCompletedCommittees,
+  committeeTopSpecialties,
 }: UnifiedReportsClientProps) {
   // الفلاتر التفاعلية
   const [selectedYear, setSelectedYear] = useState<string>("ALL");
@@ -672,6 +707,164 @@ export function UnifiedReportsClient({
         title="توزيع القضايا حسب جهات النيابة العامة"
         subtitle="حصر كافة النيابات الكلية والجزئية الأكثر إحالة للقضايا ونسبتها المئوية"
       />
+
+      {/* ─── قسم تحليلات الأطباء والاستشاريين ─── */}
+      <div className="space-y-5">
+        {/* رأس القسم */}
+        <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
+          <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-xs shrink-0">
+            <UserCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold font-heading text-slate-900">
+              مؤشرات الأطباء والاستشاريين في اللجان الفرعية
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              أكثر الأطباء مشاركة في أعمال الفحص والتقارير · أكثر اللجان إنجازاً · التخصصات الغالبة في كل لجنة
+            </p>
+          </div>
+          <Link
+            href="/dashboard/subcommittee/doctors"
+            className="mr-auto inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-semibold border border-teal-200 transition-colors shrink-0"
+          >
+            <span>سجل الأطباء الكامل</span>
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+          {/* 1. أكثر الأطباء مشاركة */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                <Trophy className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold font-heading text-slate-900">أكثر الأطباء مشاركة</h3>
+                <p className="text-[11px] text-slate-500">حسب عدد مهام الفحص والتقارير</p>
+              </div>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {topDoctors.length === 0 ? (
+                <p className="p-4 text-xs text-slate-400 text-center">لا توجد بيانات بعد</p>
+              ) : (
+                topDoctors.map((doc, idx) => (
+                  <div key={doc.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50/60 transition-colors">
+                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold font-mono shrink-0 ${
+                      idx === 0 ? "bg-amber-100 text-amber-700" :
+                      idx === 1 ? "bg-slate-200 text-slate-700" :
+                      idx === 2 ? "bg-orange-100 text-orange-700" :
+                      "bg-slate-50 text-slate-500"
+                    }`}>{idx + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href="/dashboard/subcommittee/doctors"
+                        className="text-xs font-bold text-slate-900 hover:text-teal-700 transition-colors truncate block"
+                        title={doc.name}
+                      >
+                        {doc.name}
+                      </Link>
+                      <span className="text-[11px] text-slate-400 truncate block">{doc.specialtyName}</span>
+                    </div>
+                    <div className="text-left shrink-0">
+                      <span className="text-sm font-bold font-mono text-teal-700">{doc.assignmentCount}</span>
+                      <span className="text-[10px] text-slate-400 block text-center">مهمة</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* 2. أكثر اللجان إنجازاً */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                <Award className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold font-heading text-slate-900">أكثر اللجان إنجازاً</h3>
+                <p className="text-[11px] text-slate-500">حسب عدد القرارات المعتمدة والمغلقة</p>
+              </div>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {topCompletedCommittees.length === 0 ? (
+                <p className="p-4 text-xs text-slate-400 text-center">لا توجد بيانات بعد</p>
+              ) : (
+                topCompletedCommittees.map((comm, idx) => (
+                  <div key={comm.id} className="px-4 py-2.5 hover:bg-slate-50/60 transition-colors">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-xs font-bold text-slate-900 truncate flex-1" title={comm.name}>
+                        {idx + 1}. {comm.name}
+                      </span>
+                      <span className="text-xs font-bold font-mono text-emerald-700 shrink-0">
+                        {comm.completed}<span className="text-slate-400 font-normal">/{comm.total}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full"
+                          style={{ width: `${comm.completionRate}%` }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-mono font-bold text-emerald-700 shrink-0 w-9 text-left">
+                        {comm.completionRate}%
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* 3. التخصصات الأعلى في كل لجنة */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center shrink-0">
+                <Star className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold font-heading text-slate-900">التخصصات الأعلى بكل لجنة</h3>
+                <p className="text-[11px] text-slate-500">أكثر التخصصات الطبية ورودًا في كل لجنة</p>
+              </div>
+            </div>
+            <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-50">
+              {committeeTopSpecialties.length === 0 ? (
+                <p className="p-4 text-xs text-slate-400 text-center">لا توجد بيانات بعد</p>
+              ) : (
+                committeeTopSpecialties.map((item) => (
+                  <div key={item.commId} className="px-4 py-2.5 hover:bg-slate-50/60 transition-colors">
+                    <div className="flex items-center justify-between gap-1 mb-1.5">
+                      <span className="text-[11px] font-bold text-slate-800 truncate flex-1" title={item.commName}>
+                        {item.commName}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400 shrink-0">{item.total} قضية</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {item.topSpecs.map((sp, si) => (
+                        <span
+                          key={sp.name}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                            si === 0
+                              ? "bg-sky-50 text-sky-800 border-sky-200"
+                              : si === 1
+                              ? "bg-teal-50 text-teal-800 border-teal-200"
+                              : "bg-slate-50 text-slate-700 border-slate-200"
+                          }`}
+                        >
+                          <span className="truncate max-w-[100px]">{sp.name}</span>
+                          <span className="font-mono font-bold opacity-70">{sp.count}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* ─── جدول استعراض السجلات المطابقة ─── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">

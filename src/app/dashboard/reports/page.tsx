@@ -10,6 +10,9 @@ import {
 import {
   UnifiedReportsClient,
   UnifiedCase,
+  DoctorStat,
+  CommitteeCompletionStat,
+  CommitteeSpecialtyStat,
 } from "./unified-reports-client";
 
 export const revalidate = 0;
@@ -31,6 +34,7 @@ export default async function UnifiedReportsPage() {
   let subCommittees: any[] = [];
   let prosecutions: any[] = [];
   let specialties: any[] = [];
+  let rawDoctors: any[] = [];
 
   try {
     const res = await Promise.all([
@@ -72,12 +76,25 @@ export default async function UnifiedReportsPage() {
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       }),
+      prisma.subCommitteeDoctor.findMany({
+        select: {
+          id: true,
+          name: true,
+          active: true,
+          subCommitteeId: true,
+          subCommittee: { select: { id: true, name: true } },
+          specialtyId: true,
+          specialty: { select: { id: true, name: true } },
+          _count: { select: { reviewAssignments: true } },
+        },
+      }),
     ]);
 
     cases = res[0] || [];
     subCommittees = res[1] || [];
     prosecutions = res[2] || [];
     specialties = res[3] || [];
+    rawDoctors = res[4] || [];
   } catch (err) {
     console.error("Error fetching unified reports data:", err);
   }
@@ -211,12 +228,78 @@ export default async function UnifiedReportsPage() {
     };
   });
 
+  // ─── إحصائيات الأطباء: الأكثر مشاركة في اللجان ───
+  const topDoctors: DoctorStat[] = rawDoctors
+    .map((d: any) => ({
+      id: d.id,
+      name: d.name,
+      active: d.active,
+      subCommitteeName: d.subCommittee?.name || "—",
+      specialtyName: d.specialty?.name || "—",
+      assignmentCount: d._count?.reviewAssignments ?? 0,
+    }))
+    .sort((a: DoctorStat, b: DoctorStat) => b.assignmentCount - a.assignmentCount)
+    .slice(0, 10);
+
+  // ─── أكثر اللجان إنجازاً (APPROVED + CLOSED) ───
+  const committeeCompletionMap: Record<string, { id: string; name: string; completed: number; total: number }> = {};
+  cases.forEach((c: any) => {
+    const id = c.subCommittee?.id;
+    const name = c.subCommittee?.name;
+    if (!id || !name) return;
+    if (!committeeCompletionMap[id]) committeeCompletionMap[id] = { id, name, completed: 0, total: 0 };
+    committeeCompletionMap[id].total++;
+    if (c.status === "APPROVED" || c.status === "CLOSED") committeeCompletionMap[id].completed++;
+  });
+  const topCompletedCommittees: CommitteeCompletionStat[] = Object.values(committeeCompletionMap)
+    .filter((c) => c.total > 0)
+    .sort((a, b) => b.completed - a.completed)
+    .slice(0, 8)
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      completed: c.completed,
+      total: c.total,
+      completionRate: Math.round((c.completed / c.total) * 100),
+    }));
+
+  // ─── التخصصات الأعلى في كل لجنة فرعية ───
+  const committeeSpecialtyMap: Record<string, Record<string, { name: string; count: number }>> = {};
+  cases.forEach((c: any) => {
+    const commId = c.subCommittee?.id;
+    const commName = c.subCommittee?.name;
+    if (!commId || !commName) return;
+    if (!committeeSpecialtyMap[commId]) committeeSpecialtyMap[commId] = {};
+    (c.specialties || []).forEach((s: any) => {
+      const specName = s.specialty?.name;
+      if (!specName) return;
+      if (!committeeSpecialtyMap[commId][specName]) committeeSpecialtyMap[commId][specName] = { name: specName, count: 0 };
+      committeeSpecialtyMap[commId][specName].count++;
+    });
+  });
+
+  const committeeTopSpecialties: CommitteeSpecialtyStat[] = Object.entries(committeeSpecialtyMap)
+    .map(([commId, specMap]) => {
+      const commName = cases.find((c: any) => c.subCommittee?.id === commId)?.subCommittee?.name || commId;
+      const topSpecs = Object.values(specMap)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+      const total = Object.values(specMap).reduce((s, v) => s + v.count, 0);
+      return { commId, commName, topSpecs, total };
+    })
+    .filter((item) => item.total > 0)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 9);
+
   return (
     <UnifiedReportsClient
       initialCases={unifiedCases}
       subCommitteesList={subCommittees}
       specialtiesList={specialtiesList}
       prosecutionsList={prosecutionsList}
+      topDoctors={topDoctors}
+      topCompletedCommittees={topCompletedCommittees}
+      committeeTopSpecialties={committeeTopSpecialties}
       userRole={userRole}
     />
   );
