@@ -41,6 +41,7 @@ import {
   ProsecutionStat,
 } from "@/components/analytics/AnalyticsCharts";
 import { formatDate, formatNumber } from "@/lib/formatters";
+import { createEmptyFindingsCounts, SubCommitteeFinding } from "@/lib/subcommittee-findings";
 
 export interface UnifiedCase {
   id: string;
@@ -65,7 +66,7 @@ export interface UnifiedCase {
   assignedAt: string | null;
   expectedDueDate: string | null;
   turnaroundDays: number;
-  finalDecisionType?: "FAULT_CONFIRMED" | "NO_FAULT" | "INSUFFICIENT_DOCS" | null;
+  subcommitteeFinding?: SubCommitteeFinding | null;
 }
 
 export interface DoctorStat {
@@ -173,10 +174,15 @@ export function UnifiedReportsClient({
       ? Math.round(completed.reduce((acc, c) => acc + c.turnaroundDays, 0) / completed.length)
       : 0;
 
-    // حساب المسؤولية الطبية
-    const faultConfirmed = filteredCases.filter((c) => c.finalDecisionType === "FAULT_CONFIRMED").length;
-    const noFault = filteredCases.filter((c) => c.finalDecisionType === "NO_FAULT").length;
-    const insufficientDocs = filteredCases.filter((c) => c.finalDecisionType === "INSUFFICIENT_DOCS").length;
+    // حساب نتائج دراسة اللجان الفرعية (الخمس المعتمدة)
+    const findingsCounts = createEmptyFindingsCounts();
+    let totalDecided = 0;
+    filteredCases.forEach((c) => {
+      if (c.subcommitteeFinding && c.subcommitteeFinding in findingsCounts) {
+        findingsCounts[c.subcommitteeFinding]++;
+        totalDecided++;
+      }
+    });
 
     return {
       total,
@@ -188,12 +194,8 @@ export function UnifiedReportsClient({
       overdueCount,
       avgTurnaround,
       completedCount: completed.length,
-      liability: {
-        faultConfirmed,
-        noFault,
-        insufficientDocs,
-        totalDecided: faultConfirmed + noFault + insufficientDocs,
-      },
+      findingsCounts,
+      totalDecided,
     };
   }, [filteredCases]);
 
@@ -669,12 +671,10 @@ export function UnifiedReportsClient({
           description="متوسط المدة المستغرقة من قيد السجل وحتى اعتماد التقرير الفني ومؤشر المهلة القانونية"
         />
 
-        {/* توزيع نتائج المسؤولية الطبية */}
+        {/* توزيع نتائج دراسة اللجان الفرعية */}
         <LiabilityDistributionChart
-          faultConfirmed={pipelineMetrics.liability.faultConfirmed}
-          noFault={pipelineMetrics.liability.noFault}
-          insufficientDocs={pipelineMetrics.liability.insufficientDocs}
-          total={pipelineMetrics.liability.totalDecided}
+          findingsCounts={pipelineMetrics.findingsCounts}
+          total={pipelineMetrics.totalDecided}
         />
       </div>
 

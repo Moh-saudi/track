@@ -32,6 +32,7 @@ import {
   LiabilityDistributionChart,
 } from "@/components/analytics/AnalyticsCharts";
 import { SupremeDateFilter } from "./date-filter";
+import { classifySubcommitteeFinding, createEmptyFindingsCounts } from "@/lib/subcommittee-findings";
 
 export const revalidate = 0;
 
@@ -214,12 +215,11 @@ export default async function SupremeDashboard({ searchParams }: SupremeDashboar
     };
   });
 
-  // ─── متوسط زمن الفصل ونسب المسؤولية ───
+  // ─── متوسط زمن الفصل ونتائج دراسة اللجان الفرعية الخمس ───
   let totalTurnaroundDays = 0;
   let casesWithActionCount = 0;
-  let faultConfirmedCount = 0;
-  let noFaultCount = 0;
-  let insufficientDocsCount = 0;
+  const findingsCounts = createEmptyFindingsCounts();
+  let classifiedFindingsTotal = 0;
 
   cases.forEach((c) => {
     if (c.actions.length > 0) {
@@ -233,13 +233,12 @@ export default async function SupremeDashboard({ searchParams }: SupremeDashboar
       totalTurnaroundDays += diff;
       casesWithActionCount++;
 
-      const desc = (action.faultDescription || "").toLowerCase();
-      if (desc.includes("انتفاء") || desc.includes("لا يوجد خطأ") || desc.includes("مضاعفة")) {
-        noFaultCount++;
-      } else if (desc.includes("استيفاء") || desc.includes("نقص") || desc.includes("يتعذر")) {
-        insufficientDocsCount++;
-      } else {
-        faultConfirmedCount++;
+      const finding = classifySubcommitteeFinding(
+        action.faultDescription || (action as any).actionTaken
+      );
+      if (finding) {
+        findingsCounts[finding]++;
+        classifiedFindingsTotal++;
       }
     }
   });
@@ -384,10 +383,8 @@ export default async function SupremeDashboard({ searchParams }: SupremeDashboar
         />
 
         <LiabilityDistributionChart
-          faultConfirmed={faultConfirmedCount}
-          noFault={noFaultCount}
-          insufficientDocs={insufficientDocsCount}
-          total={casesWithActionCount}
+          findingsCounts={findingsCounts}
+          total={classifiedFindingsTotal}
         />
       </div>
 

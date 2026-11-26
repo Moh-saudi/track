@@ -7,6 +7,7 @@ import {
   SpecialtyStat,
   ProsecutionStat,
 } from "@/components/analytics/AnalyticsCharts";
+import { classifySubcommitteeFinding } from "@/lib/subcommittee-findings";
 import {
   UnifiedReportsClient,
   UnifiedCase,
@@ -47,9 +48,11 @@ export default async function UnifiedReportsPage() {
           prosecutionRel: { select: { id: true, name: true } },
           partialProsecutionRel: { select: { id: true, name: true } },
           actions: {
+            orderBy: { createdAt: "desc" },
             select: {
               reportDate: true,
               receivedDate: true,
+              faultDescription: true,
               actionTaken: true,
               createdAt: true,
             },
@@ -174,18 +177,13 @@ export default async function UnifiedReportsPage() {
       }
     }
 
-    // استخلاص نوع القرار النهائي إن وجد
-    let finalDecisionType: "FAULT_CONFIRMED" | "NO_FAULT" | "INSUFFICIENT_DOCS" | null = null;
-    const latestDecision = c.supremeDecisions?.[0]?.decisionType;
-    if (latestDecision) {
-      if (latestDecision.includes("FAULT_CONFIRMED") || latestDecision === "PROVE_ERROR") {
-        finalDecisionType = "FAULT_CONFIRMED";
-      } else if (latestDecision.includes("NO_FAULT") || latestDecision === "NO_ERROR") {
-        finalDecisionType = "NO_FAULT";
-      } else if (latestDecision.includes("INSUFFICIENT") || latestDecision.includes("DOCUMENTS")) {
-        finalDecisionType = "INSUFFICIENT_DOCS";
-      }
-    }
+    // استخلاص نتيجة دراسة اللجنة الفرعية (من الخيارات الخمسة المعتمدة)
+    const actionWithFinding = (c.actions || []).find(
+      (a: any) => a.faultDescription || a.actionTaken
+    );
+    const subcommitteeFinding = classifySubcommitteeFinding(
+      actionWithFinding?.faultDescription || actionWithFinding?.actionTaken
+    );
 
     const resolvedProsName =
       c.prosecutionRel?.name ||
@@ -224,7 +222,7 @@ export default async function UnifiedReportsPage() {
       assignedAt: c.assignedAt ? new Date(c.assignedAt).toISOString() : null,
       expectedDueDate: c.expectedDueDate ? new Date(c.expectedDueDate).toISOString() : null,
       turnaroundDays,
-      finalDecisionType,
+      subcommitteeFinding,
     };
   });
 

@@ -23,6 +23,7 @@ import {
   Info,
   Sparkles,
 } from "lucide-react";
+import { SUBCOMMITTEE_FINDINGS, SubCommitteeFinding } from "@/lib/subcommittee-findings";
 
 export interface SpecialtyStat {
   id?: string;
@@ -292,94 +293,147 @@ export function TurnaroundMetricCard({
   );
 }
 
-// ─── بطاقة توزيع مواقف الخطأ والمسؤولية الطبية ───
+// ─── بطاقة توزيع نتائج دراسة اللجان الفرعية الخمس المعتمدة ───
 interface LiabilityDistributionProps {
-  faultConfirmed: number;
-  noFault: number;
-  insufficientDocs: number;
+  findingsCounts: Record<SubCommitteeFinding, number>;
   total: number;
 }
 
+const FINDING_CHART_STYLES: Record<
+  SubCommitteeFinding,
+  {
+    shortLabel: string;
+    barColor: string;
+    dotColor: string;
+    cardBg: string;
+    cardBorder: string;
+    titleColor: string;
+    countColor: string;
+    pctColor: string;
+  }
+> = {
+  "لا يوجد خطأ طبي ولا مضاعفة طبية": {
+    shortLabel: "لا يوجد خطأ طبي ولا مضاعفة",
+    barColor: "bg-emerald-500",
+    dotColor: "bg-emerald-500",
+    cardBg: "bg-emerald-50",
+    cardBorder: "border-emerald-200",
+    titleColor: "text-emerald-900",
+    countColor: "text-emerald-950",
+    pctColor: "text-emerald-700",
+  },
+  "مضاعفه طبية واردة الحدوث ولا يوجد أى خطأ طبى": {
+    shortLabel: "مضاعفة طبية واردة الحدوث",
+    barColor: "bg-teal-500",
+    dotColor: "bg-teal-500",
+    cardBg: "bg-teal-50",
+    cardBorder: "border-teal-200",
+    titleColor: "text-teal-900",
+    countColor: "text-teal-950",
+    pctColor: "text-teal-700",
+  },
+  "خطأ طبى من الطبيب المشكو في حقه": {
+    shortLabel: "خطأ طبي من الطبيب",
+    barColor: "bg-amber-400",
+    dotColor: "bg-amber-400",
+    cardBg: "bg-amber-50",
+    cardBorder: "border-amber-200",
+    titleColor: "text-amber-900",
+    countColor: "text-amber-950",
+    pctColor: "text-amber-700",
+  },
+  "خطأ طبى جسيم  من الطبيب المشكو في حقه": {
+    shortLabel: "خطأ طبي جسيم من الطبيب",
+    barColor: "bg-rose-500",
+    dotColor: "bg-rose-500",
+    cardBg: "bg-rose-50",
+    cardBorder: "border-rose-200",
+    titleColor: "text-rose-900",
+    countColor: "text-rose-950",
+    pctColor: "text-rose-700",
+  },
+  "خطأ طبي علي المنشأة الطبية": {
+    shortLabel: "خطأ طبي على المنشأة",
+    barColor: "bg-purple-500",
+    dotColor: "bg-purple-500",
+    cardBg: "bg-purple-50",
+    cardBorder: "border-purple-200",
+    titleColor: "text-purple-900",
+    countColor: "text-purple-950",
+    pctColor: "text-purple-700",
+  },
+};
+
 export function LiabilityDistributionChart({
-  faultConfirmed,
-  noFault,
-  insufficientDocs,
+  findingsCounts,
   total,
 }: LiabilityDistributionProps) {
-  const faultPercent = total > 0 ? Math.round((faultConfirmed / total) * 100) : 0;
-  const noFaultPercent = total > 0 ? Math.round((noFault / total) * 100) : 0;
-  const docPercent = total > 0 ? Math.round((insufficientDocs / total) * 100) : 0;
+  const items = SUBCOMMITTEE_FINDINGS.map((finding) => {
+    const count = findingsCounts[finding] || 0;
+    const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+    return {
+      finding,
+      count,
+      percent,
+      style: FINDING_CHART_STYLES[finding],
+    };
+  });
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4 font-body">
-      <div>
-        <h3 className="text-base font-bold font-heading text-slate-900 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-teal-600" />
-          <span>توزيع نتائج ومواقف المسؤولية الطبية</span>
-        </h3>
-        <p className="text-xs text-slate-500 mt-0.5">
-          نسب ثبوت الأخطاء المهنية مقابل انتفاء الخطأ واستيفاء الأوراق في تقارير اللجنة
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-base font-bold font-heading text-slate-900 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-teal-600" />
+            <span>توزيع نتائج دراسة اللجان الفرعية (5 نتائج)</span>
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            نسب نتائج الفحص الخمس المعتمدة في تقارير اللجان الفرعية للمسؤولية الطبية
+          </p>
+        </div>
+        <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 shrink-0">
+          {total} تقرير
+        </span>
       </div>
 
-      {/* شريط بياني ثلاثي مجزأ */}
+      {/* شريط بياني خماسي مجزأ */}
       <div className="h-3.5 w-full bg-slate-100 rounded-full overflow-hidden flex">
-        {faultPercent > 0 && (
-          <div
-            className="bg-rose-500 h-full transition-all duration-500"
-            style={{ width: `${faultPercent}%` }}
-            title={`ثبوت خطأ: ${faultConfirmed} (${faultPercent}%)`}
-          />
-        )}
-        {noFaultPercent > 0 && (
-          <div
-            className="bg-emerald-500 h-full transition-all duration-500"
-            style={{ width: `${noFaultPercent}%` }}
-            title={`انتفاء خطأ: ${noFault} (${noFaultPercent}%)`}
-          />
-        )}
-        {docPercent > 0 && (
-          <div
-            className="bg-amber-400 h-full transition-all duration-500"
-            style={{ width: `${docPercent}%` }}
-            title={`استيفاء مستندات: ${insufficientDocs} (${docPercent}%)`}
-          />
+        {items.map((item) =>
+          item.percent > 0 ? (
+            <div
+              key={item.finding}
+              className={`${item.style.barColor} h-full transition-all duration-500`}
+              style={{ width: `${item.percent}%` }}
+              title={`${item.finding}: ${item.count} (${item.percent}%)`}
+            />
+          ) : null
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-rose-900">ثبوت الخطأ الطبي</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+      {/* الكروت الخمسة للنتائج */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+        {items.map((item) => (
+          <div
+            key={item.finding}
+            className={`p-3 rounded-xl ${item.style.cardBg} border ${item.style.cardBorder} space-y-1`}
+            title={item.finding}
+          >
+            <div className="flex items-center justify-between gap-1.5">
+              <span className={`text-[11px] font-semibold leading-tight ${item.style.titleColor}`}>
+                {item.style.shortLabel}
+              </span>
+              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${item.style.dotColor}`} />
+            </div>
+            <div className="flex items-baseline gap-2 font-mono">
+              <span className={`text-xl font-bold font-heading ${item.style.countColor}`}>
+                {item.count}
+              </span>
+              <span className={`text-xs font-semibold ${item.style.pctColor}`}>
+                ({item.percent}%)
+              </span>
+            </div>
           </div>
-          <div className="flex items-baseline gap-2 font-mono">
-            <span className="text-xl font-bold font-heading text-rose-950">{faultConfirmed}</span>
-            <span className="text-xs text-rose-700 font-semibold">({faultPercent}%)</span>
-          </div>
-        </div>
-
-        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-emerald-900">انتفاء الخطأ والتقصير</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-          </div>
-          <div className="flex items-baseline gap-2 font-mono">
-            <span className="text-xl font-bold font-heading text-emerald-950">{noFault}</span>
-            <span className="text-xs text-emerald-700 font-semibold">({noFaultPercent}%)</span>
-          </div>
-        </div>
-
-        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-amber-900">استيفاء المستندات</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-          </div>
-          <div className="flex items-baseline gap-2 font-mono">
-            <span className="text-xl font-bold font-heading text-amber-950">{insufficientDocs}</span>
-            <span className="text-xs text-amber-700 font-semibold">({docPercent}%)</span>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );

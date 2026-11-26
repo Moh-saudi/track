@@ -24,6 +24,7 @@ import {
   LiabilityDistributionChart,
   SpecialtyStat,
 } from "@/components/analytics/AnalyticsCharts";
+import { classifySubcommitteeFinding, createEmptyFindingsCounts } from "@/lib/subcommittee-findings";
 
 export default async function SubCommitteeReportsPage() {
   const session = await getServerSession(authOptions);
@@ -163,23 +164,18 @@ export default async function SubCommitteeReportsPage() {
           : 0,
     }));
 
-  // ─── احتساب مواقف المسؤولية والخطأ الطبي من التقارير ───
-  let faultConfirmedCount = 0;
-  let noFaultCount = 0;
-  let insufficientDocsCount = 0;
+  // ─── احتساب نتائج دراسة اللجنة الفرعية الخمس المعتمدة من التقارير ───
+  const findingsCounts = createEmptyFindingsCounts();
+  let classifiedFindingsTotal = 0;
 
   cases.forEach((c) => {
     if (c.actions.length > 0) {
-      const desc = (c.actions[0].faultDescription || "").toLowerCase();
-      if (desc.includes("انتفاء") || desc.includes("لا يوجد خطأ") || desc.includes("مضاعفة")) {
-        noFaultCount++;
-      } else if (desc.includes("استيفاء") || desc.includes("نقص") || desc.includes("يتعذر")) {
-        insufficientDocsCount++;
-      } else if (desc.includes("ثبوت") || desc.includes("خطأ") || desc.includes("مسؤولية")) {
-        faultConfirmedCount++;
-      } else {
-        // الافتراضي وفق صياغة التقرير
-        faultConfirmedCount++;
+      const finding = classifySubcommitteeFinding(
+        c.actions[0].faultDescription || (c.actions[0] as any).actionTaken
+      );
+      if (finding) {
+        findingsCounts[finding]++;
+        classifiedFindingsTotal++;
       }
     }
   });
@@ -259,10 +255,8 @@ export default async function SubCommitteeReportsPage() {
         />
 
         <LiabilityDistributionChart
-          faultConfirmed={faultConfirmedCount}
-          noFault={noFaultCount}
-          insufficientDocs={insufficientDocsCount}
-          total={reportsCompleted.length}
+          findingsCounts={findingsCounts}
+          total={classifiedFindingsTotal}
         />
       </div>
 

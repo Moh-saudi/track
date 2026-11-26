@@ -114,3 +114,37 @@ export function getFindingConfig(finding?: string | null): FindingConfigItem {
   };
 }
 
+/**
+ * تصنيف نص نتيجة اللجنة الفرعية إلى أحد الخيارات الخمسة المعتمدة
+ */
+export function classifySubcommitteeFinding(finding?: string | null): SubCommitteeFinding | null {
+  if (!finding) return null;
+  const trimmed = finding.trim();
+  if (!trimmed) return null;
+
+  for (const key of SUBCOMMITTEE_FINDINGS) {
+    if (trimmed === key || trimmed.includes(key) || key.includes(trimmed)) {
+      return key;
+    }
+  }
+
+  if (trimmed.includes("جسيم")) return "خطأ طبى جسيم  من الطبيب المشكو في حقه";
+  if (trimmed.includes("المنشأة")) return "خطأ طبي علي المنشأة الطبية";
+  if (trimmed.includes("مضاعف")) return "مضاعفه طبية واردة الحدوث ولا يوجد أى خطأ طبى";
+  if (trimmed.includes("انتفاء") || trimmed.includes("لا يوجد")) return "لا يوجد خطأ طبي ولا مضاعفة طبية";
+  if (trimmed.includes("استيفاء") || trimmed.includes("نقص") || trimmed.includes("يتعذر")) return null;
+  if (trimmed.includes("خطأ")) return "خطأ طبى من الطبيب المشكو في حقه";
+
+  return null;
+}
+
+export function createEmptyFindingsCounts(): Record<SubCommitteeFinding, number> {
+  return {
+    "لا يوجد خطأ طبي ولا مضاعفة طبية": 0,
+    "مضاعفه طبية واردة الحدوث ولا يوجد أى خطأ طبى": 0,
+    "خطأ طبى من الطبيب المشكو في حقه": 0,
+    "خطأ طبى جسيم  من الطبيب المشكو في حقه": 0,
+    "خطأ طبي علي المنشأة الطبية": 0,
+  };
+}
+
