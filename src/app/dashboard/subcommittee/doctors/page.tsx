@@ -165,10 +165,66 @@ export default function SubcommitteeDoctorsPage() {
       .catch(() => undefined);
   }, []);
 
-  // حساب توزيع الأطباء على اللجان والجهات الفرعية
+  // ─── Faceted Search: القاعدة لحساب توزيع اللجان (كل الفلاتر ما عدا فلتر اللجنة ذاته) ───
+  const baseForCommitteePills = useMemo(() => {
+    return doctors.filter((doc) => {
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase().trim();
+        const matchesName = doc.name.toLowerCase().includes(q);
+        const matchesPhone = doc.phone?.includes(q) ?? false;
+        const matchesEmployer = doc.employer?.toLowerCase().includes(q) ?? false;
+        const matchesNationalId = doc.nationalId?.includes(q) ?? false;
+        const matchesSpecialty = doc.specialty?.name.toLowerCase().includes(q) ?? false;
+        const matchesCommittee = doc.subCommittee?.name.toLowerCase().includes(q) ?? false;
+        if (!matchesName && !matchesPhone && !matchesEmployer && !matchesNationalId && !matchesSpecialty && !matchesCommittee) return false;
+      }
+      if (selectedSpecialtyFilters.length > 0) {
+        const docSpecId = doc.specialty?.id || doc.specialtyId;
+        if (!docSpecId || !selectedSpecialtyFilters.includes(docSpecId)) return false;
+      }
+      if (selectedStatusFilter === "ACTIVE" && !doc.active) return false;
+      if (selectedStatusFilter === "PAUSED" && doc.active) return false;
+      if (selectedStatusFilter === "MISSING_FINANCE") {
+        const hasCard = Boolean(doc.cardNumber);
+        const hasAcc = Boolean(doc.accountNumber || doc.iban);
+        if (hasCard || hasAcc) return false;
+      }
+      return true;
+    });
+  }, [doctors, searchTerm, selectedSpecialtyFilters, selectedStatusFilter]);
+
+  // ─── Faceted Search: القاعدة لحساب توزيع التخصصات (كل الفلاتر ما عدا فلتر التخصص ذاته) ───
+  const baseForSpecialtyPills = useMemo(() => {
+    return doctors.filter((doc) => {
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase().trim();
+        const matchesName = doc.name.toLowerCase().includes(q);
+        const matchesPhone = doc.phone?.includes(q) ?? false;
+        const matchesEmployer = doc.employer?.toLowerCase().includes(q) ?? false;
+        const matchesNationalId = doc.nationalId?.includes(q) ?? false;
+        const matchesSpecialty = doc.specialty?.name.toLowerCase().includes(q) ?? false;
+        const matchesCommittee = doc.subCommittee?.name.toLowerCase().includes(q) ?? false;
+        if (!matchesName && !matchesPhone && !matchesEmployer && !matchesNationalId && !matchesSpecialty && !matchesCommittee) return false;
+      }
+      if (selectedCommitteeFilters.length > 0) {
+        const docCommId = doc.subCommittee?.id || doc.subCommitteeId;
+        if (!docCommId || !selectedCommitteeFilters.includes(docCommId)) return false;
+      }
+      if (selectedStatusFilter === "ACTIVE" && !doc.active) return false;
+      if (selectedStatusFilter === "PAUSED" && doc.active) return false;
+      if (selectedStatusFilter === "MISSING_FINANCE") {
+        const hasCard = Boolean(doc.cardNumber);
+        const hasAcc = Boolean(doc.accountNumber || doc.iban);
+        if (hasCard || hasAcc) return false;
+      }
+      return true;
+    });
+  }, [doctors, searchTerm, selectedCommitteeFilters, selectedStatusFilter]);
+
+  // حساب توزيع الأطباء على اللجان (سياقي: بناء على فلاتر التخصص والبحث والحالة)
   const committeeDistribution = useMemo(() => {
     const counts: Record<string, { id: string; name: string; code: string; count: number }> = {};
-    doctors.forEach((d) => {
+    baseForCommitteePills.forEach((d) => {
       const commId = d.subCommittee?.id || d.subCommitteeId || "UNKNOWN";
       const commName = d.subCommittee?.name || "لجنة غير محددة";
       const commCode = d.subCommittee?.code || "—";
@@ -178,12 +234,12 @@ export default function SubcommitteeDoctorsPage() {
       counts[commId].count++;
     });
     return Object.values(counts).sort((a, b) => b.count - a.count);
-  }, [doctors]);
+  }, [baseForCommitteePills]);
 
-  // حساب توزيع الأطباء على التخصصات الطبية
+  // حساب توزيع الأطباء على التخصصات الطبية (سياقي: بناء على فلاتر اللجنة والبحث والحالة)
   const specialtyDistribution = useMemo(() => {
     const counts: Record<string, { id: string; name: string; count: number }> = {};
-    doctors.forEach((d) => {
+    baseForSpecialtyPills.forEach((d) => {
       const specId = d.specialty?.id || d.specialtyId || "UNKNOWN";
       const specName = d.specialty?.name || "تخصص غير محدد";
       if (!counts[specId]) {
@@ -192,7 +248,7 @@ export default function SubcommitteeDoctorsPage() {
       counts[specId].count++;
     });
     return Object.values(counts).sort((a, b) => b.count - a.count);
-  }, [doctors]);
+  }, [baseForSpecialtyPills]);
 
   // تبديل اختيار اللجنة (Multi-select Toggle)
   function toggleCommitteeFilter(id: string) {
@@ -556,7 +612,7 @@ export default function SubcommitteeDoctorsPage() {
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
-              جميع اللجان ({doctors.length})
+              جميع اللجان ({baseForCommitteePills.length})
             </button>
             {committeeDistribution.map((item) => {
               const isSelected = selectedCommitteeFilters.includes(item.id);
@@ -612,7 +668,7 @@ export default function SubcommitteeDoctorsPage() {
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
-              جميع التخصصات ({doctors.length})
+              جميع التخصصات ({baseForSpecialtyPills.length})
             </button>
             {specialtyDistribution.map((item) => {
               const isSelected = selectedSpecialtyFilters.includes(item.id);
@@ -730,7 +786,7 @@ export default function SubcommitteeDoctorsPage() {
                         .filter((sc) => sc.name.toLowerCase().includes(committeeSearchInside.toLowerCase()))
                         .map((sc) => {
                           const isChecked = selectedCommitteeFilters.includes(sc.id);
-                          const docCount = doctors.filter((d) => (d.subCommittee?.id || d.subCommitteeId) === sc.id).length;
+                          const docCount = baseForCommitteePills.filter((d) => (d.subCommittee?.id || d.subCommitteeId) === sc.id).length;
                           return (
                             <label
                               key={sc.id}
@@ -817,7 +873,7 @@ export default function SubcommitteeDoctorsPage() {
                       .filter((sp) => sp.name.toLowerCase().includes(specialtySearchInside.toLowerCase()))
                       .map((sp) => {
                         const isChecked = selectedSpecialtyFilters.includes(sp.id);
-                        const docCount = doctors.filter((d) => (d.specialty?.id || d.specialtyId) === sp.id).length;
+                        const docCount = baseForSpecialtyPills.filter((d) => (d.specialty?.id || d.specialtyId) === sp.id).length;
                         return (
                           <label
                             key={sp.id}
