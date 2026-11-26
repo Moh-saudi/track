@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Center"/>
+   <Borders/>
+   <Font ss:FontName="Segoe UI" ss:Size="10" ss:Color="#000000"/>
+   <Interior/>
+   <NumberFormat/>
+   <Protection/>
+  </Style>
+  <Style ss:ID="TitleHeader">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Font ss:FontName="Segoe UI" ss:Size="14" ss:Color="#FFFFFF" ss:Bold="1"/>
+   <Interior ss:Color="#991B1B" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="SubTitleHeader">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Font ss:FontName="Segoe UI" ss:Size="10" ss:Color="#7F1D1D" ss:Bold="1"/>
+   <Interior ss:Color="#FEE2E2" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="ColHeader">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#991B1B"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+   </Borders>
+   <Font ss:FontName="Segoe UI" ss:Size="10" ss:Color="#FFFFFF" ss:Bold="1"/>
+   <Interior ss:Color="#1E293B" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="CellRegular">
+   <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+   <Font ss:FontName="Segoe UI" ss:Size="9.5" ss:Color="#1E293B"/>
+  </Style>
+  <Style ss:ID="CellCenter">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+   <Font ss:FontName="Segoe UI" ss:Size="9.5" ss:Color="#1E293B"/>
+  </Style>
+  <Style ss:ID="CellWarning">
+   <Alignment ss:Horizontal="Right" ss:Vertical="Center" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#FECDD3"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#FECDD3"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#FECDD3"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#FECDD3"/>
+   </Borders>
+   <Font ss:FontName="Segoe UI" ss:Size="9.5" ss:Color="#991B1B" ss:Bold="1"/>
+   <Interior ss:Color="#FFF1F2" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="CellAction">
+   <Alignment ss:Horizontal="Right" ss:Vertical="Center" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+   <Font ss:FontName="Segoe UI" ss:Size="9.5" ss:Color="#0F766E"/>
+   <Interior ss:Color="#F0FDFA" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="BadgeError">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+   <Font ss:FontName="Segoe UI" ss:Size="9" ss:Color="#991B1B" ss:Bold="1"/>
+   <Interior ss:Color="#FEE2E2" ss:Pattern="Solid"/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="السجلات المعادة للتصحيح">
+  <Table ss:DefaultRowHeight="24">
+   <Column ss:Width="35"/>
+   <Column ss:Width="45"/>
+   <Column ss:Width="160"/>
+   <Column ss:Width="170"/>
+   <Column ss:Width="75"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="280"/>
+   <Column ss:Width="220"/>
+   
+   <Row ss:Height="32">
+    <Cell ss:MergeAcross="10" ss:StyleID="TitleHeader">
+     <Data ss:Type="String">اللجنة العليا للمسؤولية الطبية — بيان السجلات المعادة للموظف للتصحيح والتدقيق</Data>
+    </Cell>
+   </Row>
+   
+   <Row ss:Height="22">
+    <Cell ss:MergeAcross="10" ss:StyleID="SubTitleHeader">
+     <Data ss:Type="String">إجمالي السجلات المطلوب مراجعتها وتصحيحها: (18) سجل — يرجى استيفاء وتصحيح البيانات المبينة قرين كل سجل لإعادة اعتمادها</Data>
+    </Cell>
+   </Row>
+   
+   <Row ss:Height="28">
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">م</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">السطر الأصلي</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">اسم اللجنة الفرعية</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">اسم الطبيب الاستشاري</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">اللقب العلمي</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">التخصص الطبي المعياري</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">جهة العمل / المستشفى</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">الرقم القومي</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">نوع الملاحظة</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">سبب إعادة السجل للمراجعة والتدقيق</Data></Cell>
+    <Cell ss:StyleID="ColHeader"><Data ss:Type="String">الإجراء المطلوب من الموظف</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">1</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">278</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الزقازيق</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">أنور عزت إسماعيل</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">أمراض النساء والتوليد</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الزقازيق</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">13011912550118</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">رقم قومي خاطئ رياضياً</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">الرقم القومي المدون (13011912550118) غير صحيح: رقم القرن (1) غير صحيح (يجب أن يبدأ بـ 2 أو 3). الأرقام القومية تبدأ برقم 2 للمواليد قبل عام 2000 وبـ 3 للمواليد بعده.</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">مراجعة صورة بطاقة الرقم القومي والتأكد من ترتيب الـ 14 رقماً بشكل سليم.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">2</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">97</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">علي عبد الفتاح على النبوي</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">— (فارغ)</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">27510301500131</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تخصص طبي مفقود</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">خانة التخصص الطبي تركت فارغة. التخصص إلزامي في المنظومة لتسكين الطبيب على اللجان وتوزيع القضايا التخصصية عليه.</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">تحديد التخصص الطبي المعياري الدقيق للطبيب الاستشاري.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">3</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">113</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">فاطمة علي عز الرجال</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">— (فارغ)</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">27210190200422</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تخصص طبي مفقود</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">خانة التخصص الطبي تركت فارغة. التخصص إلزامي في المنظومة لتسكين الطبيب على اللجان وتوزيع القضايا التخصصية عليه.</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">تحديد التخصص الطبي المعياري الدقيق للطبيب الاستشاري.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">4</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">115</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">محمود مبروك محمد سعيد</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">— (فارغ)</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">25205241800372</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تخصص طبي مفقود</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">خانة التخصص الطبي تركت فارغة. التخصص إلزامي في المنظومة لتسكين الطبيب على اللجان وتوزيع القضايا التخصصية عليه.</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">تحديد التخصص الطبي المعياري الدقيق للطبيب الاستشاري.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">5</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">116</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">أحمد إبراهيم السيد أحمد عكر</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">— (فارغ)</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">26803221300533</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تخصص طبي مفقود</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">خانة التخصص الطبي تركت فارغة. التخصص إلزامي في المنظومة لتسكين الطبيب على اللجان وتوزيع القضايا التخصصية عليه.</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">تحديد التخصص الطبي المعياري الدقيق للطبيب الاستشاري.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">6</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">187</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة عين شمس</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">طارق محمد يوسف سيد أحمد</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">— (فارغ)</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة عين شمس</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">27007180200955</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تخصص طبي مفقود</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">خانة التخصص الطبي تركت فارغة. التخصص إلزامي في المنظومة لتسكين الطبيب على اللجان وتوزيع القضايا التخصصية عليه.</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">تحديد التخصص الطبي المعياري الدقيق للطبيب الاستشاري.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">7</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">100</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">حسن محمد حسن حجازي</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">طب وجراحة العيون</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">26701011502454</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تضارب وازدواجية الرقم القومي</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">الرقم القومي (26701011502454) مكرر لشخصين أو تخصصين مختلفين في نفس الملف (بيانات أخرى مسجلة بنفس الرقم: حسن حمد حسن حجازي - أمراض الأنف والأذن والحنجرة [سطر 142]).</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">مراجعة بطاقة الرقم القومي لكل طبيب على حدة وتصحيح الرقم الخاطئ لأحدهما.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">8</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">142</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">حسن حمد حسن حجازي</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">أمراض الأنف والأذن والحنجرة</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">26701011502454</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تضارب وازدواجية الرقم القومي</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">الرقم القومي (26701011502454) مكرر لشخصين أو تخصصين مختلفين في نفس الملف (بيانات أخرى مسجلة بنفس الرقم: حسن محمد حسن حجازي - طب وجراحة العيون [سطر 100]).</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">مراجعة بطاقة الرقم القومي لكل طبيب على حدة وتصحيح الرقم الخاطئ لأحدهما.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">9</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">106</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">ياسر أحمد السيد أحمد عامر</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">جراحة أورام ومناظير</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">27209251600391</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تضارب وازدواجية الرقم القومي</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">الرقم القومي (27209251600391) مكرر لشخصين أو تخصصين مختلفين في نفس الملف (بيانات أخرى مسجلة بنفس الرقم: ياسر أحمد السيد عامر - جراحة عامة [سطر 146]).</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">مراجعة بطاقة الرقم القومي لكل طبيب على حدة وتصحيح الرقم الخاطئ لأحدهما.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">10</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">146</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">ياسر أحمد السيد عامر</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">جراحة عامة</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">27209251600391</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تضارب وازدواجية الرقم القومي</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">الرقم القومي (27209251600391) مكرر لشخصين أو تخصصين مختلفين في نفس الملف (بيانات أخرى مسجلة بنفس الرقم: ياسر أحمد السيد أحمد عامر - جراحة أورام ومناظير [سطر 106]).</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">مراجعة بطاقة الرقم القومي لكل طبيب على حدة وتصحيح الرقم الخاطئ لأحدهما.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">11</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">124</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">سامي حسن سيد أحمد</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">الباطنة العامة وأمراض الجهاز الهضمي</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">26709141500837</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تضارب وازدواجية الرقم القومي</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">الرقم القومي (26709141500837) مكرر لشخصين أو تخصصين مختلفين في نفس الملف (بيانات أخرى مسجلة بنفس الرقم: سامي حسن سيد أحمد نوح - أمراض القلب والأوعية الدموية [سطر 156]).</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">مراجعة بطاقة الرقم القومي لكل طبيب على حدة وتصحيح الرقم الخاطئ لأحدهما.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">12</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">156</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">سامي حسن سيد أحمد نوح</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">أمراض القلب والأوعية الدموية</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الأزهر</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">26709141500837</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تضارب وازدواجية الرقم القومي</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">الرقم القومي (26709141500837) مكرر لشخصين أو تخصصين مختلفين في نفس الملف (بيانات أخرى مسجلة بنفس الرقم: سامي حسن سيد أحمد - الباطنة العامة وأمراض الجهاز الهضمي [سطر 124]).</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">مراجعة بطاقة الرقم القومي لكل طبيب على حدة وتصحيح الرقم الخاطئ لأحدهما.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">13</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">319</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الإسكندرية</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">محمد حازم وجيه عبد اللطيف جودة</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">طب الأطفال وحديثي الولادة</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الإسكندرية</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">26210040200676</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تضارب وازدواجية الرقم القومي</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">الرقم القومي (26210040200676) مكرر لشخصين أو تخصصين مختلفين في نفس الملف (بيانات أخرى مسجلة بنفس الرقم: محمد حازم عبد اللطيف جودة - جراحة عامة [سطر 335]).</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">مراجعة بطاقة الرقم القومي لكل طبيب على حدة وتصحيح الرقم الخاطئ لأحدهما.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">14</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">335</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الإسكندرية</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">محمد حازم عبد اللطيف جودة</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">جراحة عامة</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة الإسكندرية</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">26210040200676</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تضارب وازدواجية الرقم القومي</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">الرقم القومي (26210040200676) مكرر لشخصين أو تخصصين مختلفين في نفس الملف (بيانات أخرى مسجلة بنفس الرقم: محمد حازم وجيه عبد اللطيف جودة - طب الأطفال وحديثي الولادة [سطر 319]).</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">مراجعة بطاقة الرقم القومي لكل طبيب على حدة وتصحيح الرقم الخاطئ لأحدهما.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">15</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">362</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة قناة السويس</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">خالد أحمد محمد عطوه</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">أمراض النساء والتوليد</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">كلية طب جامعة قناة السويس</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">27208281301618</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تكرار متطابق في نفس اللجنة</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">سجل مكرر بالكامل ومطابق تماماً للسطر رقم (356) بنفس الاسم والرقم القومي والتخصص في نفس اللجنة الفرعية.</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">حذف هذا السطر الزائد حيث تم اعتماد السطر الأول بالفعل.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">16</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">4</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">المجلس الصحي المصري</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">احمد علي محمود عوض حسن</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">جراحة تجميل وحروق</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">—</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">26602240101953</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تكرار قيد بين لجنتين</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">الطبيب مسجل في لجنتين فرعيتين (المجلس الصحي المصري واللجنة الجامعية). تم اعتماد وإدراج قيده الأساسي في: كلية طب جامعة عين شمس (سطر 221)، وتم استبعاد هذا القيد الإضافي منعاً للازدواجية.</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">مراجعة ما إذا كان المطلوب قيده استشارياً في اللجنتين أم الاكتفاء بلجنته الجامعية / جهة عمله الأساسية.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">17</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">30</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">المجلس الصحي المصري</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">عمرو عبد العزيز محمود نديم</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">أمراض النساء والتوليد</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">—</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">26304030100155</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تكرار قيد بين لجنتين</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">الطبيب مسجل في لجنتين فرعيتين (المجلس الصحي المصري واللجنة الجامعية). تم اعتماد وإدراج قيده الأساسي في: كلية طب جامعة عين شمس (سطر 232)، وتم استبعاد هذا القيد الإضافي منعاً للازدواجية.</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">مراجعة ما إذا كان المطلوب قيده استشارياً في اللجنتين أم الاكتفاء بلجنته الجامعية / جهة عمله الأساسية.</Data></Cell>
+   </Row>
+   <Row ss:Height="36">
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">18</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="Number">34</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">المجلس الصحي المصري</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">عماد صموئيل بولس ساويرس</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">أستاذ دكتور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">جراحة عظام وكسور</Data></Cell>
+    <Cell ss:StyleID="CellRegular"><Data ss:Type="String">مستشفى الساحل التعليمي</Data></Cell>
+    <Cell ss:StyleID="CellCenter"><Data ss:Type="String">26111110103071</Data></Cell>
+    <Cell ss:StyleID="BadgeError"><Data ss:Type="String">تكرار قيد بين لجنتين</Data></Cell>
+    <Cell ss:StyleID="CellWarning"><Data ss:Type="String">الطبيب مسجل في لجنتين فرعيتين (المجلس الصحي المصري واللجنة الجامعية). تم اعتماد وإدراج قيده الأساسي في: الهيئة العامة للمستشفيات والمعاهد التعليمية (سطر 51)، وتم استبعاد هذا القيد الإضافي منعاً للازدواجية.</Data></Cell>
+    <Cell ss:StyleID="CellAction"><Data ss:Type="String">مراجعة ما إذا كان المطلوب قيده استشارياً في اللجنتين أم الاكتفاء بلجنته الجامعية / جهة عمله الأساسية.</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <DisplayRightToLeft/>
+   <FreezePanes/>
+   <FrozenNoSplit/>
+   <SplitHorizontal>3</SplitHorizontal>
+   <TopRowBottomPane>3</TopRowBottomPane>
+  </WorksheetOptions>
+ </Worksheet>
+</Workbook>
