@@ -24,6 +24,43 @@ function safeDoctorResponse(doctor: any) {
   };
 }
 
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+
+  const doctor = await prisma.subCommitteeDoctor.findUnique({
+    where: { id },
+    include: {
+      subCommittee: { select: { id: true, name: true, code: true } },
+      specialty: { select: { id: true, name: true, code: true } },
+      reviewAssignments: {
+        include: {
+          case: {
+            select: {
+              id: true,
+              caseNumber: true,
+              caseYear: true,
+              complainantName: true,
+              hospitalName: true,
+              status: true,
+              incomingDate: true,
+            },
+          },
+        },
+        orderBy: { assignedAt: "desc" },
+        take: 50,
+      },
+    },
+  });
+
+  if (!doctor) {
+    return NextResponse.json({ error: "الطبيب غير موجود" }, { status: 404 });
+  }
+
+  return NextResponse.json(safeDoctorResponse(doctor));
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getServerSession(authOptions);

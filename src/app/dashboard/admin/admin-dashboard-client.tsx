@@ -22,6 +22,7 @@ import {
   LayoutDashboard,
   UserCheck,
   Monitor,
+  Stethoscope,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -47,6 +48,7 @@ export interface Props {
   todaySessionsCount: number;
   todayLogsCount: number;
   totalLogsCount: number;
+  totalDoctorsCount?: number;
   subCommitteesCount: number;
   specialtiesCount: number;
 
@@ -153,6 +155,7 @@ export function AdminDashboardClient({
   todaySessionsCount,
   todayLogsCount,
   totalLogsCount,
+  totalDoctorsCount,
   subCommitteesCount,
   specialtiesCount,
   recentLogs,
@@ -423,6 +426,31 @@ export function AdminDashboardClient({
                 </p>
                 <div className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-teal-700 group-hover:text-teal-800 font-heading">
                   <span>سجل اللجان والتخصصات</span>
+                  <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+                </div>
+              </Link>
+
+              {/* بوابة سجل وتوزيع الأطباء والاستشاريين */}
+              <Link
+                href="/dashboard/subcommittee/doctors"
+                className="group p-5 rounded-2xl bg-white border border-slate-200 hover:border-teal-500 hover:shadow-md transition-all duration-200 relative overflow-hidden"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-11 h-11 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                    <Stethoscope className="w-5 h-5" />
+                  </div>
+                  <Badge variant="emerald" className="text-[11px]">
+                    {totalDoctorsCount !== undefined ? `${totalDoctorsCount} طبيب مقيد` : "سجل الأطباء"}
+                  </Badge>
+                </div>
+                <h3 className="text-sm font-bold font-heading text-slate-800 group-hover:text-teal-700 transition-colors">
+                  سجل وتوزيع الأطباء والاستشاريين
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed font-body">
+                  حصر وتوزيع الأطباء والخبراء الاستشاريين على اللجان الـ 16 والتخصصات والبيانات المالية.
+                </p>
+                <div className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-teal-700 group-hover:text-teal-800 font-heading">
+                  <span>استعراض سجل وتوزيع الأطباء</span>
                   <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
                 </div>
               </Link>

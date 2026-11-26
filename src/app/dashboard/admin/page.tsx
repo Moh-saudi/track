@@ -30,8 +30,9 @@ export default async function AdminDashboardPage({
 
   let cases: any[] = [];
   let totalCasesInDb = 0;
+  let totalDoctorsCount = 0;
   try {
-    const [fetchedCases, count] = await Promise.all([
+    const [fetchedCases, count, doctorsCount] = await Promise.all([
       prisma.case.findMany({
         select: {
           id: true,
@@ -41,12 +42,15 @@ export default async function AdminDashboardPage({
         },
       }),
       prisma.case.count(),
+      prisma.subCommitteeDoctor.count(),
     ]);
     cases = fetchedCases || [];
     totalCasesInDb = count;
+    totalDoctorsCount = doctorsCount;
   } catch {
     cases = [];
     totalCasesInDb = 0;
+    totalDoctorsCount = 0;
   }
 
   let subCommittees: any[] = [];
@@ -214,6 +218,7 @@ export default async function AdminDashboardPage({
       todaySessionsCount={todaySessionsCount || todayActiveUsersCount}
       todayLogsCount={todayLogsCount}
       totalLogsCount={totalLogsCount}
+      totalDoctorsCount={totalDoctorsCount}
       subCommitteesCount={subCommittees.length}
       specialtiesCount={specialties.length}
       recentLogs={serializedRecentLogs as any}
